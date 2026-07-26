@@ -12,7 +12,7 @@ export const createReport = mutation({
     reasoning: v.string(),
     accuracy: v.string(),
     verified: v.boolean(),
-    detections: v.string(),
+    detections: v.array(v.string()),
     locationName: v.string(),
     lat: v.number(),
     lng: v.number(),
@@ -57,5 +57,24 @@ export const getAllReports = query({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("reports").order("desc").collect();
+  },
+});
+
+export const verifyReport = mutation({
+  args: {
+    id: v.id("reports"),
+  },
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.id);
+
+    if (!report) {
+      throw new Error("Report not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      verified: true,
+    });
+
+    return args.id;
   },
 });

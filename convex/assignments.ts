@@ -40,6 +40,7 @@ export const getActiveAssignments = query({
           ...task,
           teamName: team?.name || "Unknown Team",
           teamAvatar: team?.avatar || "",
+          region: team?.region || "Unknown Region",
           location: report?.locationName || "Unknown Location",
           reportStatus: report?.status || "PENDING",
         };

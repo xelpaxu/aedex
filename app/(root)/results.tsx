@@ -2,6 +2,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+
 import {
   AlertTriangle,
   ArrowLeft,
@@ -226,19 +228,23 @@ export default function ResultsScreen() {
       ? rawAccuracy
       : `${accuracyNum.toFixed(1)}%`;
 
-  const imageUri = report.imageUri;
   const aiMessage = report.reasoning || "No detailed reasoning provided.";
   const verified = report.verified;
   const submitterName = report.userName || "Anonymous";
 
-  // ── derive display image logic
+  // Normalise both URIs to always have the data: prefix if they are base64
+  const normalizeImageUri = (uri: string) => {
+    if (!uri) return "";
+    if (uri.startsWith("data:") || uri.startsWith("http")) return uri;
+    // Assume it's raw base64
+    return `data:image/jpeg;base64,${uri}`;
+  };
+
+  const imageUri = normalizeImageUri(report.imageUri);
   const processedImage = report.processedImage || "";
 
-  // Check if the string is a Base64 string (starts with "iVBOR..." for PNG or "/9j/..." for JPEG)
-  // or if it already has the data:image prefix.
   const isBase64 =
     processedImage.length > 100 && !processedImage.startsWith("http");
-
   const finalProcessedUri = isBase64
     ? processedImage.startsWith("data:")
       ? processedImage
@@ -269,9 +275,21 @@ export default function ResultsScreen() {
         ).join(", ")
       : "None Detected";
 
-  const riskColor = verified ? C.danger : C.safe;
-  const riskLabel = verified ? "HIGH RISK" : "LOW RISK";
-  const riskBg = verified ? C.dangerGlow : C.safeGlow;
+  const riskLabelMap: any = {
+    CRITICAL: "CRITICAL RISK",
+    "HIGH RISK": "HIGH RISK",
+    MODERATE: "HIGH RISK",
+    "LOW RISK": "MINIMAL RISK",
+  };
+
+  const riskLabel = riskLabelMap[report.status] ?? "UNKNOWN";
+
+  const isCritical =
+    report.status === "CRITICAL" || report.status === "HIGH RISK";
+
+  const riskColor = isCritical ? C.danger : C.safe;
+
+  const riskBg = isCritical ? C.dangerGlow : C.safeGlow;
 
   return (
     <View style={styles.root}>
@@ -469,34 +487,66 @@ export default function ResultsScreen() {
           <SectionLabel>Location</SectionLabel>
 
           <View style={styles.locationCard}>
-            <Image
-              source={{
-                uri: "https://media.wired.com/photos/59269cd37034dc5f91bec0f1/master/pass/GoogleMapTA.jpg",
-              }}
-              style={styles.locationMap}
-            />
-            <View style={styles.locationMapOverlay} />
-
-            {/* Crosshair */}
-            <View style={styles.crosshairWrapper} pointerEvents="none">
-              <View style={styles.crosshairH} />
-              <View style={styles.crosshairV} />
-              <View style={styles.crosshairDot} />
-            </View>
+            {/* Use actual coordinates from the report */}
+            {report.lat &&
+            report.lng &&
+            !isNaN(report.lat) &&
+            !isNaN(report.lng) ? (
+              <MapView
+                provider={PROVIDER_DEFAULT}
+                style={styles.locationMap}
+                initialRegion={{
+                  latitude: report.lat,
+                  longitude: report.lng,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+              >
+                <Marker
+                  coordinate={{ latitude: report.lat, longitude: report.lng }}
+                  pinColor={C.accent}
+                />
+              </MapView>
+            ) : (
+              <View
+                style={[
+                  styles.locationMap,
+                  { justifyContent: "center", alignItems: "center" },
+                ]}
+              >
+                <Text style={{ color: C.textSub }}>Location not available</Text>
+              </View>
+            )}
 
             <View style={styles.locationFooter}>
               <View style={styles.locationFooterLeft}>
                 <MapPin color={C.accent} size={13} strokeWidth={2.5} />
                 <View>
                   <Text style={styles.locationTitle}>
-                    Brgy. Calumpang, Iloilo City
+                    {report.locationName || "Unknown location"}
                   </Text>
                   <Text style={styles.locationSub}>
-                    GPS metadata · verified
+                    GPS coordinates · verified
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.locationBtn}>
+              <TouchableOpacity
+                style={styles.locationBtn}
+                onPress={() => {
+                  if (report.lat && report.lng) {
+                    router.push({
+                      pathname: "/map",
+                      params: {
+                        focusLat: report.lat.toString(),
+                        focusLng: report.lng.toString(),
+                        reportId: report._id,
+                      },
+                    });
+                  }
+                }}
+              >
                 <Text style={styles.locationBtnText}>MAP</Text>
                 <ChevronRight color={C.bg} size={12} strokeWidth={3} />
               </TouchableOpacity>

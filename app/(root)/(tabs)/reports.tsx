@@ -59,6 +59,13 @@ const formatTime = (time: number) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
+const normalizeImageUri = (uri: string) => {
+  if (!uri) return "";
+  if (uri.startsWith("data:") || uri.startsWith("http")) return uri;
+  // Assume it's raw base64
+  return `data:image/jpeg;base64,${uri}`;
+};
+
 const statusColor = (status: string) =>
   status === "Resolved" ? C.safe : status === "CRITICAL" ? C.danger : C.warn;
 
@@ -111,7 +118,7 @@ const HighlightCard = ({
       <Pressable onPress={press} style={{ flex: 1 }}>
         {/* Background image */}
         <Image
-          source={{ uri: item.processedImage }}
+          source={{ uri: normalizeImageUri(item.processedImage) }}
           style={hc.img}
           resizeMode="cover"
         />
@@ -252,7 +259,7 @@ const HistoryRow = ({
       activeOpacity={0.7}
     >
       <Image
-        source={{ uri: item.processedImage }}
+        source={{ uri: normalizeImageUri(item.processedImage) }}
         style={hr.thumb}
         resizeMode="cover"
       />
@@ -384,6 +391,7 @@ export default function ReportsScreen() {
 
   const communityReports = useQuery(api.reports.getPublicReports);
   const myReports = useQuery(api.reports.getMyReports);
+  const currentUser = useQuery(api.users.getMe);
 
   // Slide tab indicator
   useEffect(() => {
@@ -517,7 +525,17 @@ export default function ReportsScreen() {
             {/* ─── NEW NAVIGATION BUTTON ─── */}
             <TouchableOpacity
               style={styles.feedNavBtn}
-              onPress={() => router.push("/community-feed")} // Ensure this matches your file path
+              onPress={() => {
+                if (currentUser) {
+                  router.push({
+                    pathname: "/community-feed",
+                    params: {
+                      userId: currentUser.id, // or currentUser.id depending on your schema
+                      userName: currentUser.name,
+                    },
+                  });
+                }
+              }}
             >
               <Globe color={C.accent} size={20} strokeWidth={2.5} />
               <Text style={styles.feedNavText}>OPEN FEED</Text>

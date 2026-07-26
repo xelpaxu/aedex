@@ -15,7 +15,7 @@ export default defineSchema({
     reasoning: v.string(),
     accuracy: v.string(),
     verified: v.boolean(),
-    detections: v.string(),
+    detections: v.array(v.string()),
     locationName: v.string(),
     lat: v.number(),
     lng: v.number(),

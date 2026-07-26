@@ -9,7 +9,7 @@ import {
   Clock,
   MapPin,
   RotateCcw,
-  Sparkles
+  Sparkles,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
