@@ -46,7 +46,6 @@
           }
         }
       ],
-      "@rnmapbox/maps",
       "expo-router",
       [
         "expo-splash-screen",
