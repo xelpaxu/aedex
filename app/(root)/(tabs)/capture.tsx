@@ -241,10 +241,14 @@ export default function CaptureScreen() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({});
-        setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({});
+          setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+        }
+      } catch (e) {
+        console.warn("Failed to get location:", e);
       }
     })();
   }, []);

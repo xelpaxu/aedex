@@ -7,49 +7,46 @@
     "icon": "./assets/images/Aedex.png",
     "scheme": "moskito",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "permissions": [
-        "INTERNET",
-        "ACCESS_MEDIA_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "READ_MEDIA_AUDIO",
-        "READ_MEDIA_VISUAL_USER_SELECTED"
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/Aedex.png",
-        "backgroundImage": "./assets/images/Aedex.png",
-        "monochromeImage": "./assets/images/Aedex.png"
+        "foregroundImage": "./assets/images/Aedex.png"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
-      "package": "com.xelpaxu.moskito",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "data": [
-            {
-              "scheme": "moskito",
-              "host": "*"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "package": "com.xelpaxu.moskito"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/Aedex.png"
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
+      "@rnmapbox/maps",
       "expo-router",
       [
         "expo-splash-screen",
@@ -67,45 +64,20 @@
         "expo-media-library",
         {
           "photosPermission": "Allow AEDEX to access your photos to detect mosquito breeding sites.",
-          "savePhotosPermission": "Allow AEDEX to save photos.",
-          "isAccessMediaLocationEnabled": true
-        }
-      ],
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow AEDEX to access your location to map mosquito breeding sites."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow AEDEX to access your photos.",
-          "cameraPermission": "Allow AEDEX to use the camera."
+          "savePhotosPermission": true,
+          "isAccessMediaLocationEnabled": true,
+          "isAudioLibraryEnabled": true
         }
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35
-          }
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
-      "router": {
-        "scheme": "moskito",
-        "origin": "http://localhost:8081"
-      },
+      "router": {},
       "eas": {
         "projectId": "3e66f8a4-a53a-4c79-baf6-b7f66d832adf"
       }

@@ -1,8 +1,11 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import Mapbox from "@rnmapbox/maps";
 import { useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+
+// 🔑 Mapbox access token - empty string enables MapLibre mode (no token needed)
+Mapbox.setAccessToken("");
 
 import {
   AlertTriangle,
@@ -41,7 +44,7 @@ const C = {
   text: "#E8EDF8",
   textSub: "#697A9B",
   textDim: "#3C4A66",
-  accent: "#4F8EF7", // electric blue
+  accent: "#4F8EF7",
   accentGlow: "#4F8EF720",
   danger: "#FF4D6A",
   dangerGlow: "#FF4D6A18",
@@ -163,6 +166,42 @@ const TimelineItem = ({
   );
 };
 
+// ─── Generate Circle Points ──────────────────────────────────────────────────
+function generateCirclePoints(
+  centerLng: number,
+  centerLat: number,
+  radiusMeters: number,
+  points: number = 32,
+): [number, number][] {
+  const earthRadius = 6371000;
+  const angularRadius = radiusMeters / earthRadius;
+
+  const latRad = (centerLat * Math.PI) / 180;
+  const lngRad = (centerLng * Math.PI) / 180;
+
+  const coordinates: [number, number][] = [];
+
+  for (let i = 0; i <= points; i++) {
+    const bearing = (i / points) * 2 * Math.PI;
+
+    const newLat = Math.asin(
+      Math.sin(latRad) * Math.cos(angularRadius) +
+        Math.cos(latRad) * Math.sin(angularRadius) * Math.cos(bearing),
+    );
+
+    const newLng =
+      lngRad +
+      Math.atan2(
+        Math.sin(bearing) * Math.sin(angularRadius) * Math.cos(latRad),
+        Math.cos(angularRadius) - Math.sin(latRad) * Math.sin(newLat),
+      );
+
+    coordinates.push([(newLng * 180) / Math.PI, (newLat * 180) / Math.PI]);
+  }
+
+  return coordinates;
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function ResultsScreen() {
   const router = useRouter();
@@ -175,6 +214,7 @@ export default function ResultsScreen() {
 
   const [viewMode, setViewMode] = useState<"annotated" | "raw">("annotated");
   const scrollY = useRef(new Animated.Value(0)).current;
+  const cameraRef = useRef<Mapbox.Camera>(null);
 
   // ── parallax header image offset
   const imageTranslate = scrollY.interpolate({
@@ -236,7 +276,6 @@ export default function ResultsScreen() {
   const normalizeImageUri = (uri: string) => {
     if (!uri) return "";
     if (uri.startsWith("data:") || uri.startsWith("http")) return uri;
-    // Assume it's raw base64
     return `data:image/jpeg;base64,${uri}`;
   };
 
@@ -290,6 +329,12 @@ export default function ResultsScreen() {
   const riskColor = isCritical ? C.danger : C.safe;
 
   const riskBg = isCritical ? C.dangerGlow : C.safeGlow;
+
+  // Generate circle points for risk zone
+  const circlePoints =
+    report.lat && report.lng
+      ? generateCirclePoints(report.lng, report.lat, isCritical ? 200 : 150)
+      : [];
 
   return (
     <View style={styles.root}>
@@ -487,28 +532,72 @@ export default function ResultsScreen() {
           <SectionLabel>Location</SectionLabel>
 
           <View style={styles.locationCard}>
-            {/* Use actual coordinates from the report */}
+            {/* Use MapLibre instead of react-native-maps */}
             {report.lat &&
             report.lng &&
             !isNaN(report.lat) &&
             !isNaN(report.lng) ? (
-              <MapView
-                provider={PROVIDER_DEFAULT}
-                style={styles.locationMap}
-                initialRegion={{
-                  latitude: report.lat,
-                  longitude: report.lng,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                }}
-                scrollEnabled={false}
-                zoomEnabled={false}
-              >
-                <Marker
-                  coordinate={{ latitude: report.lat, longitude: report.lng }}
-                  pinColor={C.accent}
-                />
-              </MapView>
+              <View style={styles.locationMap}>
+                <Mapbox.MapView
+                  style={styles.mapView}
+                  styleURL="https://tiles.stadiamaps.com/styles/alidade_smooth.json"
+                  logoEnabled={false}
+                  attributionEnabled={true}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                >
+                  <Mapbox.Camera
+                    ref={cameraRef}
+                    defaultSettings={{
+                      centerCoordinate: [report.lng, report.lat],
+                      zoomLevel: 16,
+                    }}
+                  />
+
+                  {/* Risk Zone */}
+                  {circlePoints.length > 0 && (
+                    <Mapbox.ShapeSource
+                      id="risk-zone"
+                      shape={{
+                        type: "Feature",
+                        geometry: {
+                          type: "Polygon",
+                          coordinates: [circlePoints],
+                        },
+                        properties: {}, // ← Add this empty properties object
+                      }}
+                    >
+                      <Mapbox.FillLayer
+                        id="risk-zone-layer"
+                        style={{
+                          fillColor: isCritical
+                            ? "rgba(255,77,106,0.15)"
+                            : "rgba(251,191,36,0.15)",
+                          fillOutlineColor: isCritical
+                            ? "rgba(255,77,106,0.65)"
+                            : "rgba(251,191,36,0.65)",
+                          fillAntialias: true,
+                        }}
+                      />
+                    </Mapbox.ShapeSource>
+                  )}
+
+                  {/* Marker */}
+                  <Mapbox.PointAnnotation
+                    id="report-marker"
+                    coordinate={[report.lng, report.lat]}
+                  >
+                    <View
+                      style={[
+                        styles.markerDot,
+                        { backgroundColor: isCritical ? C.danger : C.accent },
+                      ]}
+                    >
+                      <Text style={styles.markerEmoji}>🦟</Text>
+                    </View>
+                  </Mapbox.PointAnnotation>
+                </Mapbox.MapView>
+              </View>
             ) : (
               <View
                 style={[
@@ -692,9 +781,7 @@ const styles = StyleSheet.create({
   },
   heroScrim: {
     ...StyleSheet.absoluteFillObject,
-    // multi-stop scrim: transparent top → dense bottom
     backgroundColor: "transparent",
-    // RN doesn't support multi-stop, so layer two views
   },
 
   heroToggle: {
@@ -857,45 +944,26 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     backgroundColor: C.surface,
   },
-  locationMap: { width: "100%", height: 120 },
-  locationMapOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    backgroundColor: "rgba(11,14,20,0.35)",
-  },
-  crosshairWrapper: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
+  locationMap: { width: "100%", height: 120, backgroundColor: C.surfaceRaised },
+  mapView: { width: "100%", height: 120 },
+  markerDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  crosshairH: {
-    position: "absolute",
-    width: 28,
-    height: 1,
-    backgroundColor: C.accent + "90",
-  },
-  crosshairV: {
-    position: "absolute",
-    width: 1,
-    height: 28,
-    backgroundColor: C.accent + "90",
-  },
-  crosshairDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: C.accent,
-    shadowColor: C.accent,
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 6,
+  markerEmoji: {
+    fontSize: 16,
+    color: "#fff",
+    textAlign: "center",
   },
   locationFooter: {
     flexDirection: "row",
