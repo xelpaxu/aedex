@@ -1,5 +1,5 @@
-import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
 /* ─────────────────────────────────────────────
    ROLE TYPE
@@ -79,7 +79,7 @@ export const login = query({
   },
   handler: async (_ctx, { username, password }) => {
     const user = USERS.find(
-      (u) => u.username === username && u.password === password
+      (u) => u.username === username && u.password === password,
     );
 
     if (!user) return null;
@@ -107,7 +107,7 @@ export const getMe = query({
 
     return {
       id: user._id,
-      name: user.name,           // schema field
+      name: user.name, // schema field
       tokenIdentifier: user.tokenIdentifier,
       // username, role, displayName, location are NOT in your schema
     };

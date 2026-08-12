@@ -15,7 +15,13 @@ import {
   X,
   Zap,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -27,14 +33,14 @@ import {
   Text,
   View,
 } from "react-native";
+import { WebView } from "react-native-webview";
 
 // ─── Map data ─────────────────────────────────────────────────────────────────
 const INITIAL_LOCATION = {
   latitude: 10.684,
   longitude: 122.513,
-  latitudeDelta: 0.03,
-  longitudeDelta: 0.03,
 };
+const INITIAL_ZOOM = 14;
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const RISK_ZONE_RADIUS = 150;
@@ -62,11 +68,17 @@ const C = {
   purple: "#8B5CF6",
 };
 
-// ─── OpenStreetMap Tile URLs ──────────────────────────────────────────────────
+// ─── Free, no-token tile providers ────────────────────────────────────────────
+// OpenStreetMap standard tiles (vector-style raster) and Esri World Imagery
+// (satellite raster). Both are free for reasonable usage without any API key.
 const TILE_URLS = {
   vector: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   satellite:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+};
+const TILE_ATTRIBUTION = {
+  vector: "&copy; OpenStreetMap contributors",
+  satellite: "Tiles &copy; Esri",
 };
 
 // ─── Report shape ─────────────────────────────────────────────────────────────
@@ -81,48 +93,110 @@ interface RiskZone {
   isCritical: boolean;
 }
 
-// ─── Mosquito Marker ──────────────────────────────────────────────────────────
-const MosquitoMarker = ({
-  isCritical,
-  isSelected,
-}: {
-  isCritical: boolean;
-  isSelected?: boolean;
-}) => {
-  const size = isSelected ? 44 : 36;
-  const bgColor = isCritical ? C.danger : C.warning;
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: bgColor + (isSelected ? "CC" : "99"),
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: isSelected ? 2 : 1.5,
-        borderColor: "#fff",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: size * 0.55,
-          color: "#fff",
-          fontFamily: "System",
-          textAlign: "center",
-          includeFontPadding: false,
-        }}
-      >
-        🦟
-      </Text>
-    </View>
-  );
-};
+// ─── Leaflet HTML shell ───────────────────────────────────────────────────────
+// This is loaded once into the WebView. All dynamic updates (markers, zones,
+// mode, focus) are pushed in afterwards via injectJavaScript, so the map
+// itself never reloads.
+function buildMapHtml() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.bg}; }
+    .leaflet-control-attribution { font-size: 9px; opacity: 0.6; }
+    .mosquito-marker { font-size: 20px; text-align: center; line-height: 1; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', { zoomControl: false, attributionControl: true })
+      .setView([${INITIAL_LOCATION.latitude}, ${INITIAL_LOCATION.longitude}], ${INITIAL_ZOOM});
+
+    var tileLayers = {
+      vector: L.tileLayer('${TILE_URLS.vector}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.vector}' }),
+      satellite: L.tileLayer('${TILE_URLS.satellite}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.satellite}' })
+    };
+    var currentTileLayer = tileLayers.vector.addTo(map);
+
+    var markersLayer = L.layerGroup().addTo(map);
+    var zonesLayer = L.layerGroup().addTo(map);
+
+    function post(msg) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+      }
+    }
+
+    function makeMarkerIcon(isCritical, isSelected) {
+      var size = isSelected ? 40 : 32;
+      var bg = isCritical ? '${C.danger}' : '${C.warning}';
+      var opacity = isSelected ? 'CC' : '99';
+      return L.divIcon({
+        className: '',
+        html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:' + (size / 2) +
+          'px;background:' + bg + opacity + ';display:flex;align-items:center;justify-content:center;' +
+          'border:' + (isSelected ? 2 : 1.5) + 'px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);">' +
+          '<span class="mosquito-marker">🦟</span></div>',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
+    }
+
+    window.setMode = function(mode) {
+      map.removeLayer(currentTileLayer);
+      currentTileLayer = tileLayers[mode].addTo(map);
+      currentTileLayer.bringToBack();
+    };
+
+    window.setMarkers = function(markersJson, selectedId) {
+      var markers = JSON.parse(markersJson);
+      markersLayer.clearLayers();
+      markers.forEach(function(m) {
+        var marker = L.marker([m.lat, m.lng], {
+          icon: makeMarkerIcon(m.isCritical, m.id === selectedId)
+        });
+        marker.on('click', function() { post({ type: 'markerPress', id: m.id }); });
+        marker.addTo(markersLayer);
+      });
+    };
+
+    window.setZones = function(zonesJson) {
+      var zones = JSON.parse(zonesJson);
+      zonesLayer.clearLayers();
+      zones.forEach(function(z) {
+        L.circle([z.lat, z.lng], {
+          radius: z.radius,
+          color: z.isCritical ? '${C.danger}' : '${C.warning}',
+          fillColor: z.isCritical ? '${C.danger}' : '${C.warning}',
+          fillOpacity: 0.15,
+          weight: 1.5,
+          opacity: 0.6,
+        }).addTo(zonesLayer);
+      });
+    };
+
+    window.setZonesVisible = function(visible) {
+      if (visible) { zonesLayer.addTo(map); } else { map.removeLayer(zonesLayer); }
+    };
+
+    window.setMarkersVisible = function(visible) {
+      if (visible) { markersLayer.addTo(map); } else { map.removeLayer(markersLayer); }
+    };
+
+    window.focusOn = function(lat, lng, zoom) {
+      map.setView([lat, lng], zoom || 16, { animate: true });
+    };
+
+    post({ type: 'ready' });
+  </script>
+</body>
+</html>`;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const statusColor = (status: string) => {
@@ -142,42 +216,6 @@ const relativeTime = () => {
   if (mins < 60) return `${mins}m ago`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
 };
-
-// ─── Generate Circle Points for Polygons ─────────────────────────────────────
-function generateCirclePoints(
-  centerLng: number,
-  centerLat: number,
-  radiusMeters: number,
-  points: number = 32,
-): [number, number][] {
-  const earthRadius = 6371000;
-  const angularRadius = radiusMeters / earthRadius;
-
-  const latRad = (centerLat * Math.PI) / 180;
-  const lngRad = (centerLng * Math.PI) / 180;
-
-  const coordinates: [number, number][] = [];
-
-  for (let i = 0; i <= points; i++) {
-    const bearing = (i / points) * 2 * Math.PI;
-
-    const newLat = Math.asin(
-      Math.sin(latRad) * Math.cos(angularRadius) +
-        Math.cos(latRad) * Math.sin(angularRadius) * Math.cos(bearing),
-    );
-
-    const newLng =
-      lngRad +
-      Math.atan2(
-        Math.sin(bearing) * Math.sin(angularRadius) * Math.cos(latRad),
-        Math.cos(angularRadius) - Math.sin(latRad) * Math.sin(newLat),
-      );
-
-    coordinates.push([(newLng * 180) / Math.PI, (newLat * 180) / Math.PI]);
-  }
-
-  return coordinates;
-}
 
 // ─── Pill button ──────────────────────────────────────────────────────────────
 const PillBtn = ({
@@ -681,6 +719,8 @@ const bs = StyleSheet.create({
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function MapComponent() {
   const router = useRouter();
+  const webviewRef = useRef<WebView>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const [mode, setMode] = useState<MapMode>("vector");
   const [showZones, setShowZones] = useState(true);
@@ -692,21 +732,25 @@ export default function MapComponent() {
 
   const allReports = useQuery(api.reports.getAllReports);
 
-  const liveHotspots: Partial<Report>[] =
-    allReports?.filter((r: Report) => r.verified && r.status !== "Completed") ??
-    [];
+  const verifiedHotspots: Partial<Report>[] = useMemo(
+    () =>
+      allReports?.filter(
+        (r: Report) => r.verified && r.status !== "Completed",
+      ) ?? [],
+    [allReports],
+  );
 
-  const verifiedHotspots: Partial<Report>[] = liveHotspots ?? [];
-
-  const riskZones: RiskZone[] = verifiedHotspots.map((r) => ({
-    id: r._id as string,
-    lat: r.lat!,
-    lng: r.lng!,
-    radius: RISK_ZONE_RADIUS,
-    isCritical: r.status === "CRITICAL",
-  }));
-
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  const riskZones: RiskZone[] = useMemo(
+    () =>
+      verifiedHotspots.map((r) => ({
+        id: r._id as string,
+        lat: r.lat!,
+        lng: r.lng!,
+        radius: RISK_ZONE_RADIUS,
+        isCritical: r.status === "CRITICAL",
+      })),
+    [verifiedHotspots],
+  );
 
   const params = useLocalSearchParams<{
     focusLat?: string;
@@ -714,19 +758,64 @@ export default function MapComponent() {
     reportId?: string;
   }>();
 
-  useEffect(() => {
-    if (params.focusLat && params.focusLng) {
-      setIsFocusMode(true);
-    }
-  }, [params.focusLat, params.focusLng]);
+  const html = useMemo(() => buildMapHtml(), []);
 
-  // Focus on specific location
+  // Push markers to the map whenever hotspots, visibility, or selection change
   useEffect(() => {
-    if (!verifiedHotspots.length || !params.focusLat || !params.focusLng)
-      return;
+    if (!mapReady) return;
+    const markersData = verifiedHotspots.map((r) => ({
+      id: r._id as string,
+      lat: r.lat,
+      lng: r.lng,
+      isCritical: r.status === "CRITICAL",
+    }));
+    webviewRef.current?.injectJavaScript(
+      `window.setMarkers(${JSON.stringify(JSON.stringify(markersData))}, ${JSON.stringify(selectedId)}); true;`,
+    );
+  }, [mapReady, verifiedHotspots, selectedId]);
+
+  // Push risk zones whenever they change
+  useEffect(() => {
+    if (!mapReady) return;
+    webviewRef.current?.injectJavaScript(
+      `window.setZones(${JSON.stringify(JSON.stringify(riskZones))}); true;`,
+    );
+  }, [mapReady, riskZones]);
+
+  // Toggle layer visibility
+  useEffect(() => {
+    if (!mapReady) return;
+    webviewRef.current?.injectJavaScript(
+      `window.setMarkersVisible(${showReports}); true;`,
+    );
+  }, [mapReady, showReports]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    webviewRef.current?.injectJavaScript(
+      `window.setZonesVisible(${showZones}); true;`,
+    );
+  }, [mapReady, showZones]);
+
+  // Switch tile provider
+  useEffect(() => {
+    if (!mapReady) return;
+    webviewRef.current?.injectJavaScript(
+      `window.setMode(${JSON.stringify(mode)}); true;`,
+    );
+  }, [mapReady, mode]);
+
+  // Focus on specific location passed via route params
+  useEffect(() => {
+    if (!mapReady || !verifiedHotspots.length) return;
+    if (!params.focusLat || !params.focusLng) return;
     const lat = parseFloat(params.focusLat);
     const lng = parseFloat(params.focusLng);
     if (isNaN(lat) || isNaN(lng)) return;
+
+    webviewRef.current?.injectJavaScript(
+      `window.focusOn(${lat}, ${lng}, 16); true;`,
+    );
 
     if (params.reportId) {
       const matchedReport = verifiedHotspots.find(
@@ -737,12 +826,33 @@ export default function MapComponent() {
         setSelectedId(matchedReport._id as string);
       }
     }
-  }, [verifiedHotspots, params.focusLat, params.focusLng, params.reportId]);
+  }, [
+    mapReady,
+    verifiedHotspots,
+    params.focusLat,
+    params.focusLng,
+    params.reportId,
+  ]);
 
-  const handleMarkerPress = useCallback((report: Partial<Report>) => {
-    setSelectedReport(report);
-    setSelectedId(report._id as string);
-  }, []);
+  const handleWebViewMessage = useCallback(
+    (event: { nativeEvent: { data: string } }) => {
+      try {
+        const msg = JSON.parse(event.nativeEvent.data);
+        if (msg.type === "ready") {
+          setMapReady(true);
+        } else if (msg.type === "markerPress") {
+          const report = verifiedHotspots.find((r) => r._id === msg.id);
+          if (report) {
+            setSelectedReport(report);
+            setSelectedId(report._id as string);
+          }
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    },
+    [verifiedHotspots],
+  );
 
   const handleClose = useCallback(() => {
     setSelectedReport(null);
@@ -759,41 +869,20 @@ export default function MapComponent() {
     }).start();
   }, []);
 
-  const isSatellite = mode === "satellite";
   const isLoading = allReports === undefined;
 
   return (
     <View style={styles.root}>
       <View style={styles.map}>
-        {/* Fallback map - static view since we can't get any library working */}
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.placeholderTitle}>Map Component</Text>
-          <Text style={styles.placeholderSub}>
-            {verifiedHotspots.length} hotspots found
-          </Text>
-          <View style={styles.placeholderLegend}>
-            <View style={styles.placeholderItem}>
-              <View
-                style={[styles.placeholderDot, { backgroundColor: C.danger }]}
-              />
-              <Text style={styles.placeholderText}>
-                Critical: {riskZones.filter((z) => z.isCritical).length}
-              </Text>
-            </View>
-            <View style={styles.placeholderItem}>
-              <View
-                style={[styles.placeholderDot, { backgroundColor: C.warning }]}
-              />
-              <Text style={styles.placeholderText}>
-                Active: {riskZones.filter((z) => !z.isCritical).length}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.placeholderNote}>
-            Map libraries are having TypeScript issues. Your data is still
-            loading correctly.
-          </Text>
-        </View>
+        <WebView
+          ref={webviewRef}
+          originWhitelist={["*"]}
+          source={{ html }}
+          onMessage={handleWebViewMessage}
+          style={{ flex: 1, backgroundColor: C.bg }}
+          javaScriptEnabled
+          domStorageEnabled
+        />
       </View>
 
       <Animated.View style={[styles.overlays, { opacity: fadeAnim }]}>
@@ -868,8 +957,12 @@ export default function MapComponent() {
           </View>
         </View>
 
-        {isLoading && <StatusOverlay message="Loading hotspots…" />}
-        {!isLoading && verifiedHotspots.length === 0 && (
+        {(isLoading || !mapReady) && (
+          <StatusOverlay
+            message={isLoading ? "Loading hotspots…" : "Loading map…"}
+          />
+        )}
+        {!isLoading && mapReady && verifiedHotspots.length === 0 && (
           <StatusOverlay message="No reports found yet" />
         )}
       </Animated.View>
@@ -895,55 +988,6 @@ export default function MapComponent() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   map: { flex: 1 },
-  mapPlaceholder: {
-    flex: 1,
-    backgroundColor: "#1a1a2e",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  placeholderTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  placeholderSub: {
-    fontSize: 16,
-    color: C.textSub,
-    marginBottom: 20,
-  },
-  placeholderLegend: {
-    backgroundColor: C.surface,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.border,
-    width: "100%",
-    maxWidth: 300,
-  },
-  placeholderItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
-  },
-  placeholderDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  placeholderText: {
-    color: C.text,
-    fontSize: 14,
-  },
-  placeholderNote: {
-    marginTop: 20,
-    color: C.textDim,
-    fontSize: 12,
-    textAlign: "center",
-    maxWidth: 300,
-  },
   overlays: {
     ...(StyleSheet.absoluteFillObject as any),
     pointerEvents: "box-none",

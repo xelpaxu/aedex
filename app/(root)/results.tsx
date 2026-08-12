@@ -1,12 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import Mapbox from "@rnmapbox/maps";
 import { useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
-// 🔑 Mapbox access token - empty string enables MapLibre mode (no token needed)
-Mapbox.setAccessToken("");
-
 import {
   AlertTriangle,
   ArrowLeft,
@@ -19,7 +14,7 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -31,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { WebView } from "react-native-webview";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -166,40 +162,69 @@ const TimelineItem = ({
   );
 };
 
-// ─── Generate Circle Points ──────────────────────────────────────────────────
-function generateCirclePoints(
-  centerLng: number,
-  centerLat: number,
+// ─── Small, non-interactive location preview (Leaflet + OSM, free, no token) ──
+// This mirrors the little map card that used to render via Mapbox.MapView.
+// All interaction is disabled since it's just a preview thumbnail; tapping
+// "MAP" still navigates to the full interactive map screen.
+function buildPreviewMapHtml(
+  lat: number,
+  lng: number,
+  isCritical: boolean,
   radiusMeters: number,
-  points: number = 32,
-): [number, number][] {
-  const earthRadius = 6371000;
-  const angularRadius = radiusMeters / earthRadius;
+) {
+  const zoneColor = isCritical ? "#FF4D6A" : "#F5A623";
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.surfaceRaised}; }
+    .leaflet-control-attribution { font-size: 7px; opacity: 0.5; }
+    .leaflet-control-zoom { display: none; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false
+    }).setView([${lat}, ${lng}], 16);
 
-  const latRad = (centerLat * Math.PI) / 180;
-  const lngRad = (centerLng * Math.PI) / 180;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-  const coordinates: [number, number][] = [];
+    L.circle([${lat}, ${lng}], {
+      radius: ${radiusMeters},
+      color: '${zoneColor}',
+      fillColor: '${zoneColor}',
+      fillOpacity: 0.15,
+      weight: 1.5,
+      opacity: 0.65
+    }).addTo(map);
 
-  for (let i = 0; i <= points; i++) {
-    const bearing = (i / points) * 2 * Math.PI;
-
-    const newLat = Math.asin(
-      Math.sin(latRad) * Math.cos(angularRadius) +
-        Math.cos(latRad) * Math.sin(angularRadius) * Math.cos(bearing),
-    );
-
-    const newLng =
-      lngRad +
-      Math.atan2(
-        Math.sin(bearing) * Math.sin(angularRadius) * Math.cos(latRad),
-        Math.cos(angularRadius) - Math.sin(latRad) * Math.sin(newLat),
-      );
-
-    coordinates.push([(newLng * 180) / Math.PI, (newLat * 180) / Math.PI]);
-  }
-
-  return coordinates;
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:32px;height:32px;border-radius:16px;background:${isCritical ? "#FF4D6A" : "#4F8EF7"};display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);"><span style="font-size:16px;">🦟</span></div>',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+    L.marker([${lat}, ${lng}], { icon: icon }).addTo(map);
+  </script>
+</body>
+</html>`;
 }
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
@@ -214,7 +239,6 @@ export default function ResultsScreen() {
 
   const [viewMode, setViewMode] = useState<"annotated" | "raw">("annotated");
   const scrollY = useRef(new Animated.Value(0)).current;
-  const cameraRef = useRef<Mapbox.Camera>(null);
 
   // ── parallax header image offset
   const imageTranslate = scrollY.interpolate({
@@ -229,6 +253,27 @@ export default function ResultsScreen() {
     outputRange: ["rgba(11,14,20,0)", "rgba(11,14,20,0.97)"],
     extrapolate: "clamp",
   });
+
+  // These must run on every render, before any early return, so hook order
+  // never changes between the loading/not-found/loaded states.
+  const hasLocation =
+    !!report &&
+    !!report.lat &&
+    !!report.lng &&
+    !isNaN(report.lat) &&
+    !isNaN(report.lng);
+
+  const previewHtml = useMemo(() => {
+    if (!report || !hasLocation) return "";
+    const isCriticalForPreview =
+      report.status === "CRITICAL" || report.status === "HIGH RISK";
+    return buildPreviewMapHtml(
+      report.lat,
+      report.lng,
+      isCriticalForPreview,
+      isCriticalForPreview ? 200 : 150,
+    );
+  }, [report, hasLocation]);
 
   if (report === undefined) {
     return (
@@ -329,12 +374,6 @@ export default function ResultsScreen() {
   const riskColor = isCritical ? C.danger : C.safe;
 
   const riskBg = isCritical ? C.dangerGlow : C.safeGlow;
-
-  // Generate circle points for risk zone
-  const circlePoints =
-    report.lat && report.lng
-      ? generateCirclePoints(report.lng, report.lat, isCritical ? 200 : 150)
-      : [];
 
   return (
     <View style={styles.root}>
@@ -532,71 +571,15 @@ export default function ResultsScreen() {
           <SectionLabel>Location</SectionLabel>
 
           <View style={styles.locationCard}>
-            {/* Use MapLibre instead of react-native-maps */}
-            {report.lat &&
-            report.lng &&
-            !isNaN(report.lat) &&
-            !isNaN(report.lng) ? (
-              <View style={styles.locationMap}>
-                <Mapbox.MapView
-                  style={styles.mapView}
-                  styleURL="https://tiles.stadiamaps.com/styles/alidade_smooth.json"
-                  logoEnabled={false}
-                  attributionEnabled={true}
+            {hasLocation ? (
+              <View style={styles.locationMap} pointerEvents="none">
+                <WebView
+                  originWhitelist={["*"]}
+                  source={{ html: previewHtml }}
+                  style={{ flex: 1, backgroundColor: C.surfaceRaised }}
                   scrollEnabled={false}
-                  zoomEnabled={false}
-                >
-                  <Mapbox.Camera
-                    ref={cameraRef}
-                    defaultSettings={{
-                      centerCoordinate: [report.lng, report.lat],
-                      zoomLevel: 16,
-                    }}
-                  />
-
-                  {/* Risk Zone */}
-                  {circlePoints.length > 0 && (
-                    <Mapbox.ShapeSource
-                      id="risk-zone"
-                      shape={{
-                        type: "Feature",
-                        geometry: {
-                          type: "Polygon",
-                          coordinates: [circlePoints],
-                        },
-                        properties: {}, // ← Add this empty properties object
-                      }}
-                    >
-                      <Mapbox.FillLayer
-                        id="risk-zone-layer"
-                        style={{
-                          fillColor: isCritical
-                            ? "rgba(255,77,106,0.15)"
-                            : "rgba(251,191,36,0.15)",
-                          fillOutlineColor: isCritical
-                            ? "rgba(255,77,106,0.65)"
-                            : "rgba(251,191,36,0.65)",
-                          fillAntialias: true,
-                        }}
-                      />
-                    </Mapbox.ShapeSource>
-                  )}
-
-                  {/* Marker */}
-                  <Mapbox.PointAnnotation
-                    id="report-marker"
-                    coordinate={[report.lng, report.lat]}
-                  >
-                    <View
-                      style={[
-                        styles.markerDot,
-                        { backgroundColor: isCritical ? C.danger : C.accent },
-                      ]}
-                    >
-                      <Text style={styles.markerEmoji}>🦟</Text>
-                    </View>
-                  </Mapbox.PointAnnotation>
-                </Mapbox.MapView>
+                  javaScriptEnabled
+                />
               </View>
             ) : (
               <View
@@ -945,26 +928,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
   },
   locationMap: { width: "100%", height: 120, backgroundColor: C.surfaceRaised },
-  mapView: { width: "100%", height: 120 },
-  markerDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  markerEmoji: {
-    fontSize: 16,
-    color: "#fff",
-    textAlign: "center",
-  },
   locationFooter: {
     flexDirection: "row",
     alignItems: "center",
