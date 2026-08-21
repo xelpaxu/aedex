@@ -1,5 +1,3 @@
-import { api } from "@/convex/_generated/api";
-import { Doc } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -34,6 +32,8 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import { api } from "../../../../convex/_generated/api";
+import { Doc } from "../../../../convex/_generated/dataModel";
 
 // ─── Map data ─────────────────────────────────────────────────────────────────
 const INITIAL_LOCATION = {

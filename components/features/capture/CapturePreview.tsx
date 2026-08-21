@@ -1,4 +1,3 @@
-import { api } from "@/convex/_generated/api";
 import { useAction, useConvexAuth } from "convex/react";
 import { BlurView } from "expo-blur";
 import * as FileSystem from "expo-file-system/legacy";
@@ -28,6 +27,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { api } from "../../../../convex/_generated/api";
 
 // ─── Colour tokens (mirror ResultsScreen) ────────────────────────────────────
 const C = {
