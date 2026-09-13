@@ -1,17 +1,27 @@
 import { useQuery } from "convex/react";
+import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
   Clock,
   Eye,
   EyeOff,
+  Flame,
+  Globe,
+  Layers,
+  LocateFixed,
   Map,
   MapPin,
+  Navigation,
   Satellite,
   Shield,
+  ShieldCheck,
+  Sparkles,
   User,
+  Users,
   X,
-  Zap,
 } from "lucide-react-native";
 import React, {
   useCallback,
@@ -21,19 +31,23 @@ import React, {
   useState,
 } from "react";
 import {
+  ActivityIndicator,
   Animated,
-  Dimensions,
   Easing,
-  Modal,
+  Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { api } from "../../../../convex/_generated/api";
 import { Doc } from "../../../../convex/_generated/dataModel";
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 // ─── Map data ─────────────────────────────────────────────────────────────────
 const INITIAL_LOCATION = {
@@ -41,36 +55,9 @@ const INITIAL_LOCATION = {
   longitude: 122.513,
 };
 const INITIAL_ZOOM = 14;
-
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 const RISK_ZONE_RADIUS = 150;
 type MapMode = "vector" | "satellite";
 
-// ─── Colour tokens ────────────────────────────────────────────────────────────
-const C = {
-  bg: "#0B0E14",
-  surface: "#111520",
-  surfaceRaised: "#161C2D",
-  surfaceElevated: "#1A2035",
-  border: "#1E2640",
-  borderLight: "#252D45",
-  text: "#E8EDF8",
-  textSub: "#697A9B",
-  textDim: "#3C4A66",
-  accent: "#4F8EF7",
-  accentGlow: "#4F8EF730",
-  danger: "#FF4D6A",
-  dangerGlow: "#FF4D6A22",
-  safe: "#00C896",
-  safeGlow: "#00C89622",
-  warning: "#fbbf24",
-  warningGlow: "#fbbf2422",
-  purple: "#8B5CF6",
-};
-
-// ─── Free, no-token tile providers ────────────────────────────────────────────
-// OpenStreetMap standard tiles (vector-style raster) and Esri World Imagery
-// (satellite raster). Both are free for reasonable usage without any API key.
 const TILE_URLS = {
   vector: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   satellite:
@@ -81,10 +68,8 @@ const TILE_ATTRIBUTION = {
   satellite: "Tiles &copy; Esri",
 };
 
-// ─── Report shape ─────────────────────────────────────────────────────────────
 type Report = Doc<"reports">;
 
-// ─── Derived risk-zone shape ──────────────────────────────────────────────────
 interface RiskZone {
   id: string;
   lat: number;
@@ -93,11 +78,60 @@ interface RiskZone {
   isCritical: boolean;
 }
 
-// ─── Leaflet HTML shell ───────────────────────────────────────────────────────
-// This is loaded once into the WebView. All dynamic updates (markers, zones,
-// mode, focus) are pushed in afterwards via injectJavaScript, so the map
-// itself never reloads.
-function buildMapHtml() {
+type TanodFilter = "ALL" | "ASSIGNED" | "CRITICAL" | "PENDING" | "RESOLVED";
+type CommunityFilter = "ALL" | "CRITICAL" | "NEARBY" | "RESOLVED";
+type MapExperience = "community" | "tanod";
+
+const PIN_IMAGES = {
+  critical: Image.resolveAssetSource(
+    require("../../../assets/images/pin_critical.png"),
+  ).uri,
+  moderate: Image.resolveAssetSource(
+    require("../../../assets/images/pin_moderate.png"),
+  ).uri,
+  safe: Image.resolveAssetSource(require("../../../assets/images/pin_safe.png"))
+    .uri,
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+const normalizeImageUri = (uri?: string) => {
+  if (!uri) return "";
+  if (uri.startsWith("data:") || uri.startsWith("http")) return uri;
+  return `data:image/jpeg;base64,${uri}`;
+};
+
+const formatTimeAgo = (time?: number) => {
+  if (!time) return "Recent";
+  const diff = Date.now() - time;
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "Just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+};
+
+// ─── Clean Leaflet HTML shell with Vector SVG User Pin ────────────────────────
+function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -106,8 +140,48 @@ function buildMapHtml() {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.bg}; }
-    .leaflet-control-attribution { font-size: 9px; opacity: 0.6; }
-    .mosquito-marker { font-size: 20px; text-align: center; line-height: 1; }
+    .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
+    
+    @keyframes userPulse {
+      0% { transform: scale(0.8); opacity: 0.85; }
+      50% { transform: scale(1.45); opacity: 0.2; }
+      100% { transform: scale(0.8); opacity: 0.85; }
+    }
+    .user-marker-box {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-pulse-ring {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 19px;
+      background: ${C.accent}50;
+      animation: userPulse 2s infinite ease-in-out;
+    }
+    .user-avatar-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 13px;
+      background: ${C.accent};
+      border: 2.5px solid #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px ${C.accent};
+      z-index: 2;
+    }
+    .aedes-pin { filter: drop-shadow(0 5px 7px rgba(5, 12, 24, .32)); }
+    .aedes-pin > div { width: 48px !important; height: 48px !important; background-size: contain !important; background-repeat: no-repeat !important; background-position: center !important; }
+    .aedes-pin > div > div { display: none !important; }
+    .pin-critical > div { background-image: url('${PIN_IMAGES.critical}'); }
+    .pin-moderate > div { background-image: url('${PIN_IMAGES.moderate}'); }
+    .pin-safe > div { background-image: url('${PIN_IMAGES.safe}'); }
+    .pin-selected { transform: scale(1.18); }
   </style>
 </head>
 <body>
@@ -123,73 +197,95 @@ function buildMapHtml() {
     };
     var currentTileLayer = tileLayers.vector.addTo(map);
 
+    var userMarker = null;
     var markersLayer = L.layerGroup().addTo(map);
     var zonesLayer = L.layerGroup().addTo(map);
 
-    function post(msg) {
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+    function post(data) {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(data));
       }
     }
 
-    function makeMarkerIcon(isCritical, isSelected) {
-      var size = isSelected ? 40 : 32;
-      var bg = isCritical ? '${C.danger}' : '${C.warning}';
-      var opacity = isSelected ? 'CC' : '99';
-      return L.divIcon({
-        className: '',
-        html: '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:' + (size / 2) +
-          'px;background:' + bg + opacity + ';display:flex;align-items:center;justify-content:center;' +
-          'border:' + (isSelected ? 2 : 1.5) + 'px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);">' +
-          '<span class="mosquito-marker">🦟</span></div>',
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+    window.setUserLocation = function(lat, lng, isTanod) {
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
+      var icon = L.divIcon({
+        className: 'custom-user-icon',
+        html: '<div class="user-marker-box">' +
+                '<div class="user-pulse-ring" style="background: ' + (isTanod ? '${C.accent}60' : '${C.safe}60') + '"></div>' +
+                '<div class="user-avatar-badge" style="background: ' + (isTanod ? '${C.accent}' : '${C.safe}') + '">' +
+                  (isTanod 
+                    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' 
+                    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+                  ) +
+                '</div>' +
+              '</div>',
+        iconSize: [38, 38],
+        iconAnchor: [19, 19]
       });
-    }
+
+      userMarker = L.marker([lat, lng], { icon: icon, zIndexOffset: 1000 }).addTo(map);
+    };
+
+    window.focusOn = function(lat, lng, zoom) {
+      map.flyTo([lat, lng], zoom || 16, { animate: true, duration: 1.2 });
+    };
 
     window.setMode = function(mode) {
       map.removeLayer(currentTileLayer);
-      currentTileLayer = tileLayers[mode].addTo(map);
-      currentTileLayer.bringToBack();
+      currentTileLayer = tileLayers[mode] || tileLayers.vector;
+      currentTileLayer.addTo(map);
     };
 
-    window.setMarkers = function(markersJson, selectedId) {
-      var markers = JSON.parse(markersJson);
+    window.setMarkers = function(itemsJson, selectedId) {
       markersLayer.clearLayers();
-      markers.forEach(function(m) {
-        var marker = L.marker([m.lat, m.lng], {
-          icon: makeMarkerIcon(m.isCritical, m.id === selectedId)
+      var items = JSON.parse(itemsJson);
+      items.forEach(function(item) {
+        var isSelected = item.id === selectedId;
+        var color = item.isCritical ? '${C.danger}' : item.isResolved ? '${C.safe}' : '${C.warn}';
+        var icon = L.divIcon({
+          className: 'aedes-pin ' + (item.isCritical ? 'pin-critical' : item.isResolved ? 'pin-safe' : 'pin-moderate') + (isSelected ? ' pin-selected' : ''),
+          html: '<div style="position:relative; width:' + (isSelected ? '34px' : '28px') + '; height:' + (isSelected ? '34px' : '28px') + '; display:flex; align-items:center; justify-content:center;">' +
+                  (isSelected ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; background:' + color + '40; animation:userPulse 1.5s infinite;"></div>' : '') +
+                  '<div style="width:' + (isSelected ? '24px' : '20px') + '; height:' + (isSelected ? '24px' : '20px') + '; border-radius:50%; background:' + color + '; border:2px solid #FFFFFF; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px ' + color + '80;">' +
+                    '<span style="font-size:' + (isSelected ? '12px' : '10px') + ';">' + (item.isResolved ? '✓' : '🦟') + '</span>' +
+                  '</div>' +
+                '</div>',
+          iconSize: [48, 48],
+          iconAnchor: [24, 42]
         });
-        marker.on('click', function() { post({ type: 'markerPress', id: m.id }); });
-        marker.addTo(markersLayer);
+
+        var m = L.marker([item.lat, item.lng], { icon: icon });
+        m.on('click', function() {
+          post({ type: 'markerPress', id: item.id });
+        });
+        markersLayer.addLayer(m);
       });
     };
 
     window.setZones = function(zonesJson) {
-      var zones = JSON.parse(zonesJson);
       zonesLayer.clearLayers();
+      var zones = JSON.parse(zonesJson);
       zones.forEach(function(z) {
-        L.circle([z.lat, z.lng], {
+        var circle = L.circle([z.lat, z.lng], {
           radius: z.radius,
-          color: z.isCritical ? '${C.danger}' : '${C.warning}',
-          fillColor: z.isCritical ? '${C.danger}' : '${C.warning}',
-          fillOpacity: 0.15,
-          weight: 1.5,
-          opacity: 0.6,
-        }).addTo(zonesLayer);
+          color: z.isCritical ? '${C.danger}' : '${C.warn}',
+          fillColor: z.isCritical ? '${C.danger}' : '${C.warn}',
+          fillOpacity: 0.18,
+          weight: 1.5
+        });
+        zonesLayer.addLayer(circle);
       });
     };
 
-    window.setZonesVisible = function(visible) {
-      if (visible) { zonesLayer.addTo(map); } else { map.removeLayer(zonesLayer); }
-    };
-
     window.setMarkersVisible = function(visible) {
-      if (visible) { markersLayer.addTo(map); } else { map.removeLayer(markersLayer); }
+      if (visible) { map.addLayer(markersLayer); } else { map.removeLayer(markersLayer); }
     };
 
-    window.focusOn = function(lat, lng, zoom) {
-      map.setView([lat, lng], zoom || 16, { animate: true });
+    window.setZonesVisible = function(visible) {
+      if (visible) { map.addLayer(zonesLayer); } else { map.removeLayer(zonesLayer); }
     };
 
     post({ type: 'ready' });
@@ -198,583 +294,1122 @@ function buildMapHtml() {
 </html>`;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const statusColor = (status: string) => {
-  if (status === "CRITICAL") return C.danger;
-  if (status === "Active") return C.warning;
-  return C.safe;
-};
-
-const statusBg = (status: string) => {
-  if (status === "CRITICAL") return C.dangerGlow;
-  if (status === "Active") return C.warningGlow;
-  return C.safeGlow;
-};
-
-const relativeTime = () => {
-  const mins = Math.floor(Math.random() * 180) + 5;
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
-};
-
-// ─── Pill button ──────────────────────────────────────────────────────────────
-const PillBtn = ({
+// ─── Top Mode Pill Button ─────────────────────────────────────────────────────
+const ModePillBtn = ({
   onPress,
   active,
   icon: Icon,
   label,
+  C,
 }: {
   onPress: () => void;
   active?: boolean;
   icon: React.ComponentType<any>;
   label: string;
+  C: ThemeColors;
 }) => (
-  <Pressable onPress={onPress} style={[pill.btn, active && pill.btnActive]}>
-    <Icon color={active ? C.bg : C.textSub} size={13} strokeWidth={2.5} />
-    <Text style={[pill.text, active && pill.textActive]}>{label}</Text>
+  <Pressable
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={`${label} map style`}
+    accessibilityState={{ selected: active }}
+    style={[
+      modeStyles.btn,
+      active && [
+        modeStyles.btnActive,
+        { backgroundColor: C.accent, shadowColor: C.accent },
+      ],
+    ]}
+  >
+    <Icon
+      color={active ? "#FFFFFF" : C.textSub}
+      size={12}
+      strokeWidth={active ? 2.5 : 2}
+    />
+    <Text
+      style={[
+        modeStyles.text,
+        { color: C.textSub },
+        active && modeStyles.textActive,
+      ]}
+    >
+      {label}
+    </Text>
   </Pressable>
 );
 
-const pill = StyleSheet.create({
+const modeStyles = StyleSheet.create({
   btn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 10,
   },
   btnActive: {
-    backgroundColor: C.accent,
-    shadowColor: C.accent,
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  text: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: C.textSub,
-    letterSpacing: 0.3,
-  },
-  textActive: { color: C.bg },
+  text: { fontSize: 11, fontWeight: "700" },
+  textActive: { color: "#FFFFFF", fontWeight: "800" },
 });
 
-// ─── Float button ──────────────────────────────────────────────────────────────
-const FloatBtn = ({
-  onPress,
+// ─── Filter Pill Button ───────────────────────────────────────────────────────
+const FilterPill = ({
   icon: Icon,
+  label,
+  count,
   active,
-  color = C.accent,
+  onPress,
+  accentColor,
+  C,
 }: {
-  onPress: () => void;
   icon: React.ComponentType<any>;
-  active?: boolean;
-  color?: string;
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={[
-      fb.btn,
-      active && { borderColor: color + "60", backgroundColor: color + "18" },
-    ]}
-  >
-    <Icon color={active ? color : C.textSub} size={16} strokeWidth={2.5} />
-  </Pressable>
-);
-
-const fb = StyleSheet.create({
-  btn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(17,21,32,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(30,38,64,0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
-
-// ─── Stats HUD ────────────────────────────────────────────────────────────────
-const StatsHUD = ({ zones, markers }: { zones: number; markers: number }) => (
-  <View style={hud.wrap}>
-    <View style={hud.item}>
-      <Text style={[hud.num, { color: C.danger }]}>{markers}</Text>
-      <Text style={hud.label}>SITES</Text>
-    </View>
-    <View style={hud.div} />
-    <View style={hud.item}>
-      <Text style={[hud.num, { color: C.accent }]}>{zones}</Text>
-      <Text style={hud.label}>ZONES</Text>
-    </View>
-  </View>
-);
-
-const hud = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(17,21,32,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(30,38,64,0.9)",
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  item: { alignItems: "center", gap: 2 },
-  num: { fontSize: 16, fontWeight: "800" },
-  label: {
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-    color: C.textSub,
-  },
-  div: { width: 1, height: 24, backgroundColor: C.border },
-});
-
-// ─── Status overlay ───────────────────────────────────────────────────────────
-const StatusOverlay = ({ message }: { message: string }) => (
-  <View style={so.wrap} pointerEvents="none">
-    <Text style={so.text}>{message}</Text>
-  </View>
-);
-
-const so = StyleSheet.create({
-  wrap: {
-    position: "absolute",
-    bottom: 90,
-    alignSelf: "center",
-    backgroundColor: "rgba(17,21,32,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(30,38,64,0.9)",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  text: { color: C.textSub, fontSize: 11, fontWeight: "700" },
-});
-
-// ─── Detection tag ────────────────────────────────────────────────────────────
-const DetectionTag = ({ label }: { label: string }) => (
-  <View style={dt.wrap}>
-    <Text style={dt.text}>{label}</Text>
-  </View>
-);
-
-const dt = StyleSheet.create({
-  wrap: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    backgroundColor: C.accentGlow,
-    borderWidth: 1,
-    borderColor: C.accent + "40",
-  },
-  text: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: C.accent,
-    letterSpacing: 0.4,
-  },
-});
-
-// ─── Bottom Sheet Report Panel ────────────────────────────────────────────────
-const ReportBottomSheet = ({
-  report,
-  onClose,
-  onViewFullReport,
-}: {
-  report: Partial<Report> | null;
-  onClose: () => void;
-  onViewFullReport?: () => void;
+  label: string;
+  count: number;
+  active: boolean;
+  onPress: () => void;
+  accentColor?: string;
+  C: ThemeColors;
 }) => {
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const backdropAnim = useRef(new Animated.Value(0)).current;
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (report) {
-      setVisible(true);
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          damping: 22,
-          stiffness: 220,
-          mass: 0.9,
-        }),
-        Animated.timing(backdropAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.quad),
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 280,
-          useNativeDriver: true,
-          easing: Easing.in(Easing.quad),
-        }),
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setVisible(false));
-    }
-  }, [report]);
-
-  if (!visible && !report) return null;
-  if (!report) return null;
-
-  const r = report!;
-  const color = statusColor(r.status ?? "");
-  const bg = statusBg(r.status ?? "");
-  const isCritical = r.status === "CRITICAL";
-  const detections: string[] = (r.detections as string[]) ?? [];
-  const time = relativeTime();
-
+  const color = accentColor || C.accent;
   return (
-    <Modal
-      transparent
-      animationType="none"
-      visible={visible}
-      onRequestClose={onClose}
+    <TouchableOpacity
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${count} reports`}
+      accessibilityState={{ selected: active }}
+      activeOpacity={0.75}
+      style={[
+        filterStyles.pill,
+        {
+          backgroundColor: active ? color : C.surface,
+          borderColor: active ? color : C.border,
+          shadowColor: active ? color : "transparent",
+        },
+        active && filterStyles.pillActiveShadow,
+      ]}
     >
-      <Animated.View
-        style={[bs.backdrop, { opacity: backdropAnim }]}
-        pointerEvents={report ? "auto" : "none"}
+      <Icon
+        size={12}
+        color={active ? "#FFFFFF" : color}
+        strokeWidth={active ? 2.5 : 2}
+      />
+      <Text
+        style={[
+          filterStyles.label,
+          { color: active ? "#FFFFFF" : C.text },
+          active && filterStyles.labelActive,
+        ]}
       >
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
-      </Animated.View>
-
-      <Animated.View
-        style={[bs.sheet, { transform: [{ translateY: slideAnim }] }]}
-        pointerEvents="box-none"
+        {label}
+      </Text>
+      <View
+        style={[
+          filterStyles.countBadge,
+          {
+            backgroundColor: active
+              ? "rgba(255,255,255,0.25)"
+              : C.surfaceRaised,
+          },
+        ]}
       >
-        <View style={bs.handleWrap}>
-          <View style={bs.handle} />
-        </View>
-
-        <View style={bs.header}>
-          <View style={bs.headerLeft}>
-            <View
-              style={[
-                bs.badge,
-                { backgroundColor: bg, borderColor: color + "60" },
-              ]}
-            >
-              {isCritical && <Zap size={9} color={color} strokeWidth={3} />}
-              <Text style={[bs.badgeText, { color }]}>{r.status}</Text>
-            </View>
-            <Text style={bs.accuracy}>
-              <Text style={[bs.accuracyNum, { color: C.safe }]}>
-                {r.accuracy}%
-              </Text>{" "}
-              confidence
-            </Text>
-          </View>
-          <Pressable onPress={onClose} style={bs.closeBtn}>
-            <X size={16} color={C.textSub} strokeWidth={2.5} />
-          </Pressable>
-        </View>
-
-        <View style={bs.locationRow}>
-          <MapPin size={13} color={C.accent} strokeWidth={2.5} />
-          <Text style={bs.locationText} numberOfLines={1}>
-            {r.locationName}
-          </Text>
-        </View>
-
-        <View style={bs.divider} />
-
-        <ScrollView
-          style={bs.scroll}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          contentContainerStyle={{ paddingBottom: 24 }}
+        <Text
+          style={[
+            filterStyles.countText,
+            { color: active ? "#FFFFFF" : C.textSub },
+          ]}
         >
-          <Text style={bs.sectionLabel}>INCIDENT REPORT</Text>
-          <Text style={bs.description}>{r.description}</Text>
-
-          {detections.length > 0 && (
-            <>
-              <Text style={[bs.sectionLabel, { marginTop: 16 }]}>
-                DETECTED MATERIALS
-              </Text>
-              <View style={bs.tagsRow}>
-                {detections.map((d, i) => (
-                  <DetectionTag key={i} label={d} />
-                ))}
-              </View>
-            </>
-          )}
-
-          {r.reasoning && (
-            <>
-              <Text style={[bs.sectionLabel, { marginTop: 16 }]}>
-                AI ANALYSIS
-              </Text>
-              <View style={bs.reasoningBox}>
-                <View style={bs.reasoningAccent} />
-                <Text style={bs.reasoningText}>{r.reasoning}</Text>
-              </View>
-            </>
-          )}
-
-          <View style={bs.metaRow}>
-            <View style={bs.metaItem}>
-              <User size={11} color={C.textDim} strokeWidth={2.5} />
-              <Text style={bs.metaText}>{r.userName}</Text>
-            </View>
-            <View style={bs.metaDot} />
-            <View style={bs.metaItem}>
-              <Clock size={11} color={C.textDim} strokeWidth={2.5} />
-              <Text style={bs.metaText}>{time}</Text>
-            </View>
-            <View style={bs.metaDot} />
-            <View style={bs.metaItem}>
-              <Shield size={11} color={C.safe} strokeWidth={2.5} />
-              <Text style={[bs.metaText, { color: C.safe }]}>Verified</Text>
-            </View>
-          </View>
-
-          <View style={bs.actions}>
-            <Pressable
-              style={[bs.actionBtn, bs.actionBtnSecondary]}
-              onPress={onViewFullReport}
-            >
-              <Text style={bs.actionBtnSecondaryText}>View Full Report</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </Animated.View>
-    </Modal>
+          {count}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 };
 
-const bs = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7,9,15,0.6)",
+const filterStyles = StyleSheet.create({
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  sheet: {
+  pillActiveShadow: {
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  labelActive: {
+    fontWeight: "800",
+  },
+  countBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countText: {
+    fontSize: 9,
+    fontWeight: "800",
+  },
+});
+
+// ─── Floating Action Button ───────────────────────────────────────────────────
+const FloatBtn = ({
+  icon: Icon,
+  active,
+  color,
+  onPress,
+  badgeCount,
+  accessibilityLabel,
+  C,
+}: {
+  icon: React.ComponentType<any>;
+  active?: boolean;
+  color?: string;
+  onPress: () => void;
+  badgeCount?: number;
+  accessibilityLabel: string;
+  C: ThemeColors;
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+    accessibilityState={{ selected: active }}
+    style={[
+      float.btn,
+      {
+        backgroundColor: C.surface,
+        borderColor: active ? (color || C.accent) + "80" : C.border,
+        shadowColor: active ? color || C.accent : "#000",
+      },
+    ]}
+    activeOpacity={0.8}
+  >
+    <Icon
+      color={active ? color || C.accent : C.textDim}
+      size={18}
+      strokeWidth={active ? 2.5 : 2}
+    />
+    {badgeCount !== undefined && badgeCount > 0 ? (
+      <View style={[float.badge, { backgroundColor: color || C.accent }]}>
+        <Text style={float.badgeText}>{badgeCount}</Text>
+      </View>
+    ) : null}
+  </TouchableOpacity>
+);
+
+const float = StyleSheet.create({
+  btn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    position: "relative",
+  },
+  badge: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: C.border,
-    maxHeight: SCREEN_HEIGHT * 0.72,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 20,
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
-  handleWrap: { alignItems: "center", paddingTop: 12, paddingBottom: 4 },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+});
+
+// ─── Enhanced Report Bottom Sheet / Snackbar ───────────────────────────────────
+const ReportBottomSheet = ({
+  report,
+  userPos,
+  isTanod,
+  onClose,
+  onViewFullReport,
+  onFocusLocation,
+  C,
+}: {
+  report: Partial<Report> | null;
+  userPos: { lat: number; lng: number };
+  isTanod: boolean;
+  onClose: () => void;
+  onViewFullReport?: () => void;
+  onFocusLocation?: (lat: number, lng: number) => void;
+  C: ThemeColors;
+}) => {
+  const slideAnim = useRef(new Animated.Value(450)).current;
+
+  useEffect(() => {
+    if (report) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 85,
+        friction: 12,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 450,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [report]);
+
+  if (!report) return null;
+
+  const isCritical =
+    report.status === "CRITICAL" || report.status === "HIGH RISK";
+  const isResolved =
+    report.status === "Resolved" || report.status === "Completed";
+  const badgeColor = isResolved ? C.safe : isCritical ? C.danger : C.warn;
+  const badgeGlow = isResolved
+    ? C.safeGlow
+    : isCritical
+      ? C.dangerGlow
+      : C.warnGlow;
+
+  const distanceKm =
+    report.lat && report.lng
+      ? calculateDistanceKm(userPos.lat, userPos.lng, report.lat, report.lng)
+      : null;
+
+  const distanceText =
+    distanceKm !== null
+      ? distanceKm < 1
+        ? `${Math.round(distanceKm * 1000)}m away`
+        : `${distanceKm.toFixed(1)} km away`
+      : null;
+
+  const imageUri = normalizeImageUri(
+    report.processedImage || report.imageUri,
+  );
+
+  const rawAccuracy = report.accuracy ?? "0";
+  const accuracyNum =
+    Number(rawAccuracy) <= 1 ? Number(rawAccuracy) * 100 : Number(rawAccuracy);
+  const accuracyText =
+    typeof rawAccuracy === "string" && rawAccuracy.includes("%")
+      ? rawAccuracy
+      : accuracyNum > 0
+        ? `${accuracyNum.toFixed(1)}%`
+        : "AI Verified";
+
+  return (
+    <View style={sheet.snackbarHost} pointerEvents="box-none">
+        <Animated.View
+          accessibilityViewIsModal={false}
+          accessibilityLabel="Selected mosquito risk report"
+          style={[
+            sheet.card,
+            {
+              backgroundColor: C.surface,
+              borderColor: C.border,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View>
+            {/* Grab Handle */}
+            <View style={[sheet.handle, { backgroundColor: C.border }]} />
+
+            {/* Header: Badges & Close Button */}
+            <View style={sheet.header}>
+              <View style={sheet.badgeGroup}>
+                {/* Risk Level Badge */}
+                <View
+                  style={[
+                    sheet.badge,
+                    {
+                      backgroundColor: badgeGlow,
+                      borderColor: badgeColor + "40",
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      sheet.badgeDot,
+                      {
+                        backgroundColor: badgeColor,
+                        shadowColor: badgeColor,
+                      },
+                    ]}
+                  />
+                  <Text style={[sheet.badgeText, { color: badgeColor }]}>
+                    {report.status || "ACTIVE THREAT"}
+                  </Text>
+                </View>
+
+                {/* Verification Badge */}
+                <View
+                  style={[
+                    sheet.verifiedBadge,
+                    {
+                      backgroundColor: report.verified
+                        ? C.safeGlow
+                        : C.accentGlow,
+                      borderColor:
+                        (report.verified ? C.safe : C.accent) + "40",
+                    },
+                  ]}
+                >
+                  <ShieldCheck
+                    color={report.verified ? C.safe : C.accent}
+                    size={11}
+                    strokeWidth={2.5}
+                  />
+                  <Text
+                    style={[
+                      sheet.verifiedBadgeText,
+                      { color: report.verified ? C.safe : C.accent },
+                    ]}
+                  >
+                    {report.verified ? "VERIFIED" : "COMMUNITY"}
+                  </Text>
+                </View>
+
+                {/* Distance Badge */}
+                {distanceText && (
+                  <View
+                    style={[
+                      sheet.distanceBadge,
+                      {
+                        backgroundColor: C.surfaceRaised,
+                        borderColor: C.border,
+                      },
+                    ]}
+                  >
+                    <Navigation color={C.accent} size={10} strokeWidth={2.5} />
+                    <Text
+                      style={[sheet.distanceBadgeText, { color: C.textSub }]}
+                    >
+                      {distanceText}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close selected report"
+                style={[
+                  sheet.closeBtn,
+                  { backgroundColor: C.surfaceRaised, borderColor: C.border },
+                ]}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X color={C.textSub} size={15} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Main Content Area: Evidence Photo Thumbnail + Title & Submitter */}
+            <View style={sheet.mainRow}>
+              {/* Evidence Photo Preview */}
+              <TouchableOpacity
+                onPress={onViewFullReport}
+                activeOpacity={0.85}
+                style={[
+                  sheet.thumbWrapper,
+                  {
+                    backgroundColor: C.surfaceRaised,
+                    borderColor: C.border,
+                  },
+                ]}
+              >
+                {imageUri ? (
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={sheet.thumbImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={sheet.thumbPlaceholder}>
+                    <AlertTriangle color={badgeColor} size={22} />
+                  </View>
+                )}
+                <View
+                  style={[
+                    sheet.thumbBadge,
+                    {
+                      backgroundColor: C.surface + "D9",
+                    },
+                  ]}
+                >
+                  <Text style={[sheet.thumbBadgeText, { color: C.accent }]}>
+                    {report.processedImage ? "AI MASK" : "PHOTO"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Location Name, Submitter, Timestamp */}
+              <View style={sheet.mainInfo}>
+                <Text
+                  style={[sheet.locationTitle, { color: C.text }]}
+                  numberOfLines={2}
+                >
+                  {report.locationName || "Reported Vector Site"}
+                </Text>
+
+                <View style={sheet.reporterRow}>
+                  <User color={C.textDim} size={11} strokeWidth={2} />
+                  <Text
+                    style={[sheet.reporterText, { color: C.textSub }]}
+                    numberOfLines={1}
+                  >
+                    By {report.userName || "Community Scout"}
+                  </Text>
+                </View>
+
+                <View style={sheet.metaRow}>
+                  <Clock color={C.textDim} size={11} strokeWidth={2} />
+                  <Text style={[sheet.metaText, { color: C.textDim }]}>
+                    {formatTimeAgo(report._creationTime)}
+                  </Text>
+                  <View
+                    style={[sheet.metaDot, { backgroundColor: C.border }]}
+                  />
+                  <MapPin color={C.textDim} size={11} strokeWidth={2} />
+                  <Text style={[sheet.metaText, { color: C.textDim }]}>
+                    {report.lat?.toFixed(4)}, {report.lng?.toFixed(4)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Quick Surveillance Metrics Strip */}
+            <View
+              style={[
+                sheet.metricsRow,
+                {
+                  backgroundColor: C.surfaceRaised,
+                  borderColor: C.border,
+                },
+              ]}
+            >
+              <View style={sheet.metricBox}>
+                <View style={sheet.metricIconWrap}>
+                  <Sparkles color={C.gold} size={12} strokeWidth={2.5} />
+                  <Text style={[sheet.metricValue, { color: C.text }]}>
+                    {accuracyText}
+                  </Text>
+                </View>
+                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                  AI CONFIDENCE
+                </Text>
+              </View>
+
+              <View
+                style={[sheet.metricDivider, { backgroundColor: C.border }]}
+              />
+
+              <View style={sheet.metricBox}>
+                <View style={sheet.metricIconWrap}>
+                  <Shield color={badgeColor} size={12} strokeWidth={2.5} />
+                  <Text style={[sheet.metricValue, { color: badgeColor }]}>
+                    150m
+                  </Text>
+                </View>
+                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                  THREAT RADIUS
+                </Text>
+              </View>
+
+              <View
+                style={[sheet.metricDivider, { backgroundColor: C.border }]}
+              />
+
+              <View style={sheet.metricBox}>
+                <View style={sheet.metricIconWrap}>
+                  {isResolved ? (
+                    <CheckCircle2 color={C.safe} size={12} strokeWidth={2.5} />
+                  ) : (
+                    <Flame color={badgeColor} size={12} strokeWidth={2.5} />
+                  )}
+                  <Text
+                    style={[
+                      sheet.metricValue,
+                      { color: isResolved ? C.safe : badgeColor },
+                    ]}
+                  >
+                    {isResolved
+                      ? "TREATED"
+                      : isCritical
+                        ? "HIGH RISK"
+                        : "MONITOR"}
+                  </Text>
+                </View>
+                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                  STATUS
+                </Text>
+              </View>
+            </View>
+
+            {/* AI Diagnostics Callout */}
+            {report.reasoning ? (
+              <View
+                style={[
+                  sheet.aiCallout,
+                  {
+                    backgroundColor: C.surfaceRaised,
+                    borderColor: C.border,
+                  },
+                ]}
+              >
+                <View style={sheet.aiCalloutHeader}>
+                  <Sparkles color={C.gold} size={11} strokeWidth={2.5} />
+                  <Text style={[sheet.aiCalloutTitle, { color: C.gold }]}>
+                    AI VECTOR DIAGNOSTICS
+                  </Text>
+                </View>
+                <Text
+                  style={[sheet.aiCalloutText, { color: C.textSub }]}
+                  numberOfLines={2}
+                >
+                  {report.reasoning}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Action Buttons */}
+            <View style={sheet.actions}>
+              {/* Primary View Report Button */}
+              <TouchableOpacity
+                style={[
+                  sheet.actionBtn,
+                  sheet.actionBtnPrimary,
+                  {
+                    backgroundColor: isCritical ? C.danger : C.accent,
+                    shadowColor: isCritical ? C.danger : C.accent,
+                  },
+                ]}
+                onPress={onViewFullReport}
+                activeOpacity={0.8}
+              >
+                <Sparkles color="#FFFFFF" size={14} strokeWidth={2.5} />
+                <Text style={sheet.actionBtnPrimaryText}>
+                  {isTanod
+                    ? "INSPECT & ACTION REPORT"
+                    : "VIEW FULL REPORT & SCAN"}
+                </Text>
+                <ArrowRight color="#FFFFFF" size={14} strokeWidth={2.5} />
+              </TouchableOpacity>
+
+              {/* Fly/Focus Map Location Button */}
+              {report.lat && report.lng && onFocusLocation && (
+                <TouchableOpacity
+                  style={[
+                    sheet.actionBtnFocus,
+                    {
+                      backgroundColor: C.surfaceRaised,
+                      borderColor: C.border,
+                    },
+                  ]}
+                  onPress={() => onFocusLocation(report.lat!, report.lng!)}
+                  activeOpacity={0.75}
+                >
+                  <Navigation color={C.accent} size={15} strokeWidth={2.5} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Animated.View>
+    </View>
+  );
+};
+
+const sheet = StyleSheet.create({
+  snackbarHost: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+    paddingHorizontal: 12,
+    paddingBottom: Platform.OS === "ios" ? 96 : 82,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    gap: 10,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    elevation: 16,
+  },
   handle: {
-    width: 36,
+    width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: C.border,
+    alignSelf: "center",
+    marginBottom: 12,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 6,
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  badgeGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+    flex: 1,
+    paddingRight: 8,
+  },
   badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  verifiedBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 20,
+    paddingHorizontal: 8,
+    borderRadius: 16,
     borderWidth: 1,
   },
-  badgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
-  accuracy: { fontSize: 12, color: C.textSub },
-  accuracyNum: { fontWeight: "800" },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: C.surfaceRaised,
+  verifiedBadgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  distanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: C.border,
+  },
+  distanceBadgeText: { fontSize: 9, fontWeight: "700" },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  locationRow: {
+
+  // Main Info with Thumbnail
+  mainRow: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+    marginTop: 2,
+  },
+  thumbWrapper: {
+    width: 70,
+    height: 70,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  thumbBadgeText: {
+    fontSize: 7,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  mainInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  locationTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    lineHeight: 20,
+  },
+  reporterRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+    gap: 4,
+    marginTop: 1,
   },
-  locationText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: C.text,
-    flex: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: C.border,
-    marginHorizontal: 20,
-    marginBottom: 16,
-  },
-  scroll: { paddingHorizontal: 20 },
-  sectionLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: C.textDim,
-    letterSpacing: 1.6,
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: C.textSub,
-    fontWeight: "400",
-  },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  reasoningBox: {
-    flexDirection: "row",
-    backgroundColor: C.surfaceRaised,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: C.border,
-    overflow: "hidden",
-  },
-  reasoningAccent: {
-    width: 3,
-    backgroundColor: C.purple,
-  },
-  reasoningText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-    color: C.textSub,
-    padding: 12,
-    fontStyle: "italic",
+  reporterText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 16,
-    gap: 8,
+    gap: 5,
+    marginTop: 2,
   },
-  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 10, color: C.textSub, fontWeight: "600" },
+  metaText: { fontSize: 10, fontWeight: "500" },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: C.textDim,
   },
+
+  // Metrics Strip
+  metricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  metricBox: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  metricIconWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metricValue: {
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  metricLabel: {
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+  },
+  metricDivider: {
+    width: 1,
+    height: 24,
+  },
+
+  // AI Callout
+  aiCallout: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    gap: 4,
+  },
+  aiCalloutHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  aiCalloutTitle: {
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  aiCalloutText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: "italic",
+  },
+
+  // Actions
   actions: {
     flexDirection: "row",
     gap: 10,
-    marginTop: 20,
+    marginTop: 4,
   },
   actionBtn: {
     flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 14,
   },
-  actionBtnSecondary: {
-    backgroundColor: C.surfaceRaised,
+  actionBtnPrimary: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  actionBtnPrimaryText: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 1,
+  },
+  actionBtnFocus: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: C.borderLight,
-  },
-  actionBtnSecondaryText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: C.textSub,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function MapComponent() {
+export default function MapComponent({
+  experience,
+}: {
+  experience: MapExperience;
+}) {
   const router = useRouter();
-  const webviewRef = useRef<WebView>(null);
-  const [mapReady, setMapReady] = useState(false);
-
-  const [mode, setMode] = useState<MapMode>("vector");
-  const [showZones, setShowZones] = useState(true);
-  const [showReports, setShowReports] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<Partial<Report> | null>(
-    null,
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const allReports = useQuery(api.reports.getAllReports);
-
-  const verifiedHotspots: Partial<Report>[] = useMemo(
-    () =>
-      allReports?.filter(
-        (r: Report) => r.verified && r.status !== "Completed",
-      ) ?? [],
-    [allReports],
-  );
-
-  const riskZones: RiskZone[] = useMemo(
-    () =>
-      verifiedHotspots.map((r) => ({
-        id: r._id as string,
-        lat: r.lat!,
-        lng: r.lng!,
-        radius: RISK_ZONE_RADIUS,
-        isCritical: r.status === "CRITICAL",
-      })),
-    [verifiedHotspots],
-  );
-
+  const { colors: C } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     focusLat?: string;
     focusLng?: string;
     reportId?: string;
   }>();
 
-  const html = useMemo(() => buildMapHtml(), []);
+  const webviewRef = useRef<WebView>(null);
+  const [mapReady, setMapReady] = useState(false);
 
-  // Push markers to the map whenever hotspots, visibility, or selection change
+  const [mode, setMode] = useState<MapMode>("vector");
+  const [showZones, setShowZones] = useState(true);
+  const [showReports, setShowReports] = useState(true);
+
+  // Filters for Tanod and Community
+  const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ALL");
+  const [communityFilter, setCommunityFilter] =
+    useState<CommunityFilter>("ALL");
+
+  const [selectedReport, setSelectedReport] =
+    useState<Partial<Report> | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // GPS User Location
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number }>({
+    lat: INITIAL_LOCATION.latitude,
+    lng: INITIAL_LOCATION.longitude,
+  });
+
+  const isTanod = experience === "tanod";
+  const tanodAssignments = useQuery(api.assignments.getAssignmentsForTanod);
+  const allReports = useQuery(api.reports.getAllReports);
+
+  const html = useMemo(
+    () => buildMapHtml(isTanod, C),
+    [isTanod, C],
+  );
+
+  // High-accuracy native phone GPS fetching using expo-location
+  const fetchNativeGpsLocation = useCallback(
+    async (recenter = true) => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Highest,
+          });
+          const coords = {
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+          };
+          setUserPos(coords);
+
+          if (mapReady) {
+            webviewRef.current?.injectJavaScript(
+              `window.setUserLocation(${coords.lat}, ${coords.lng}, ${isTanod}); ${recenter
+                ? `window.focusOn(${coords.lat}, ${coords.lng}, 16);`
+                : ""
+              } true;`,
+            );
+          }
+        }
+      } catch (err) {
+        console.log("Error getting native phone GPS location:", err);
+      }
+    },
+    [mapReady, isTanod],
+  );
+
   useEffect(() => {
-    if (!mapReady) return;
-    const markersData = verifiedHotspots.map((r) => ({
-      id: r._id as string,
-      lat: r.lat,
-      lng: r.lng,
+    if (mapReady) {
+      fetchNativeGpsLocation(true);
+    }
+  }, [mapReady, fetchNativeGpsLocation]);
+
+  const assignedReportIds = useMemo(() => {
+    return new Set(tanodAssignments?.map((a) => a.reportId as string) ?? []);
+  }, [tanodAssignments]);
+
+  // Calculate filtered hotspots
+  const verifiedHotspots: Partial<Report>[] = useMemo(() => {
+    if (!allReports) return [];
+
+    return allReports.filter((r: Report) => {
+      if (!r.lat || !r.lng) return false;
+
+      // Only show verified hotspots on the community & tanod map
+      if (!r.verified) return false;
+
+      if (isTanod) {
+        if (tanodFilter === "ASSIGNED") {
+          return assignedReportIds.has(r._id);
+        }
+        if (tanodFilter === "CRITICAL") {
+          return (
+            r.status === "CRITICAL" ||
+            r.status === "HIGH RISK"
+          );
+        }
+        if (tanodFilter === "PENDING") {
+          return r.status !== "Resolved" && r.status !== "Completed";
+        }
+        if (tanodFilter === "RESOLVED") {
+          return r.status === "Resolved" || r.status === "Completed";
+        }
+        return true; // ALL
+      } else {
+        if (communityFilter === "CRITICAL") {
+          return (
+            r.status === "CRITICAL" ||
+            r.status === "HIGH RISK"
+          );
+        }
+        if (communityFilter === "NEARBY") {
+          const dist = calculateDistanceKm(
+            userPos.lat,
+            userPos.lng,
+            r.lat,
+            r.lng,
+          );
+          return dist <= 1.5;
+        }
+        if (communityFilter === "RESOLVED") {
+          return r.status === "Resolved" || r.status === "Completed";
+        }
+        return true; // ALL
+      }
+    });
+  }, [
+    allReports,
+    isTanod,
+    tanodFilter,
+    communityFilter,
+    assignedReportIds,
+    userPos,
+  ]);
+
+  // Compute category counts for badges
+  const filterCounts = useMemo(() => {
+    if (!allReports)
+      return {
+        all: 0,
+        assigned: 0,
+        critical: 0,
+        pending: 0,
+        resolved: 0,
+        nearby: 0,
+      };
+
+    const verified = allReports.filter((r: Report) => r.verified && r.lat && r.lng);
+
+    return {
+      all: verified.length,
+      assigned: verified.filter((r: Report) => assignedReportIds.has(r._id)).length,
+      critical: verified.filter(
+        (r: Report) => r.status === "CRITICAL" || r.status === "HIGH RISK",
+      ).length,
+      pending: verified.filter(
+        (r: Report) => r.status !== "Resolved" && r.status !== "Completed",
+      ).length,
+      resolved: verified.filter(
+        (r: Report) => r.status === "Resolved" || r.status === "Completed",
+      ).length,
+      nearby: verified.filter((r: Report) => {
+        const dist = calculateDistanceKm(
+          userPos.lat,
+          userPos.lng,
+          r.lat!,
+          r.lng!,
+        );
+        return dist <= 1.5;
+      }).length,
+    };
+  }, [allReports, assignedReportIds, userPos]);
+
+  const riskZones: RiskZone[] = useMemo(() => {
+    return verifiedHotspots.map((r) => ({
+      id: `zone-${r._id}`,
+      lat: r.lat!,
+      lng: r.lng!,
+      radius: RISK_ZONE_RADIUS,
       isCritical: r.status === "CRITICAL",
     }));
+  }, [verifiedHotspots]);
+
+  // Sync user location marker in Leaflet
+  useEffect(() => {
+    if (!mapReady) return;
     webviewRef.current?.injectJavaScript(
-      `window.setMarkers(${JSON.stringify(JSON.stringify(markersData))}, ${JSON.stringify(selectedId)}); true;`,
+      `window.setUserLocation(${userPos.lat}, ${userPos.lng}, ${isTanod}); true;`,
+    );
+  }, [mapReady, userPos.lat, userPos.lng, isTanod]);
+
+  // Sync markers
+  useEffect(() => {
+    if (!mapReady) return;
+    const simplified = verifiedHotspots.map((r) => ({
+      id: r._id,
+      lat: r.lat,
+      lng: r.lng,
+      isCritical: r.status === "CRITICAL" || r.status === "HIGH RISK",
+      isResolved: r.status === "Resolved" || r.status === "Completed",
+    }));
+    webviewRef.current?.injectJavaScript(
+      `window.setMarkers(${JSON.stringify(
+        JSON.stringify(simplified),
+      )}, ${JSON.stringify(selectedId)}); true;`,
     );
   }, [mapReady, verifiedHotspots, selectedId]);
 
-  // Push risk zones whenever they change
+  // Sync zones
   useEffect(() => {
     if (!mapReady) return;
     webviewRef.current?.injectJavaScript(
@@ -782,7 +1417,7 @@ export default function MapComponent() {
     );
   }, [mapReady, riskZones]);
 
-  // Toggle layer visibility
+  // Layer toggles
   useEffect(() => {
     if (!mapReady) return;
     webviewRef.current?.injectJavaScript(
@@ -797,7 +1432,7 @@ export default function MapComponent() {
     );
   }, [mapReady, showZones]);
 
-  // Switch tile provider
+  // Mode tile switch
   useEffect(() => {
     if (!mapReady) return;
     webviewRef.current?.injectJavaScript(
@@ -805,19 +1440,21 @@ export default function MapComponent() {
     );
   }, [mapReady, mode]);
 
-  // Focus on specific location passed via route params
+  // Focus location
   useEffect(() => {
-    if (!mapReady || !verifiedHotspots.length) return;
-    if (!params.focusLat || !params.focusLng) return;
-    const lat = parseFloat(params.focusLat);
-    const lng = parseFloat(params.focusLng);
-    if (isNaN(lat) || isNaN(lng)) return;
+    if (!mapReady) return;
 
-    webviewRef.current?.injectJavaScript(
-      `window.focusOn(${lat}, ${lng}, 16); true;`,
-    );
+    if (params.focusLat && params.focusLng) {
+      const lat = parseFloat(params.focusLat);
+      const lng = parseFloat(params.focusLng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        webviewRef.current?.injectJavaScript(
+          `window.focusOn(${lat}, ${lng}, 16); true;`,
+        );
+      }
+    }
 
-    if (params.reportId) {
+    if (params.reportId && verifiedHotspots.length > 0) {
       const matchedReport = verifiedHotspots.find(
         (r) => r._id === params.reportId,
       );
@@ -828,10 +1465,10 @@ export default function MapComponent() {
     }
   }, [
     mapReady,
-    verifiedHotspots,
     params.focusLat,
     params.focusLng,
     params.reportId,
+    verifiedHotspots,
   ]);
 
   const handleWebViewMessage = useCallback(
@@ -846,9 +1483,11 @@ export default function MapComponent() {
             setSelectedReport(report);
             setSelectedId(report._id as string);
           }
+        } else if (msg.type === "locationFound") {
+          setUserPos({ lat: msg.lat, lng: msg.lng });
         }
       } catch {
-        // ignore malformed messages
+        // ignore
       }
     },
     [verifiedHotspots],
@@ -857,6 +1496,10 @@ export default function MapComponent() {
   const handleClose = useCallback(() => {
     setSelectedReport(null);
     setSelectedId(null);
+  }, []);
+
+  const handleFocusLocation = useCallback((lat: number, lng: number) => {
+    webviewRef.current?.injectJavaScript(`window.focusOn(${lat}, ${lng}, 17); true;`);
   }, []);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -870,6 +1513,7 @@ export default function MapComponent() {
   }, []);
 
   const isLoading = allReports === undefined;
+  const styles = useMemo(() => createStyles(C), [C]);
 
   return (
     <View style={styles.root}>
@@ -886,91 +1530,278 @@ export default function MapComponent() {
       </View>
 
       <Animated.View style={[styles.overlays, { opacity: fadeAnim }]}>
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <View style={styles.modeToggle}>
-            <PillBtn
-              icon={Map}
-              label="Vector"
-              active={mode === "vector"}
-              onPress={() => setMode("vector")}
-            />
-            <PillBtn
-              icon={Satellite}
-              label="Satellite"
-              active={mode === "satellite"}
-              onPress={() => setMode("satellite")}
-            />
+        {/* ── TOP CONTROL STACK ── */}
+        <View
+          style={[
+            styles.topControlContainer,
+            { top: Math.max(insets.top, 12) + 6 },
+          ]}
+        >
+          <View style={styles.brandHeader}>
+            <View style={styles.brandMark}>
+              <Image
+                source={
+                  isTanod
+                    ? require("../../../assets/images/pin_critical.png")
+                    : require("../../../assets/images/pin_safe.png")
+                }
+                style={styles.brandPin}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.brandCopy}>
+              <Text style={styles.eyebrow}>AEDEX · LIVE SURVEILLANCE</Text>
+              <Text style={styles.screenTitle}>
+                {isTanod ? "Response map" : "Community risk map"}
+              </Text>
+            </View>
+            <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
           </View>
-          <StatsHUD
-            zones={showZones ? riskZones.length : 0}
-            markers={showReports ? verifiedHotspots.length : 0}
-          />
+
+          {/* Top Bar: Mode Toggle + Radar Status Chip */}
+          <View style={styles.topBarRow}>
+            <View style={styles.modeToggle}>
+              <ModePillBtn
+                icon={Map}
+                label="Vector"
+                active={mode === "vector"}
+                onPress={() => setMode("vector")}
+                C={C}
+              />
+              <ModePillBtn
+                icon={Satellite}
+                label="Satellite"
+                active={mode === "satellite"}
+                onPress={() => setMode("satellite")}
+                C={C}
+              />
+            </View>
+
+            {/* Radar status pill badge */}
+            <View style={styles.radarStatusBadge}>
+              <View
+                style={[
+                  styles.radarPulseDot,
+                  { backgroundColor: isTanod ? C.accent : C.safe },
+                ]}
+              />
+              {isTanod ? (
+                <Shield color={C.accent} size={11} strokeWidth={2.5} />
+              ) : (
+                <Globe color={C.safe} size={11} strokeWidth={2.5} />
+              )}
+              <Text
+                style={[
+                  styles.radarStatusText,
+                  { color: isTanod ? C.accent : C.safe },
+                ]}
+              >
+                {isTanod ? "TANOD OPS" : "COMMUNITY"}
+              </Text>
+            </View>
+          </View>
+
+          {/* ── DYNAMIC HORIZONTAL FILTER BAR (FOR BOTH TANOD & COMMUNITY) ── */}
+          <View style={styles.filterRibbonContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRibbonScroll}
+            >
+              {isTanod ? (
+                // ── TANOD FILTER BUTTONS ──
+                <>
+                  <FilterPill
+                    icon={Layers}
+                    label="All Hotspots"
+                    count={filterCounts.all}
+                    active={tanodFilter === "ALL"}
+                    onPress={() => setTanodFilter("ALL")}
+                    accentColor={C.accent}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={Users}
+                    label="My Team"
+                    count={filterCounts.assigned}
+                    active={tanodFilter === "ASSIGNED"}
+                    onPress={() => setTanodFilter("ASSIGNED")}
+                    accentColor={C.accent}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={Flame}
+                    label="Urgent"
+                    count={filterCounts.critical}
+                    active={tanodFilter === "CRITICAL"}
+                    onPress={() => setTanodFilter("CRITICAL")}
+                    accentColor={C.danger}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={Clock}
+                    label="Pending"
+                    count={filterCounts.pending}
+                    active={tanodFilter === "PENDING"}
+                    onPress={() => setTanodFilter("PENDING")}
+                    accentColor={C.warn}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={CheckCircle2}
+                    label="Resolved"
+                    count={filterCounts.resolved}
+                    active={tanodFilter === "RESOLVED"}
+                    onPress={() => setTanodFilter("RESOLVED")}
+                    accentColor={C.safe}
+                    C={C}
+                  />
+                </>
+              ) : (
+                // ── CITIZEN / COMMUNITY FILTER BUTTONS ──
+                <>
+                  <FilterPill
+                    icon={Layers}
+                    label="All Sites"
+                    count={filterCounts.all}
+                    active={communityFilter === "ALL"}
+                    onPress={() => setCommunityFilter("ALL")}
+                    accentColor={C.accent}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={Flame}
+                    label="Critical"
+                    count={filterCounts.critical}
+                    active={communityFilter === "CRITICAL"}
+                    onPress={() => setCommunityFilter("CRITICAL")}
+                    accentColor={C.danger}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={Navigation}
+                    label="Nearby (<1.5km)"
+                    count={filterCounts.nearby}
+                    active={communityFilter === "NEARBY"}
+                    onPress={() => setCommunityFilter("NEARBY")}
+                    accentColor={C.accent}
+                    C={C}
+                  />
+                  <FilterPill
+                    icon={CheckCircle2}
+                    label="Treated"
+                    count={filterCounts.resolved}
+                    active={communityFilter === "RESOLVED"}
+                    onPress={() => setCommunityFilter("RESOLVED")}
+                    accentColor={C.safe}
+                    C={C}
+                  />
+                </>
+              )}
+            </ScrollView>
+          </View>
         </View>
 
-        {/* Right panel */}
+        {/* ── RIGHT FLOATING CONTROLS ── */}
         <View style={styles.rightPanel}>
           <FloatBtn
+            icon={LocateFixed}
+            accessibilityLabel="Center map on my location"
+            active={true}
+            color={C.accent}
+            C={C}
+            onPress={() => {
+              fetchNativeGpsLocation(true);
+            }}
+          />
+          <FloatBtn
             icon={showZones ? Eye : EyeOff}
+            accessibilityLabel={showZones ? "Hide risk zones" : "Show risk zones"}
             active={showZones}
             color={C.danger}
+            badgeCount={showZones ? riskZones.length : undefined}
+            C={C}
             onPress={() => setShowZones((v) => !v)}
           />
           <FloatBtn
             icon={AlertTriangle}
+            accessibilityLabel={showReports ? "Hide report pins" : "Show report pins"}
             active={showReports}
-            color={C.accent}
+            color={C.warn}
+            badgeCount={showReports ? verifiedHotspots.length : undefined}
+            C={C}
             onPress={() => setShowReports((v) => !v)}
           />
         </View>
 
-        {/* Bottom legend */}
+        {/* ── BOTTOM MAP LEGEND ── */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendDot,
-                { backgroundColor: C.danger, shadowColor: C.danger },
-              ]}
+            <Image
+              source={require("../../../assets/images/pin_critical.png")}
+              style={styles.legendPin}
+              resizeMode="contain"
             />
             <Text style={styles.legendText}>Critical</Text>
           </View>
           <View style={styles.legendDivider} />
           <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendDot,
-                { backgroundColor: C.warning, shadowColor: C.warning },
-              ]}
+            <Image
+              source={require("../../../assets/images/pin_moderate.png")}
+              style={styles.legendPin}
+              resizeMode="contain"
             />
-            <Text style={styles.legendText}>Active</Text>
+            <Text style={styles.legendText}>Moderate</Text>
+          </View>
+          <View style={styles.legendDivider} />
+          <View style={styles.legendItem}>
+            <Image
+              source={require("../../../assets/images/pin_safe.png")}
+              style={styles.legendPin}
+              resizeMode="contain"
+            />
+            <Text style={styles.legendText}>Safe</Text>
           </View>
           <View style={styles.legendDivider} />
           <View style={styles.legendItem}>
             <View
               style={[
                 styles.legendSwatch,
-                { borderColor: C.danger + "80", backgroundColor: C.dangerGlow },
+                { borderColor: C.danger + "90", backgroundColor: C.dangerGlow },
               ]}
             />
-            <Text style={styles.legendText}>Risk Zone</Text>
+            <Text style={styles.legendText}>Zone</Text>
           </View>
         </View>
 
         {(isLoading || !mapReady) && (
-          <StatusOverlay
-            message={isLoading ? "Loading hotspots…" : "Loading map…"}
-          />
+          <View style={styles.statusOverlayBox}>
+            <ActivityIndicator size="small" color={C.accent} />
+            <Text style={styles.statusOverlayText}>
+              {isLoading ? "Loading surveillance data…" : "Acquiring GPS fix…"}
+            </Text>
+          </View>
         )}
         {!isLoading && mapReady && verifiedHotspots.length === 0 && (
-          <StatusOverlay message="No reports found yet" />
+          <View style={styles.statusOverlayBox}>
+            <Text style={styles.statusOverlayText}>
+              No reports matching current filter
+            </Text>
+          </View>
         )}
       </Animated.View>
 
-      {/* Bottom sheet */}
+      {/* Enhanced Bottom sheet / Snackbar for report detail */}
       <ReportBottomSheet
         report={selectedReport}
+        userPos={userPos}
+        isTanod={isTanod ?? false}
         onClose={handleClose}
+        onFocusLocation={handleFocusLocation}
+        C={C}
         onViewFullReport={() => {
           if (selectedReport?._id) {
             router.push({
@@ -985,74 +1816,204 @@ export default function MapComponent() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  map: { flex: 1 },
-  overlays: {
-    ...(StyleSheet.absoluteFillObject as any),
-    pointerEvents: "box-none",
-  },
-  topBar: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  modeToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(17,21,32,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(30,38,64,0.9)",
-    borderRadius: 14,
-    padding: 3,
-    gap: 2,
-  },
-  rightPanel: {
-    position: "absolute",
-    right: 16,
-    top: "40%",
-    gap: 8,
-  },
-  legend: {
-    position: "absolute",
-    bottom: 36,
-    left: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(17,21,32,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(30,38,64,0.9)",
-    borderRadius: 12,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 7 },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  legendSwatch: {
-    width: 16,
-    height: 10,
-    borderRadius: 3,
-    borderWidth: 1.5,
-  },
-  legendText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: C.textSub,
-    letterSpacing: 0.3,
-  },
-  legendDivider: { width: 1, height: 16, backgroundColor: C.border },
-});
+const createStyles = (C: ThemeColors) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg },
+    map: { flex: 1 },
+    overlays: {
+      ...(StyleSheet.absoluteFillObject as any),
+      pointerEvents: "box-none",
+    },
+
+    // Top Control Container
+    topControlContainer: {
+      position: "absolute",
+      left: 14,
+      right: 14,
+      gap: 8,
+    },
+    brandHeader: {
+      minHeight: 62,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: C.surface + "F5",
+      borderWidth: 1,
+      borderColor: C.border,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    brandMark: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 15,
+      backgroundColor: C.surfaceRaised,
+    },
+    brandPin: { width: 42, height: 42 },
+    brandCopy: { flex: 1 },
+    eyebrow: {
+      color: C.accent,
+      fontSize: 8,
+      fontWeight: "900",
+      letterSpacing: 1.2,
+      marginBottom: 2,
+    },
+    screenTitle: {
+      color: C.text,
+      fontSize: 18,
+      fontWeight: "900",
+      letterSpacing: -0.4,
+    },
+    liveBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: C.safeGlow,
+      borderWidth: 1,
+      borderColor: C.safe + "35",
+    },
+    liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.safe },
+    liveText: {
+      color: C.safe,
+      fontSize: 8,
+      fontWeight: "900",
+      letterSpacing: 0.8,
+    },
+    topBarRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+    modeToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surface + "E6",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 14,
+      padding: 3,
+      gap: 2,
+      shadowColor: "#000",
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    radarStatusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.surface + "E6",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 14,
+      paddingVertical: 7,
+      paddingHorizontal: 12,
+      shadowColor: "#000",
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    radarPulseDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    radarStatusText: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 1,
+    },
+
+    // Filter Ribbon Container
+    filterRibbonContainer: {
+      backgroundColor: C.surface + "F2",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 24,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    filterRibbonScroll: {
+      gap: 8,
+      alignItems: "center",
+      paddingRight: 6,
+    },
+
+    // Floating controls positioned safely above bottom tab bar
+    rightPanel: {
+      position: "absolute",
+      right: 16,
+      bottom: 165,
+      gap: 10,
+    },
+    legend: {
+      position: "absolute",
+      bottom: 112,
+      left: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: C.surface + "E6",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 14,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      shadowColor: "#000",
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+    legendPin: { width: 20, height: 20 },
+    legendSwatch: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      borderWidth: 1.5,
+    },
+    legendText: { fontSize: 9, fontWeight: "700", color: C.textSub },
+    legendDivider: { width: 1, height: 10, backgroundColor: C.border },
+
+    // Status overlay
+    statusOverlayBox: {
+      position: "absolute",
+      alignSelf: "center",
+      top: 130,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: C.surface + "F0",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 20,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    statusOverlayText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: C.textSub,
+      letterSpacing: 0.5,
+    },
+  });

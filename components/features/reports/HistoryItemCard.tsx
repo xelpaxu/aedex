@@ -1,5 +1,5 @@
 import { Calendar, ChevronRight } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Image,
   ImageSourcePropType,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 interface HistoryItemProps {
   image: ImageSourcePropType;
@@ -24,6 +25,9 @@ export default function HistoryItemCard({
   isUrgent,
   onPress,
 }: HistoryItemProps) {
+  const { colors: C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Image
@@ -37,7 +41,7 @@ export default function HistoryItemCard({
           {location}
         </Text>
         <View style={styles.dateRow}>
-          <Calendar size={12} color="#6B7280" />
+          <Calendar size={12} color={C.textSub} />
           <Text style={styles.dateText}>{date}</Text>
         </View>
         {isUrgent && (
@@ -47,62 +51,65 @@ export default function HistoryItemCard({
         )}
       </View>
 
-      <ChevronRight size={20} color="#CBD5E1" />
+      <ChevronRight size={20} color={C.textDim} />
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    // Matching the shadow in your screenshot
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  thumbnail: {
-    width: 80,
-    height: 60,
-    borderRadius: 12,
-  },
-  content: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  locationText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 4,
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  dateText: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginLeft: 4,
-  },
-  urgentBadge: {
-    backgroundColor: "#FF5A5F",
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  urgentText: {
-    color: "white",
-    fontSize: 8,
-    fontWeight: "900",
-  },
-});
+const createStyles = (C: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: 12,
+      marginHorizontal: 20,
+      marginBottom: 12,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    thumbnail: {
+      width: 80,
+      height: 60,
+      borderRadius: 10,
+      backgroundColor: C.surfaceRaised,
+    },
+    content: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    locationText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: C.text,
+      marginBottom: 4,
+    },
+    dateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    dateText: {
+      fontSize: 11,
+      color: C.textSub,
+      marginLeft: 4,
+    },
+    urgentBadge: {
+      backgroundColor: C.danger,
+      alignSelf: "flex-start",
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    urgentText: {
+      color: "#FFFFFF",
+      fontSize: 8,
+      fontWeight: "900",
+    },
+  });

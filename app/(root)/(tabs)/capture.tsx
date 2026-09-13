@@ -3,7 +3,7 @@ import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import { Camera, Check, Images, Upload, Zap } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -15,43 +15,43 @@ import {
   Text,
   View,
 } from "react-native";
-
 import CapturePreviewComponent from "../../../components/features/capture/CapturePreview";
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
-const { width, height } = Dimensions.get("window");
-
-// ─── Colour tokens ────────────────────────────────────────────────────────────
-const C = {
-  bg: "#0B0E14",
-  surface: "#111520",
-  surfaceRaised: "#161C2D",
-  border: "#1E2640",
-  text: "#E8EDF8",
-  textSub: "#697A9B",
-  textDim: "#3C4A66",
-  accent: "#4F8EF7",
-  accentGlow: "#4F8EF720",
-  safe: "#00C896",
-};
+const { width } = Dimensions.get("window");
 
 const THUMB_GAP = 10;
 const THUMB_SIZE = (width - 40 - THUMB_GAP * 3) / 4;
 
 // ─── Reusable label ───────────────────────────────────────────────────────────
-const SectionLabel = ({ children }: { children: string }) => (
+const SectionLabel = ({
+  children,
+  C,
+}: {
+  children: string;
+  C: ThemeColors;
+}) => (
   <View style={sl.row}>
-    <View style={sl.dash} />
-    <Text style={sl.text}>{children}</Text>
+    <View style={[sl.dash, { backgroundColor: C.accent }]} />
+    <Text style={[sl.text, { color: C.textSub }]}>{children}</Text>
   </View>
 );
 const sl = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
-  dash: { width: 20, height: 2, backgroundColor: C.accent, borderRadius: 1 },
-  text: { fontSize: 10, fontWeight: "800", letterSpacing: 2, color: C.textSub },
+  dash: { width: 20, height: 2, borderRadius: 1 },
+  text: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
 });
 
 // ─── Photo thumbnail ──────────────────────────────────────────────────────────
-const Thumb = ({ uri, onPress }: { uri: string; onPress: () => void }) => {
+const Thumb = ({
+  uri,
+  onPress,
+  C,
+}: {
+  uri: string;
+  onPress: () => void;
+  C: ThemeColors;
+}) => {
   const scale = useRef(new Animated.Value(1)).current;
   const press = () => {
     Animated.sequence([
@@ -70,7 +70,14 @@ const Thumb = ({ uri, onPress }: { uri: string; onPress: () => void }) => {
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable onPress={press}>
-        <Image source={{ uri }} style={thumbStyles.img} resizeMode="cover" />
+        <Image
+          source={{ uri }}
+          style={[
+            thumbStyles.img,
+            { backgroundColor: C.surface, borderColor: C.border },
+          ]}
+          resizeMode="cover"
+        />
         <View style={thumbStyles.shimmer} />
       </Pressable>
     </Animated.View>
@@ -81,9 +88,7 @@ const thumbStyles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: 10,
-    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: C.border,
   },
   shimmer: {
     ...StyleSheet.absoluteFillObject,
@@ -93,7 +98,13 @@ const thumbStyles = StyleSheet.create({
 });
 
 // ─── Success toast ────────────────────────────────────────────────────────────
-const SuccessToast = ({ visible }: { visible: boolean }) => {
+const SuccessToast = ({
+  visible,
+  C,
+}: {
+  visible: boolean;
+  C: ThemeColors;
+}) => {
   const translateY = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -130,12 +141,21 @@ const SuccessToast = ({ visible }: { visible: boolean }) => {
 
   return (
     <Animated.View
-      style={[toastStyles.wrap, { opacity, transform: [{ translateY }] }]}
+      style={[
+        toastStyles.wrap,
+        {
+          backgroundColor: C.surface,
+          borderColor: C.safe + "50",
+          shadowColor: C.safe,
+          opacity,
+          transform: [{ translateY }],
+        },
+      ]}
     >
-      <View style={toastStyles.dot}>
-        <Check color={C.bg} size={12} strokeWidth={3.5} />
+      <View style={[toastStyles.dot, { backgroundColor: C.safe }]}>
+        <Check color="#FFFFFF" size={12} strokeWidth={3.5} />
       </View>
-      <Text style={toastStyles.text}>IMAGE QUEUED</Text>
+      <Text style={[toastStyles.text, { color: C.safe }]}>IMAGE QUEUED</Text>
     </Animated.View>
   );
 };
@@ -148,13 +168,10 @@ const toastStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: C.surface,
     borderWidth: 1,
-    borderColor: C.safe + "50",
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 12,
-    shadowColor: C.safe,
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 10,
@@ -163,16 +180,16 @@ const toastStyles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: C.safe,
     alignItems: "center",
     justifyContent: "center",
   },
-  text: { fontSize: 11, fontWeight: "800", letterSpacing: 1.6, color: C.safe },
+  text: { fontSize: 11, fontWeight: "800", letterSpacing: 1.6 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CaptureScreen() {
   const router = useRouter();
+  const { colors: C } = useTheme();
   const [showToast, setShowToast] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
@@ -222,8 +239,6 @@ export default function CaptureScreen() {
 
   useEffect(() => {
     (async () => {
-      // Pass false for the first argument (write permissions)
-      // and ['photo'] for the second to avoid the Audio crash
       const { status } = await MediaLibrary.requestPermissionsAsync(false, [
         "photo",
       ]);
@@ -231,7 +246,7 @@ export default function CaptureScreen() {
       if (status === "granted") {
         const media = await MediaLibrary.getAssetsAsync({
           first: 8,
-          mediaType: [MediaLibrary.MediaType.photo], // Use the enum for safety
+          mediaType: [MediaLibrary.MediaType.photo],
           sortBy: [MediaLibrary.SortBy.creationTime],
         });
         setRecentPhotos(media.assets.map((a) => a.uri));
@@ -284,6 +299,8 @@ export default function CaptureScreen() {
     outputRange: [0, 180],
   });
 
+  const styles = useMemo(() => createStyles(C), [C]);
+
   if (showPreview && selectedImage) {
     return (
       <CapturePreviewComponent
@@ -305,7 +322,7 @@ export default function CaptureScreen() {
   return (
     <SafeAreaView style={styles.root}>
       {/* Toast */}
-      <SuccessToast visible={showToast} />
+      <SuccessToast visible={showToast} C={C} />
 
       <View style={styles.inner}>
         {/* ── HEADER ── */}
@@ -444,10 +461,15 @@ export default function CaptureScreen() {
         {/* ── RECENT PHOTOS ── */}
         {recentPhotos.length > 0 && (
           <Animated.View style={[{ opacity: fadeAnims[3] }]}>
-            <SectionLabel>RECENT CAPTURES</SectionLabel>
+            <SectionLabel C={C}>RECENT CAPTURES</SectionLabel>
             <View style={styles.thumbGrid}>
               {recentPhotos.slice(0, 8).map((uri, i) => (
-                <Thumb key={i} uri={uri} onPress={() => handleSelection(uri)} />
+                <Thumb
+                  key={i}
+                  uri={uri}
+                  onPress={() => handleSelection(uri)}
+                  C={C}
+                />
               ))}
             </View>
           </Animated.View>
@@ -460,175 +482,176 @@ export default function CaptureScreen() {
 const BRACKET = 22;
 const BRACKET_T = 2;
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  inner: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+const createStyles = (C: ThemeColors) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg },
+    inner: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
 
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 22,
-    paddingTop: 8,
-  },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: C.accent,
-    shadowColor: C.accent,
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  headerTitle: {
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 3,
-    color: C.text,
-  },
-  headerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: C.accentGlow,
-    borderWidth: 1,
-    borderColor: C.accent + "30",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  headerBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    color: C.accent,
-  },
+    // Header
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 22,
+      paddingTop: 8,
+    },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+    headerDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: C.accent,
+      shadowColor: C.accent,
+      shadowOpacity: 0.9,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    headerTitle: {
+      fontSize: 13,
+      fontWeight: "800",
+      letterSpacing: 3,
+      color: C.text,
+    },
+    headerBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: C.accentGlow,
+      borderWidth: 1,
+      borderColor: C.accent + "30",
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+    },
+    headerBadgeText: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 1.2,
+      color: C.accent,
+    },
 
-  // Drop zone
-  dropZone: {
-    width: "100%",
-    height: 200,
-    borderRadius: 18,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    marginBottom: 14,
-    position: "relative",
-    gap: 10,
-  },
-  dropScan: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-    backgroundColor: C.accent + "60",
-    shadowColor: C.accent,
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  dropIconWrap: { marginBottom: 4 },
-  dropIconOuter: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: C.accentGlow,
-    borderWidth: 1,
-    borderColor: C.accent + "25",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dropIconInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: C.surfaceRaised,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dropTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: C.text,
-    letterSpacing: 0.2,
-  },
-  dropSub: {
-    fontSize: 11,
-    color: C.textSub,
-    textAlign: "center",
-    paddingHorizontal: 24,
-    lineHeight: 17,
-  },
+    // Drop zone
+    dropZone: {
+      width: "100%",
+      height: 200,
+      borderRadius: 18,
+      backgroundColor: C.surface,
+      borderWidth: 1,
+      borderColor: C.border,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      marginBottom: 14,
+      position: "relative",
+      gap: 10,
+    },
+    dropScan: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 1.5,
+      backgroundColor: C.accent + "60",
+      shadowColor: C.accent,
+      shadowOpacity: 0.8,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    dropIconWrap: { marginBottom: 4 },
+    dropIconOuter: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: C.accentGlow,
+      borderWidth: 1,
+      borderColor: C.accent + "25",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dropIconInner: {
+      width: 44,
+      height: 44,
+      borderRadius: 13,
+      backgroundColor: C.surfaceRaised,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dropTitle: {
+      fontSize: 15,
+      fontWeight: "800",
+      color: C.text,
+      letterSpacing: 0.2,
+    },
+    dropSub: {
+      fontSize: 11,
+      color: C.textSub,
+      textAlign: "center",
+      paddingHorizontal: 24,
+      lineHeight: 17,
+    },
 
-  // Corner brackets
-  bracket: { position: "absolute", width: BRACKET, height: BRACKET, zIndex: 5 },
-  bH: {
-    position: "absolute",
-    width: BRACKET,
-    height: BRACKET_T,
-    backgroundColor: C.accent,
-    top: 0,
-    left: 0,
-  },
-  bV: {
-    position: "absolute",
-    width: BRACKET_T,
-    height: BRACKET,
-    backgroundColor: C.accent,
-    top: 0,
-    left: 0,
-  },
+    // Corner brackets
+    bracket: { position: "absolute", width: BRACKET, height: BRACKET, zIndex: 5 },
+    bH: {
+      position: "absolute",
+      width: BRACKET,
+      height: BRACKET_T,
+      backgroundColor: C.accent,
+      top: 0,
+      left: 0,
+    },
+    bV: {
+      position: "absolute",
+      width: BRACKET_T,
+      height: BRACKET,
+      backgroundColor: C.accent,
+      top: 0,
+      left: 0,
+    },
 
-  // Action row
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: C.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 28,
-    overflow: "hidden",
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-  },
-  actionIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: C.accentGlow,
-    borderWidth: 1,
-    borderColor: C.accent + "25",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionBtnLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.4,
-    color: C.text,
-    marginBottom: 2,
-  },
-  actionBtnSub: { fontSize: 10, color: C.textSub },
-  actionDivider: { width: 1, height: 40, backgroundColor: C.border },
+    // Action row
+    actionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      marginBottom: 28,
+      overflow: "hidden",
+    },
+    actionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+    },
+    actionIconBg: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: C.accentGlow,
+      borderWidth: 1,
+      borderColor: C.accent + "25",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionBtnLabel: {
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 1.4,
+      color: C.text,
+      marginBottom: 2,
+    },
+    actionBtnSub: { fontSize: 10, color: C.textSub },
+    actionDivider: { width: 1, height: 40, backgroundColor: C.border },
 
-  // Thumbs
-  thumbGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: THUMB_GAP,
-  },
-});
+    // Thumbs
+    thumbGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: THUMB_GAP,
+    },
+  });

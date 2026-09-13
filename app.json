@@ -42,7 +42,10 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "minSdkVersion": 24,
-            "buildToolsVersion": "35.0.0"
+            "buildToolsVersion": "35.0.0",
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "useLegacyPackaging": true
           }
         }
       ],
@@ -53,9 +56,9 @@
           "image": "./assets/images/Aedex.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0B0E14",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0B0E14"
           }
         }
       ],

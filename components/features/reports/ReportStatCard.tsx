@@ -1,24 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-
-// ─── Colour tokens ────────────────────────────────────────────────────────────
-const C = {
-  bg: "#0B0E14",
-  surface: "#111520",
-  surfaceRaised: "#161C2D",
-  border: "#1E2640",
-  text: "#E8EDF8",
-  textSub: "#697A9B",
-  textDim: "#3C4A66",
-  accent: "#4F8EF7",
-  accentGlow: "#4F8EF715",
-  danger: "#FF4D6A",
-  dangerGlow: "#FF4D6A15",
-  safe: "#00C896",
-  safeGlow: "#00C89615",
-  warn: "#F5A623",
-  warnGlow: "#F5A62315",
-};
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 interface StatsProps {
   total: number;
@@ -74,11 +56,13 @@ const StatCell = ({
   label,
   color,
   glowColor,
+  textColor,
 }: {
   value: number;
   label: string;
   color: string;
   glowColor: string;
+  textColor: string;
 }) => (
   <View
     style={[
@@ -87,7 +71,7 @@ const StatCell = ({
     ]}
   >
     <CountUp value={value} color={color} size={24} />
-    <Text style={cell.label}>{label}</Text>
+    <Text style={[cell.label, { color: textColor }]}>{label}</Text>
     {/* Bottom accent line */}
     <View style={[cell.line, { backgroundColor: color }]} />
   </View>
@@ -107,7 +91,6 @@ const cell = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1.4,
-    color: C.textSub,
     marginTop: 5,
     textTransform: "uppercase",
   },
@@ -128,6 +111,8 @@ export default function ReportStatsCard({
   active,
   pending,
 }: StatsProps) {
+  const { colors: C } = useTheme();
+
   // Fade + slide in on mount
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(10)).current;
@@ -148,6 +133,8 @@ export default function ReportStatsCard({
       }),
     ]).start();
   }, []);
+
+  const styles = useMemo(() => createStyles(C), [C]);
 
   return (
     <Animated.View
@@ -188,109 +175,113 @@ export default function ReportStatsCard({
           label="Resolved"
           color={C.safe}
           glowColor={C.safeGlow}
+          textColor={C.textSub}
         />
         <StatCell
           value={active}
           label="Active"
           color={C.danger}
           glowColor={C.dangerGlow}
+          textColor={C.textSub}
         />
         <StatCell
           value={pending}
           label="Pending"
           color={C.warn}
           glowColor={C.warnGlow}
+          textColor={C.textSub}
         />
       </View>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: C.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 20,
-    overflow: "hidden",
-  },
+const createStyles = (C: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: C.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: C.border,
+      marginHorizontal: 20,
+      marginBottom: 24,
+      padding: 20,
+      overflow: "hidden",
+    },
 
-  // Header
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionDash: {
-    width: 20,
-    height: 2,
-    backgroundColor: C.accent,
-    borderRadius: 1,
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    color: C.textSub,
-  },
-  livePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: C.safeGlow,
-    borderWidth: 1,
-    borderColor: C.safe + "40",
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-    borderRadius: 7,
-  },
-  liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: C.safe,
-    shadowColor: C.safe,
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  liveText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-    color: C.safe,
-  },
+    // Header
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+    sectionDash: {
+      width: 20,
+      height: 2,
+      backgroundColor: C.accent,
+      borderRadius: 1,
+    },
+    sectionLabel: {
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 2,
+      color: C.textSub,
+    },
+    livePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: C.safeGlow,
+      borderWidth: 1,
+      borderColor: C.safe + "40",
+      paddingVertical: 4,
+      paddingHorizontal: 9,
+      borderRadius: 7,
+    },
+    liveDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: C.safe,
+      shadowColor: C.safe,
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    liveText: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 1.2,
+      color: C.safe,
+    },
 
-  // Total
-  totalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 20,
-  },
-  totalMeta: { gap: 6 },
-  totalLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: C.textSub,
-    letterSpacing: 1.5,
-    lineHeight: 16,
-  },
-  totalAccentBar: {
-    width: 32,
-    height: 2,
-    backgroundColor: C.accent,
-    borderRadius: 1,
-  },
+    // Total
+    totalRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 20,
+    },
+    totalMeta: { gap: 6 },
+    totalLabel: {
+      fontSize: 11,
+      fontWeight: "800",
+      color: C.textSub,
+      letterSpacing: 1.5,
+      lineHeight: 16,
+    },
+    totalAccentBar: {
+      width: 32,
+      height: 2,
+      backgroundColor: C.accent,
+      borderRadius: 1,
+    },
 
-  // Divider
-  hdivider: { height: 1, backgroundColor: C.border, marginBottom: 14 },
+    // Divider
+    hdivider: { height: 1, backgroundColor: C.border, marginBottom: 14 },
 
-  // Cells
-  cellRow: { flexDirection: "row", gap: 8 },
-});
+    // Cells
+    cellRow: { flexDirection: "row", gap: 8 },
+  });

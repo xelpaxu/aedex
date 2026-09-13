@@ -2,86 +2,117 @@ import { useAuth, useOAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { useWarmUpBrowser } from "../../hooks/useWarmUpBrowser";
-
-// ─── Colour tokens ─────────────────────────────────────────────────────────────
-const C = {
-  bg: "#0B0E14",
-  surface: "#111520",
-  surfaceRaised: "#161C2D",
-  border: "#1E2640",
-  borderBright: "#2E3A5C",
-  text: "#E8EDF8",
-  textSub: "#697A9B",
-  textDim: "#3C4A66",
-  accent: "#4F8EF7",
-  accentGlow: "#4F8EF720",
-  warn: "#F5A623",
-  warnGlow: "#F5A62318",
-};
 
 WebBrowser.maybeCompleteAuthSession();
 
-// ─── Social button ─────────────────────────────────────────────────────────────
+// ─── Real Brand Logos ─────────────────────────────────────────────────────────
+function GoogleLogo({ size = 20 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <Path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <Path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+        fill="#FBBC05"
+      />
+      <Path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+        fill="#EA4335"
+      />
+    </Svg>
+  );
+}
+
+function FacebookLogo({ size = 20 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
+        fill="#1877F2"
+      />
+    </Svg>
+  );
+}
+
 type SocialBtnProps = {
   onPress: () => void;
   label: string;
   sublabel: string;
-  iconChar: string;
-  iconColor: string;
+  icon: React.ReactNode;
   surfaceColor?: string;
   borderColor?: string;
   accentColor?: string;
+  C: ThemeColors;
 };
 
 function SocialBtn({
   onPress,
   label,
   sublabel,
-  iconChar,
-  iconColor,
-  surfaceColor = C.surface,
-  borderColor = C.border,
-  accentColor = C.text,
+  icon,
+  surfaceColor,
+  borderColor,
+  accentColor,
+  C,
 }: SocialBtnProps) {
+  const bg = surfaceColor ?? C.surface;
+  const border = borderColor ?? C.border;
+  const textCol = accentColor ?? C.text;
+
   return (
     <TouchableOpacity
-      style={[styles.socialBtn, { backgroundColor: surfaceColor, borderColor }]}
+      style={[btnStyles.socialBtn, { backgroundColor: bg, borderColor: border }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.socialBtnIcon, { borderColor }]}>
-        <Text style={[styles.socialBtnIconText, { color: iconColor }]}>
-          {iconChar}
-        </Text>
+      <View
+        style={[
+          btnStyles.socialBtnIcon,
+          { backgroundColor: C.surfaceRaised, borderColor: border },
+        ]}
+      >
+        {icon}
       </View>
-      <View style={styles.socialBtnLabels}>
-        <Text style={[styles.socialBtnLabel, { color: accentColor }]}>
+      <View style={btnStyles.socialBtnLabels}>
+        <Text style={[btnStyles.socialBtnLabel, { color: textCol }]}>
           {label}
         </Text>
-        <Text style={styles.socialBtnSublabel}>{sublabel}</Text>
+        <Text style={[btnStyles.socialBtnSublabel, { color: C.textSub }]}>
+          {sublabel}
+        </Text>
       </View>
-      <Text style={[styles.socialBtnChevron, { color: C.textDim }]}>›</Text>
+      <Text style={[btnStyles.socialBtnChevron, { color: C.textDim }]}>›</Text>
     </TouchableOpacity>
   );
 }
 
-// ─── Step indicator ────────────────────────────────────────────────────────────
-function StepDot({ active }: { active?: boolean }) {
+function StepDot({ active, C }: { active?: boolean; C: ThemeColors }) {
   return (
     <View
       style={[
-        styles.stepDot,
+        btnStyles.stepDot,
+        { backgroundColor: C.border },
         active && {
           backgroundColor: C.accent,
           shadowColor: C.accent,
@@ -94,308 +125,12 @@ function StepDot({ active }: { active?: boolean }) {
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
-export default function SignupScreen() {
-  useWarmUpBrowser();
-  const router = useRouter();
-  const { isSignedIn, isLoaded } = useAuth();
-
-  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: facebookAuth } = useOAuth({
-    strategy: "oauth_facebook",
-  });
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) router.replace("/" as any);
-  }, [isSignedIn, isLoaded, router]);
-
-  const onSelectAuth = useCallback(
-    async (strategy: "google" | "facebook") => {
-      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
-      try {
-        const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "moskito" }),
-        });
-        if (createdSessionId && setActive) {
-          await setActive({ session: createdSessionId });
-          router.replace("/" as any);
-        }
-      } catch (err) {
-        console.error("OAuth Error:", err);
-      }
-    },
-    [googleAuth, facebookAuth, router],
-  );
-
-  if (!isLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>INITIALISING</Text>
-      </View>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
-
-      <View style={styles.screen}>
-        {/* ── Back button ── */}
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.7}>
-            <Text style={styles.backBtnChevron}>‹</Text>
-            <Text style={styles.backBtnLabel}>Back to login</Text>
-          </TouchableOpacity>
-        </Link>
-
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          {/* Onboarding step indicator */}
-          <View style={styles.stepRow}>
-            <StepDot active />
-            <StepDot />
-            <StepDot />
-            <Text style={styles.stepLabel}>Step 1 of 3 — Create account</Text>
-          </View>
-
-          {/* Logo mark */}
-          <View style={styles.logoWrap}>
-            {/* Outer ring */}
-            <View style={styles.logoRing}>
-              <View style={styles.logoDot} />
-            </View>
-          </View>
-
-          {/* Tag */}
-          <View style={styles.tagWrap}>
-            <View style={styles.tagDot} />
-            <Text style={styles.tagText}>NEW NODE REGISTRATION</Text>
-          </View>
-
-          <Text style={styles.heroTitle}>Create your{"\n"}account</Text>
-          <Text style={styles.heroSub}>
-            Join the Moskito vector surveillance network. Choose a method below
-            to register your field identity.
-          </Text>
-
-          {/* Info strip */}
-          <View style={styles.infoStrip}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>✦</Text>
-              <Text style={styles.infoText}>Free to join</Text>
-            </View>
-            <View style={styles.infoSep} />
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>✦</Text>
-              <Text style={styles.infoText}>Encrypted data</Text>
-            </View>
-            <View style={styles.infoSep} />
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>✦</Text>
-              <Text style={styles.infoText}>No spam</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Auth buttons ── */}
-        <View style={styles.cardSection}>
-          <SocialBtn
-            onPress={() => onSelectAuth("google")}
-            label="Sign up with Google"
-            sublabel="Register using your Google account"
-            iconChar="G"
-            iconColor="#4285F4"
-          />
-
-          <SocialBtn
-            onPress={() => onSelectAuth("facebook")}
-            label="Sign up with Facebook"
-            sublabel="Register using your Facebook account"
-            iconChar="f"
-            iconColor="#1877F2"
-            surfaceColor="#0F1E3A"
-            borderColor="#1D3060"
-          />
-        </View>
-
-        {/* ── Terms notice ── */}
-        <Text style={styles.terms}>
-          By creating an account you agree to our{" "}
-          <Text style={{ color: C.accent }}>Terms of Service</Text> and{" "}
-          <Text style={{ color: C.accent }}>Privacy Policy</Text>.
-        </Text>
-
-        {/* ── Footer ── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <Link href="/(auth)/login" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Log In</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: C.bg,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 14,
-  },
-  loadingText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 3,
-    color: C.textSub,
-  },
-
-  screen: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-
-  // ── Back button
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingTop: 12,
-    paddingBottom: 4,
-    alignSelf: "flex-start",
-  },
-  backBtnChevron: { fontSize: 20, color: C.textSub, lineHeight: 22 },
-  backBtnLabel: { fontSize: 12, fontWeight: "600", color: C.textSub },
-
-  // ── Step dots
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 24,
-  },
+const btnStyles = StyleSheet.create({
   stepDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: C.border,
   },
-  stepLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: C.textDim,
-    letterSpacing: 0.5,
-    marginLeft: 6,
-  },
-
-  // ── Hero
-  hero: { flex: 1, justifyContent: "center", paddingBottom: 8 },
-
-  logoWrap: {
-    width: 60,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 22,
-  },
-  logoRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: C.borderBright,
-    backgroundColor: C.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    backgroundColor: C.accent,
-    shadowColor: C.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-
-  // Tag
-  tagWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginBottom: 14,
-  },
-  tagDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: C.warn,
-    shadowColor: C.warn,
-    shadowOpacity: 0.9,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  tagText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 2,
-    color: C.warn,
-    textTransform: "uppercase",
-  },
-
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: C.text,
-    lineHeight: 38,
-    letterSpacing: -0.5,
-    marginBottom: 12,
-  },
-  heroSub: {
-    fontSize: 13,
-    color: C.textSub,
-    lineHeight: 21,
-    fontWeight: "400",
-    maxWidth: 300,
-    marginBottom: 20,
-  },
-
-  // Info strip
-  infoStrip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    gap: 0,
-  },
-  infoItem: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  infoSep: { width: 1, height: 14, backgroundColor: C.border },
-  infoIcon: { fontSize: 8, color: C.accent },
-  infoText: { fontSize: 10, fontWeight: "600", color: C.textSub },
-
-  // ── Card section
-  cardSection: { gap: 10, marginTop: 24 },
-
   socialBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -408,35 +143,486 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: "#161C2D",
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  socialBtnIconText: { fontSize: 16, fontWeight: "800" },
   socialBtnLabels: { flex: 1, gap: 2 },
-  socialBtnLabel: { fontSize: 14, fontWeight: "700", color: C.text },
-  socialBtnSublabel: { fontSize: 10, color: C.textSub, fontWeight: "500" },
-  socialBtnChevron: { fontSize: 20, color: C.textDim, marginRight: 2 },
-
-  // ── Terms
-  terms: {
-    fontSize: 10,
-    color: C.textDim,
-    textAlign: "center",
-    lineHeight: 16,
-    marginTop: 16,
-    paddingHorizontal: 8,
-  },
-
-  // ── Footer
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 16,
-  },
-  footerText: { fontSize: 12, color: C.textSub },
-  footerLink: { fontSize: 12, fontWeight: "700", color: C.accent },
+  socialBtnLabel: { fontSize: 14, fontWeight: "700" },
+  socialBtnSublabel: { fontSize: 10, fontWeight: "500" },
+  socialBtnChevron: { fontSize: 20, marginRight: 2 },
 });
+
+export default function SignupScreen() {
+  useWarmUpBrowser();
+  const router = useRouter();
+  const { colors: C, isDark } = useTheme();
+  const { isSignedIn, isLoaded } = useAuth();
+
+  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow: facebookAuth } = useOAuth({
+    strategy: "oauth_facebook",
+  });
+
+  const isTanodRegistration = useRef(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !isProcessing) {
+      if (isTanodRegistration.current) {
+        isTanodRegistration.current = false;
+        router.replace({
+          pathname: "/(auth)/complete-profile",
+          params: { role: "tanod" },
+        });
+      } else {
+        router.replace({
+          pathname: "/(auth)/complete-profile",
+          params: { role: "citizen" },
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn]);
+
+  const onSelectAuth = useCallback(
+    async (strategy: "google" | "facebook") => {
+      if (isProcessing) return;
+
+      setIsProcessing(true);
+      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
+
+      try {
+        const { createdSessionId, setActive } = await selectedAuth({
+          redirectUrl: Linking.createURL("/", { scheme: "moskito" }),
+        });
+
+        if (createdSessionId && setActive) {
+          await setActive({ session: createdSessionId });
+          router.replace({
+            pathname: "/(auth)/complete-profile",
+            params: { role: "citizen" },
+          } as any);
+        }
+      } catch (err) {
+        console.error("OAuth Error:", err);
+        Alert.alert("Sign Up Error", "Failed to sign up. Please try again.");
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [googleAuth, facebookAuth, router, isProcessing],
+  );
+
+  const handleTanodRegister = useCallback(
+    async (strategy: "google" | "facebook") => {
+      if (isProcessing) return;
+
+      setIsProcessing(true);
+      isTanodRegistration.current = true;
+      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
+
+      try {
+        const { createdSessionId, setActive } = await selectedAuth({
+          redirectUrl: Linking.createURL("/", { scheme: "moskito" }),
+        });
+
+        if (createdSessionId && setActive) {
+          await setActive({ session: createdSessionId });
+          router.replace({
+            pathname: "/(auth)/complete-profile",
+            params: { role: "tanod" },
+          } as any);
+        }
+      } catch (err) {
+        console.error("OAuth Error:", err);
+        Alert.alert(
+          "Registration Error",
+          "Failed to register as Tanod. Please try again.",
+        );
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [googleAuth, facebookAuth, router, isProcessing],
+  );
+
+  const styles = useMemo(() => createStyles(C), [C]);
+
+  if (!isLoaded || isProcessing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={C.accent} />
+        <Text style={styles.loadingText}>
+          {isProcessing ? "AUTHENTICATING..." : "LOADING..."}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={C.bg}
+      />
+
+      <View style={styles.screen}>
+        {/* ── Top Bar ── */}
+        <View style={styles.topBar}>
+          <View style={styles.stepGroup}>
+            <StepDot active C={C} />
+            <StepDot C={C} />
+            <Text style={styles.stepLabel}>STEP 1 OF 2</Text>
+          </View>
+        </View>
+
+        {/* ── Hero ── */}
+        <View style={styles.hero}>
+          <View style={styles.logoWrap}>
+            <Image
+              source={require("../../assets/logo/aedex.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={styles.tagWrap}>
+            <View style={styles.tagDot} />
+            <Text style={styles.tagText}>NEW ACCOUNT REGISTRATION</Text>
+          </View>
+
+          <Text style={styles.heroTitle}>Join the{"\n"}defense network</Text>
+          <Text style={styles.heroSub}>
+            Create your account to start reporting and monitoring mosquito
+            breeding grounds in your local community.
+          </Text>
+
+          <View style={styles.infoStrip}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoIcon}>◆</Text>
+              <Text style={styles.infoText}>Real-time alerts</Text>
+            </View>
+            <View style={styles.infoSep} />
+            <View style={styles.infoItem}>
+              <Text style={styles.infoIcon}>◆</Text>
+              <Text style={styles.infoText}>AI site detection</Text>
+            </View>
+            <View style={styles.infoSep} />
+            <View style={styles.infoItem}>
+              <Text style={styles.infoIcon}>◆</Text>
+              <Text style={styles.infoText}>Community map</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Auth Buttons ── */}
+        <View style={styles.cardSection}>
+          <SocialBtn
+            onPress={() => onSelectAuth("google")}
+            label="Sign up with Google"
+            sublabel="Fastest — connects your Google profile"
+            icon={<GoogleLogo size={20} />}
+            C={C}
+          />
+
+          <SocialBtn
+            onPress={() => onSelectAuth("facebook")}
+            label="Sign up with Facebook"
+            sublabel="Connect your Facebook identity"
+            icon={<FacebookLogo size={20} />}
+            surfaceColor={isDark ? "#0F1E3A" : "#EEF3FF"}
+            borderColor={isDark ? "#1D3060" : "#D0DEFF"}
+            accentColor={C.text}
+            C={C}
+          />
+
+          <Text style={styles.terms}>
+            By continuing, you agree to the AEDEX Terms of Service and Privacy
+            Policy regarding vector surveillance data.
+          </Text>
+        </View>
+
+        {/* ── Tanod Registration ── */}
+        <View style={styles.tanodSection}>
+          <View style={styles.tanodHeader}>
+            <View style={styles.tanodBadge}>
+              <Text style={styles.tanodBadgeText}>OFFICER PORTAL</Text>
+            </View>
+            <Text style={styles.tanodTitle}>Register as Barangay Tanod</Text>
+            <Text style={styles.tanodSub}>
+              Are you a barangay officer? Register here to get incident triage
+              tools and action tasks.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.tanodBtn}
+            onPress={() => handleTanodRegister("google")}
+            activeOpacity={0.7}
+            disabled={isProcessing}
+          >
+            <View
+              style={[
+                styles.socialBtnIcon,
+                { backgroundColor: C.surfaceRaised, borderColor: C.border },
+              ]}
+            >
+              <GoogleLogo size={20} />
+            </View>
+            <View style={styles.socialBtnLabels}>
+              <Text style={[styles.socialBtnLabel, { color: C.text }]}>
+                Register as Tanod with Google
+              </Text>
+              <Text style={[styles.socialBtnSublabel, { color: C.textSub }]}>
+                Create officer account
+              </Text>
+            </View>
+            <Text style={[styles.socialBtnChevron, { color: C.textDim }]}>
+              ›
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Footer ── */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <Link href="/(auth)/login" asChild>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>Sign In</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const createStyles = (C: ThemeColors) =>
+  StyleSheet.create({
+    stepDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    socialBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    socialBtnIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    socialBtnLabels: { flex: 1, gap: 2 },
+    socialBtnLabel: { fontSize: 14, fontWeight: "700" },
+    socialBtnSublabel: { fontSize: 10, fontWeight: "500" },
+    socialBtnChevron: { fontSize: 20, marginRight: 2 },
+    root: {
+      flex: 1,
+      backgroundColor: C.bg,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: C.bg,
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 14,
+    },
+    loadingText: {
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 3,
+      color: C.textSub,
+    },
+    screen: {
+      flex: 1,
+      paddingHorizontal: 24,
+      paddingBottom: 24,
+    },
+
+    // ── Top Bar
+    topBar: {
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    stepGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    stepLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.5,
+      marginLeft: 6,
+    },
+
+    // ── Hero
+    hero: { flex: 1, justifyContent: "center", paddingBottom: 8 },
+
+    logoWrap: {
+      width: 72,
+      height: 72,
+      backgroundColor: C.surface,
+      borderWidth: 1,
+      borderColor: C.borderBright,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+      padding: 10,
+      shadowColor: C.accent,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    logoImage: {
+      width: "100%",
+      height: "100%",
+    },
+
+    // Tag
+    tagWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      marginBottom: 12,
+    },
+    tagDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: C.warn,
+      shadowColor: C.warn,
+      shadowOpacity: 0.9,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    tagText: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 2,
+      color: C.warn,
+      textTransform: "uppercase",
+    },
+
+    heroTitle: {
+      fontSize: 32,
+      fontWeight: "800",
+      color: C.text,
+      lineHeight: 38,
+      letterSpacing: -0.5,
+      marginBottom: 10,
+    },
+    heroSub: {
+      fontSize: 13,
+      color: C.textSub,
+      lineHeight: 20,
+      fontWeight: "400",
+      maxWidth: 300,
+      marginBottom: 16,
+    },
+
+    // Info strip
+    infoStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surface,
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    infoItem: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 5,
+    },
+    infoSep: { width: 1, height: 14, backgroundColor: C.border },
+    infoIcon: { fontSize: 8, color: C.accent },
+    infoText: { fontSize: 10, fontWeight: "600", color: C.textSub },
+
+    // ── Card Section
+    cardSection: { gap: 10, marginTop: 20 },
+
+    // ── Terms
+    terms: {
+      fontSize: 10,
+      color: C.textDim,
+      textAlign: "center",
+      lineHeight: 16,
+      marginTop: 14,
+      paddingHorizontal: 8,
+    },
+
+    // ── Footer
+    footer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 16,
+    },
+    footerText: { fontSize: 12, color: C.textSub },
+    footerLink: { fontSize: 12, fontWeight: "700", color: C.accent },
+
+    // ── Tanod Section
+    tanodSection: {
+      marginTop: 16,
+      gap: 10,
+    },
+    tanodHeader: {
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    tanodBadge: {
+      backgroundColor: C.warnGlow,
+      borderWidth: 1,
+      borderColor: C.warn + "40",
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 6,
+      marginBottom: 8,
+    },
+    tanodBadgeText: {
+      fontSize: 9,
+      fontWeight: "800",
+      letterSpacing: 1.5,
+      color: C.warn,
+    },
+    tanodTitle: {
+      fontSize: 16,
+      fontWeight: "800",
+      color: C.text,
+      marginBottom: 4,
+    },
+    tanodSub: {
+      fontSize: 12,
+      color: C.textSub,
+      textAlign: "center",
+      lineHeight: 18,
+    },
+    tanodBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: C.warn + "40",
+      backgroundColor: C.warnGlow,
+    },
+  });

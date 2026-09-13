@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { useQuery } from "convex/react";
 import { Tabs, useRouter } from "expo-router";
-import { BarChart2, Bell, Map, ScanLine, Settings2 } from "lucide-react-native";
+import { BarChart2, Bell, LayoutDashboard, Map, Settings2, Shield } from "lucide-react-native";
 import React, { useMemo } from "react";
 import {
   Image,
@@ -12,11 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { ThemeColors, useTheme } from "@/context/ThemeContext";
 import { api } from "../../../../convex/_generated/api";
+import { ThemeColors, useTheme } from "@/context/ThemeContext";
 
-// ─── Custom tab bar button (centre capture tab for citizen) ────────────────────
-const CaptureTabIcon = ({ focused }: { focused: boolean }) => {
+// ─── Custom centre tab button for Tanod Dashboard ────────────────────────────
+const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
   const { colors: C } = useTheme();
   return (
     <View
@@ -33,9 +33,9 @@ const CaptureTabIcon = ({ focused }: { focused: boolean }) => {
           focused && { backgroundColor: "transparent" },
         ]}
       >
-        <ScanLine
+        <LayoutDashboard
           color={focused ? "#FFFFFF" : C.textSub}
-          size={35}
+          size={32}
           strokeWidth={2.5}
         />
       </View>
@@ -99,8 +99,8 @@ const ti = StyleSheet.create({
   },
 });
 
-// ─── Citizen Layout ───────────────────────────────────────────────────────────
-export default function TabLayout() {
+// ─── Tanod Layout ─────────────────────────────────────────────────────────────
+export default function TanodTabLayout() {
   const { colors: C } = useTheme();
   const router = useRouter();
   const { user } = useUser();
@@ -109,6 +109,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName="dashboard"
       screenOptions={{
         headerShown: true,
 
@@ -126,19 +127,20 @@ export default function TabLayout() {
                   uri:
                     user?.imageUrl ||
                     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      currentUser?.fullName || "User"
+                      currentUser?.fullName || "Tanod Officer"
                     )}&background=1a2240&color=4F8EF7&bold=true`,
                 }}
                 style={styles.avatarImg}
               />
-              {/* Online dot */}
+              {/* Officer active badge */}
               <View style={styles.onlineDot} />
             </TouchableOpacity>
 
-            {/* Screen title */}
+            {/* Screen title with Tanod Shield */}
             <View style={styles.titleWrap}>
+              <Shield size={14} color={C.accent} strokeWidth={2.5} />
               <Text style={styles.headerTitle}>
-                {options.title?.toUpperCase()}
+                {options.title?.toUpperCase() || "TANOD DASHBOARD"}
               </Text>
             </View>
 
@@ -160,7 +162,7 @@ export default function TabLayout() {
           </View>
         ),
 
-        // ── Tab bar ────────────────────────────────────────────────────────
+        // ── Floating Tab bar for Tanod ────────────────────────────────────
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
         tabBarActiveTintColor: C.accent,
@@ -173,21 +175,23 @@ export default function TabLayout() {
       <Tabs.Screen
         name="map"
         options={{
-          title: "Map View",
+          title: "Tanod Map",
           tabBarIcon: ({ focused }) => <TabIcon Icon={Map} focused={focused} />,
         }}
       />
+
       <Tabs.Screen
-        name="capture"
+        name="dashboard"
         options={{
-          title: "Capture",
-          tabBarIcon: ({ focused }) => <CaptureTabIcon focused={focused} />,
+          title: "Tanod Dashboard",
+          tabBarIcon: ({ focused }) => <DashboardTabIcon focused={focused} />,
         }}
       />
+
       <Tabs.Screen
         name="reports"
         options={{
-          title: "Reports",
+          title: "Assigned Reports",
           tabBarIcon: ({ focused }) => (
             <TabIcon Icon={BarChart2} focused={focused} />
           ),
@@ -231,10 +235,10 @@ const createStyles = (C: ThemeColors) =>
       width: 10,
       height: 10,
       borderRadius: 5,
-      backgroundColor: C.safe,
+      backgroundColor: C.accent,
       borderWidth: 2,
       borderColor: C.bg,
-      shadowColor: C.safe,
+      shadowColor: C.accent,
       shadowOpacity: 0.9,
       shadowRadius: 4,
       elevation: 4,
@@ -245,9 +249,9 @@ const createStyles = (C: ThemeColors) =>
       gap: 7,
     },
     headerTitle: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "800",
-      letterSpacing: 3,
+      letterSpacing: 2.5,
       color: C.text,
     },
     actions: {
