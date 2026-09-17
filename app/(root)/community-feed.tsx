@@ -135,7 +135,6 @@ const ListHeader = ({
 }) => (
   <View style={lh.wrap}>
     <View style={lh.left}>
-      <Text style={[lh.eyebrow, { color: C.accent }]}>LIVE FIELD DATA</Text>
       <Text style={[lh.title, { color: C.text }]}>Community Reports</Text>
       {barangay && barangay !== "All" && (
         <View style={lh.barangayRow}>
@@ -154,7 +153,7 @@ const ListHeader = ({
       ]}
     >
       <Text style={[lh.countNum, { color: C.accent }]}>{count}</Text>
-      <Text style={[lh.countLabel, { color: C.textSub }]}>POSTS</Text>
+      <Text style={[lh.countLabel, { color: C.textSub }]}>Posts</Text>
     </View>
   </View>
 );
@@ -167,15 +166,9 @@ const lh = StyleSheet.create({
     paddingBottom: 20,
   },
   left: { flex: 1 },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 2,
-    marginBottom: 6,
-  },
   title: {
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "700",
     lineHeight: 34,
     letterSpacing: -0.5,
   },
@@ -187,11 +180,11 @@ const lh = StyleSheet.create({
     paddingHorizontal: 16,
     marginLeft: 16,
   },
-  countNum: { fontSize: 22, fontWeight: "800" },
+  countNum: { fontSize: 22, fontWeight: "700" },
   countLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
     marginTop: 2,
   },
   barangayRow: {
@@ -245,7 +238,7 @@ const es = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  title: { fontSize: 16, fontWeight: "800" },
+  title: { fontSize: 16, fontWeight: "700" },
   sub: { fontSize: 12, textAlign: "center", lineHeight: 18 },
 });
 
@@ -409,13 +402,13 @@ export default function CommunityFeedScreen() {
         </TouchableOpacity>
 
         <View style={styles.navCenter}>
-          <View style={styles.navDash} />
-          <Text style={styles.navTitle}>COMMUNITY</Text>
+
+          <Text style={styles.navTitle}>Community</Text>
         </View>
 
         <View style={styles.navBadge}>
           <Zap color={C.accent} size={10} />
-          <Text style={styles.navBadgeText}>LIVE</Text>
+          <Text style={styles.navBadgeText}>Live</Text>
         </View>
       </View>
 
@@ -547,16 +540,10 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
     },
     navCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
-    navDash: {
-      width: 16,
-      height: 2,
-      backgroundColor: C.accent,
-      borderRadius: 1,
-    },
     navTitle: {
-      fontSize: 11,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 20,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
     navBadge: {
@@ -571,9 +558,9 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 8,
     },
     navBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.accent,
     },
 

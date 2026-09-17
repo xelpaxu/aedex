@@ -78,7 +78,7 @@ const TabIcon = ({
 }) => {
   const { colors: C } = useTheme();
   return (
-    <View style={[ti.wrap, focused && { backgroundColor: C.accentGlow }]}>
+    <View style={ti.wrap}>
       <Icon
         color={focused ? C.accent : C.textDim}
         size={size}
@@ -238,7 +238,7 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.accent,
       borderWidth: 2,
       borderColor: C.bg,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.9,
       shadowRadius: 4,
       elevation: 4,
@@ -250,8 +250,8 @@ const createStyles = (C: ThemeColors) =>
     },
     headerTitle: {
       fontSize: 14,
-      fontWeight: "800",
-      letterSpacing: 2.5,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
     actions: {

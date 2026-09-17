@@ -46,7 +46,7 @@ export default function HistoryItemCard({
         </View>
         {isUrgent && (
           <View style={styles.urgentBadge}>
-            <Text style={styles.urgentText}>URGENT</Text>
+            <Text style={styles.urgentText}>Urgent</Text>
           </View>
         )}
       </View>
@@ -109,7 +109,7 @@ const createStyles = (C: ThemeColors) =>
     },
     urgentText: {
       color: "#FFFFFF",
-      fontSize: 8,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
     },
   });

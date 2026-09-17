@@ -456,7 +456,7 @@ const createStyles = (C: ThemeColors) =>
     },
     headerTitle: {
       fontSize: 15,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       flexShrink: 1,
     },
@@ -470,9 +470,9 @@ const createStyles = (C: ThemeColors) =>
       borderWidth: 1,
     },
     statusText: {
-      fontSize: 8,
-      fontWeight: "800",
-      letterSpacing: 0.8,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     headerSub: {
       fontSize: 11,
@@ -519,7 +519,7 @@ const createStyles = (C: ThemeColors) =>
     },
     emptyTitle: {
       fontSize: 15,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
     },
     emptySub: {
@@ -567,7 +567,7 @@ const createStyles = (C: ThemeColors) =>
     },
     commentAuthor: {
       fontSize: 12,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
     },
     tanodBadge: {
@@ -582,18 +582,18 @@ const createStyles = (C: ThemeColors) =>
       borderColor: C.accent + "30",
     },
     tanodBadgeText: {
-      fontSize: 8,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.accent,
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
     commentBarangayText: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       fontWeight: "600",
     },
     commentTime: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       fontWeight: "500",
       marginLeft: 6,
@@ -646,7 +646,7 @@ const createStyles = (C: ThemeColors) =>
     },
     sendBtnActive: {
       backgroundColor: C.accent,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.35,
       shadowRadius: 6,
       elevation: 4,

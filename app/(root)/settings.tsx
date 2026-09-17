@@ -539,7 +539,7 @@ export default function SettingsScreen() {
               ]}
             >
               <Text style={[styles.versionTagText, { color: colors.accent }]}>
-                STABLE
+                Stable
               </Text>
             </View>
           </View>
@@ -559,7 +559,7 @@ export default function SettingsScreen() {
         >
           <LogOut color={colors.danger} size={18} strokeWidth={2.5} />
           <Text style={[styles.logoutText, { color: colors.danger }]}>
-            LOG OUT OF ACCOUNT
+            Log out of account
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 0.3,
   },
   quickThemeBtn: {
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 17,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   userEmail: {
     fontSize: 12,
@@ -665,9 +665,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.6,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   editProfileBtn: {
     flexDirection: "row",
@@ -680,8 +680,8 @@ const styles = StyleSheet.create({
   },
   editProfileBtnText: {
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    fontWeight: "700",
+    letterSpacing: 0.3,
     flex: 1,
     marginLeft: 10,
   },
@@ -692,9 +692,9 @@ const styles = StyleSheet.create({
     marginBottom: -6,
   },
   sectionTitle: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 
   // Cards Group
@@ -725,10 +725,10 @@ const styles = StyleSheet.create({
   },
   themeOptionTitle: {
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   themeOptionSub: {
-    fontSize: 10,
+    fontSize: 11,
     lineHeight: 14,
   },
 
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   settingSub: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
   rowDivider: {
@@ -771,9 +771,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   versionTagText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 
   // Logout Card
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.2,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });

@@ -54,8 +54,8 @@ const SectionLabel = ({
   C: ThemeColors;
 }) => (
   <View style={sl.row}>
-    <View style={[sl.dash, { backgroundColor: C.accent }]} />
-    <Text style={[sl.text, { color: C.textSub }]}>{children}</Text>
+
+    <Text accessibilityRole="header" style={[sl.text, { color: C.text }]}>{children}</Text>
   </View>
 );
 const sl = StyleSheet.create({
@@ -66,8 +66,7 @@ const sl = StyleSheet.create({
     marginBottom: 14,
     marginHorizontal: 20,
   },
-  dash: { width: 20, height: 2, borderRadius: 1 },
-  text: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  text: { fontSize: 16, fontWeight: "600" },
 });
 
 // ─── Priority highlight card ──────────────────────────────────────────────────
@@ -160,30 +159,9 @@ const HighlightCard = ({
             </Text>
           </View>
           <View style={hc.viewRow}>
-            <Text style={[hc.viewText, { color: C.accent }]}>VIEW REPORT</Text>
+            <Text style={[hc.viewText, { color: C.accent }]}>View report</Text>
             <ChevronRight size={12} color={C.accent} strokeWidth={3} />
           </View>
-        </View>
-
-        {/* Corner bracket TL */}
-        <View style={[hc.bracket, { top: 0, left: 0 }]}>
-          <View style={[hc.bH, { top: 0, left: 0, backgroundColor: C.accent }]} />
-          <View style={[hc.bV, { top: 0, left: 0, backgroundColor: C.accent }]} />
-        </View>
-        {/* Corner bracket BR */}
-        <View style={[hc.bracket, { bottom: 0, right: 0 }]}>
-          <View
-            style={[
-              hc.bH,
-              { bottom: 0, right: 0, left: undefined, backgroundColor: C.accent },
-            ]}
-          />
-          <View
-            style={[
-              hc.bV,
-              { bottom: 0, right: 0, left: undefined, backgroundColor: C.accent },
-            ]}
-          />
         </View>
       </Pressable>
     </Animated.View>
@@ -192,7 +170,7 @@ const HighlightCard = ({
 const hc = StyleSheet.create({
   wrap: {
     width: CARD_W,
-    height: 380,
+    height: 280,
     borderRadius: 20,
     overflow: "hidden",
     marginRight: 14,
@@ -217,7 +195,7 @@ const hc = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  badgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 1 },
+  badgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
   timePill: {
     backgroundColor: "rgba(11,14,20,0.6)",
     paddingVertical: 4,
@@ -227,7 +205,7 @@ const hc = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
   },
   timeText: {
-    fontSize: 10,
+    fontSize: 11,
     color: "rgba(255,255,255,0.75)",
     fontWeight: "600",
   },
@@ -240,16 +218,13 @@ const hc = StyleSheet.create({
     gap: 8,
   },
   locRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  locText: { fontSize: 17, fontWeight: "800", flex: 1 },
+  locText: { fontSize: 17, fontWeight: "700", flex: 1 },
   viewRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   viewText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.4,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
-  bracket: { position: "absolute", width: 18, height: 18 },
-  bH: { position: "absolute", width: 18, height: 2 },
-  bV: { position: "absolute", width: 2, height: 18 },
 });
 
 // ─── History row ──────────────────────────────────────────────────────────────
@@ -332,7 +307,7 @@ const hr = StyleSheet.create({
   },
   info: { flex: 1, gap: 4 },
   loc: { fontSize: 13, fontWeight: "700" },
-  date: { fontSize: 10 },
+  date: { fontSize: 11 },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -351,7 +326,7 @@ const hr = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  statusText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  statusText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });
 
 // ─── Urgent notice row ────────────────────────────────────────────────────────
@@ -412,7 +387,7 @@ const ur = StyleSheet.create({
     justifyContent: "center",
   },
   info: { flex: 1 },
-  title: { fontSize: 13, fontWeight: "800", marginBottom: 2 },
+  title: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
   sub: { fontSize: 11 },
 });
 
@@ -474,11 +449,11 @@ export default function ReportsScreen() {
           style={{
             color: C.textSub,
             fontSize: 11,
-            letterSpacing: 1.5,
+            letterSpacing: 0.3,
             marginTop: 12,
           }}
         >
-          LOADING DATA
+          Loading data
         </Text>
       </View>
     );
@@ -492,8 +467,8 @@ export default function ReportsScreen() {
       {/* ── TOP NAV ── */}
       <View style={styles.topNav}>
         <View style={styles.navLeft}>
-          <View style={styles.navDot} />
-          <Text style={styles.navTitle}>REPORTS</Text>
+
+          <Text style={styles.navTitle}>Reports</Text>
         </View>
         <View style={styles.navRight}>
           <View style={styles.barangayBadge}>
@@ -505,7 +480,7 @@ export default function ReportsScreen() {
           <View style={styles.navBadge}>
             <Zap color={C.accent} size={10} />
             <Text style={styles.navBadgeText}>
-              {communityReports.length + myReports.length} TOTAL
+              {communityReports.length + myReports.length} Total
             </Text>
           </View>
         </View>
@@ -566,7 +541,6 @@ export default function ReportsScreen() {
           {/* Hero section with Navigation Button */}
           <View style={styles.heroRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>LIVE FIELD DATA</Text>
               <Text style={styles.heroTitle}>Community{"\n"}Reports</Text>
             </View>
 
@@ -586,12 +560,12 @@ export default function ReportsScreen() {
               }}
             >
               <Globe color={C.accent} size={20} strokeWidth={2.5} />
-              <Text style={styles.feedNavText}>OPEN FEED</Text>
+              <Text style={styles.feedNavText}>Open feed</Text>
             </TouchableOpacity>
           </View>
 
           {/* Priority cards */}
-          <SectionLabel C={C}>PRIORITY ALERTS</SectionLabel>
+          <SectionLabel C={C}>Priority alerts</SectionLabel>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -636,7 +610,7 @@ export default function ReportsScreen() {
           {/* Urgent notices */}
           {criticalReports.length > 0 && (
             <>
-              <SectionLabel C={C}>URGENT NOTICES</SectionLabel>
+              <SectionLabel C={C}>Urgent notices</SectionLabel>
               <View style={styles.card}>
                 {criticalReports.map((r, i) => (
                   <UrgentRow
@@ -652,7 +626,7 @@ export default function ReportsScreen() {
           )}
 
           {/* Report history */}
-          <SectionLabel C={C}>RECENT REPORTS</SectionLabel>
+          <SectionLabel C={C}>Recent reports</SectionLabel>
           <View style={styles.card}>
             {myReports.length === 0 ? (
               <View style={styles.emptyInCard}>
@@ -696,20 +670,10 @@ const createStyles = (C: ThemeColors) =>
     },
     navLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
     navRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-    navDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
-      backgroundColor: C.accent,
-      shadowColor: C.accent,
-      shadowOpacity: 0.9,
-      shadowRadius: 6,
-      elevation: 4,
-    },
     navTitle: {
-      fontSize: 13,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 20,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
     feedNavBtn: {
@@ -722,16 +686,16 @@ const createStyles = (C: ThemeColors) =>
       paddingVertical: 12,
       paddingHorizontal: 16,
       gap: 6,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.15,
       shadowRadius: 8,
       elevation: 5,
     },
     feedNavText: {
-      fontSize: 10,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.accent,
-      letterSpacing: 1.5,
+      letterSpacing: 0.3,
     },
     navBadge: {
       flexDirection: "row",
@@ -745,9 +709,9 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 8,
     },
     navBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.accent,
     },
     barangayBadge: {
@@ -762,9 +726,9 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 8,
     },
     barangayBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.safe,
     },
 
@@ -790,7 +754,7 @@ const createStyles = (C: ThemeColors) =>
       marginTop: -4,
       backgroundColor: C.accent,
       borderRadius: 11,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.35,
       shadowRadius: 10,
       elevation: 6,
@@ -818,16 +782,9 @@ const createStyles = (C: ThemeColors) =>
       paddingHorizontal: 20,
       marginBottom: 24,
     },
-    heroEyebrow: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 2,
-      color: C.accent,
-      marginBottom: 6,
-    },
     heroTitle: {
       fontSize: 30,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       lineHeight: 36,
       letterSpacing: -0.5,

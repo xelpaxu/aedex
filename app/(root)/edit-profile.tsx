@@ -234,7 +234,7 @@ export default function EditProfileScreen() {
           <ArrowLeft color={C.text} size={18} strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <Text style={styles.navTitle}>EDIT PROFILE</Text>
+        <Text style={styles.navTitle}>Edit profile</Text>
 
         <TouchableOpacity
           onPress={handleSave}
@@ -308,12 +308,12 @@ export default function EditProfileScreen() {
 
           {/* ── FORM FIELDS ── */}
           <View style={styles.formSection}>
-            <Text style={styles.sectionHeaderTitle}>PERSONAL DETAILS</Text>
+            <Text style={styles.sectionHeaderTitle}>Personal details</Text>
 
             {/* First & Last Name */}
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>FIRST NAME</Text>
+                <Text style={styles.fieldLabel}>First name</Text>
                 <View
                   style={[
                     styles.inputContainer,
@@ -340,7 +340,7 @@ export default function EditProfileScreen() {
               </View>
 
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>LAST NAME</Text>
+                <Text style={styles.fieldLabel}>Last name</Text>
                 <View
                   style={[
                     styles.inputContainer,
@@ -369,7 +369,7 @@ export default function EditProfileScreen() {
 
             {/* Mobile Phone */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>MOBILE PHONE NUMBER</Text>
+              <Text style={styles.fieldLabel}>Mobile phone number</Text>
               <View
                 style={[
                   styles.inputContainer,
@@ -399,7 +399,7 @@ export default function EditProfileScreen() {
           {/* ── BARANGAY LOCATION ── */}
           <View style={styles.formSection}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionHeaderTitle}>SURVEILLANCE BARANGAY</Text>
+              <Text style={styles.sectionHeaderTitle}>Surveillance barangay</Text>
               <Text style={styles.sectionHeaderSub}>Zone Assignment</Text>
             </View>
 
@@ -460,7 +460,7 @@ export default function EditProfileScreen() {
           {isTanod && barangay && (
             <View style={styles.formSection}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeaderTitle}>ASSIGNED TEAM</Text>
+                <Text style={styles.sectionHeaderTitle}>Assigned team</Text>
                 <Text style={styles.sectionHeaderSub}>In {barangay}</Text>
               </View>
 
@@ -554,7 +554,7 @@ export default function EditProfileScreen() {
             ) : (
               <View style={styles.saveBtnContent}>
                 <Save color="#FFFFFF" size={16} strokeWidth={2.5} />
-                <Text style={styles.saveBtnText}>SAVE PROFILE CHANGES</Text>
+                <Text style={styles.saveBtnText}>Save profile changes</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -582,9 +582,9 @@ const createStyles = (C: ThemeColors) =>
       gap: 12,
     },
     loadingText: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
 
@@ -612,8 +612,8 @@ const createStyles = (C: ThemeColors) =>
     },
     navTitle: {
       fontSize: 12,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
     saveNavBtn: {
@@ -685,9 +685,9 @@ const createStyles = (C: ThemeColors) =>
       marginTop: 2,
     },
     roleBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 0.8,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
 
     // Form Sections
@@ -701,9 +701,9 @@ const createStyles = (C: ThemeColors) =>
       gap: 14,
     },
     sectionHeaderTitle: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 1.2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     sectionHeaderRow: {
@@ -712,7 +712,7 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "space-between",
     },
     sectionHeaderSub: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "600",
       color: C.textDim,
     },
@@ -724,9 +724,9 @@ const createStyles = (C: ThemeColors) =>
       gap: 6,
     },
     fieldLabel: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 0.8,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     inputContainer: {
@@ -810,7 +810,7 @@ const createStyles = (C: ThemeColors) =>
       color: C.accent,
     },
     barangayDesc: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textSub,
       marginTop: 1,
     },
@@ -842,12 +842,12 @@ const createStyles = (C: ThemeColors) =>
     },
     emptyTeamsTitle: {
       fontSize: 12,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.warn,
       marginTop: 4,
     },
     emptyTeamsSub: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textSub,
       textAlign: "center",
     },
@@ -859,7 +859,7 @@ const createStyles = (C: ThemeColors) =>
       height: 50,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 10,
@@ -877,14 +877,14 @@ const createStyles = (C: ThemeColors) =>
     },
     saveBtnText: {
       fontSize: 12,
-      fontWeight: "900",
-      letterSpacing: 1.5,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: "#FFFFFF",
     },
     footerNote: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       textAlign: "center",
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
   });

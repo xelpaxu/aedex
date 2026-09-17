@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowRight, Sparkles } from "lucide-react-native";
+import { ArrowRight } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -701,8 +701,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
               end={{ x: 1, y: 0 }}
               style={styles.enterBtnGradient}
             >
-              <Sparkles color="#FFFFFF" size={14} />
-              <Text style={styles.enterBtnText}>ENTER AEDEX</Text>
+              <Text style={styles.enterBtnText}>Open AEDEX</Text>
               <ArrowRight color="#FFFFFF" size={16} strokeWidth={2.5} />
             </LinearGradient>
           </TouchableOpacity>

@@ -263,7 +263,7 @@ export default function CommunityShareModal({
                     Share Full Alert & Diagnostics
                   </Text>
                   <View style={styles.recommendedBadge}>
-                    <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
+                    <Text style={styles.recommendedBadgeText}>Recommended</Text>
                   </View>
                 </View>
                 <Text style={styles.optionDesc}>
@@ -374,7 +374,7 @@ const createStyles = (C: ThemeColors) =>
     },
     headerTitle: {
       fontSize: 15,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       flexShrink: 1,
     },
@@ -388,9 +388,9 @@ const createStyles = (C: ThemeColors) =>
       borderWidth: 1,
     },
     statusText: {
-      fontSize: 8,
-      fontWeight: "800",
-      letterSpacing: 0.8,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     headerSub: {
       fontSize: 11,
@@ -447,7 +447,7 @@ const createStyles = (C: ThemeColors) =>
     },
     optionTitle: {
       fontSize: 14,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
     },
     recommendedBadge: {
@@ -459,10 +459,10 @@ const createStyles = (C: ThemeColors) =>
       borderColor: C.accent + "30",
     },
     recommendedBadgeText: {
-      fontSize: 8,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.accent,
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
     },
     optionDesc: {
       fontSize: 12,

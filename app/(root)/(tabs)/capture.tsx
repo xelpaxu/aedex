@@ -1,8 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
-import { useRouter } from "expo-router";
-import { Camera, Check, Images, Upload, Zap } from "lucide-react-native";
+import { Camera, Check, Images, Upload } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -11,6 +10,7 @@ import {
   Image,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -32,14 +32,13 @@ const SectionLabel = ({
   C: ThemeColors;
 }) => (
   <View style={sl.row}>
-    <View style={[sl.dash, { backgroundColor: C.accent }]} />
-    <Text style={[sl.text, { color: C.textSub }]}>{children}</Text>
+
+    <Text accessibilityRole="header" style={[sl.text, { color: C.text }]}>{children}</Text>
   </View>
 );
 const sl = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
-  dash: { width: 20, height: 2, borderRadius: 1 },
-  text: { fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  text: { fontSize: 16, fontWeight: "600" },
 });
 
 // ─── Photo thumbnail ──────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ const Thumb = ({
           ]}
           resizeMode="cover"
         />
-        <View style={thumbStyles.shimmer} />
+
       </Pressable>
     </Animated.View>
   );
@@ -89,11 +88,6 @@ const thumbStyles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: 10,
     borderWidth: 1,
-  },
-  shimmer: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 10,
-    backgroundColor: "rgba(79,142,247,0.06)",
   },
 });
 
@@ -137,7 +131,7 @@ const SuccessToast = ({
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, opacity, translateY]);
 
   return (
     <Animated.View
@@ -155,7 +149,7 @@ const SuccessToast = ({
       <View style={[toastStyles.dot, { backgroundColor: C.safe }]}>
         <Check color="#FFFFFF" size={12} strokeWidth={3.5} />
       </View>
-      <Text style={[toastStyles.text, { color: C.safe }]}>IMAGE QUEUED</Text>
+      <Text style={[toastStyles.text, { color: C.safe }]}>Image queued</Text>
     </Animated.View>
   );
 };
@@ -183,12 +177,11 @@ const toastStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  text: { fontSize: 11, fontWeight: "800", letterSpacing: 1.6 },
+  text: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CaptureScreen() {
-  const router = useRouter();
   const { colors: C } = useTheme();
   const [showToast, setShowToast] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -198,31 +191,8 @@ export default function CaptureScreen() {
   );
   const [showPreview, setShowPreview] = useState(false);
 
-  // Animated scan line on the drop zone
-  const scanAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanAnim, {
-          toValue: 1,
-          duration: 2400,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanAnim, {
-          toValue: 0,
-          duration: 2400,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-
   // Stagger fade-in for children
-  const fadeAnims = [0, 1, 2, 3].map(
-    () => useRef(new Animated.Value(0)).current,
-  );
+  const fadeAnims = useRef([0, 1, 2, 3].map(() => new Animated.Value(0))).current;
   useEffect(() => {
     Animated.stagger(
       80,
@@ -235,7 +205,7 @@ export default function CaptureScreen() {
         }),
       ),
     ).start();
-  }, []);
+  }, [fadeAnims]);
 
   useEffect(() => {
     (async () => {
@@ -294,10 +264,6 @@ export default function CaptureScreen() {
     if (!result.canceled) handleSelection(result.assets[0].uri);
   };
 
-  const scanTranslate = scanAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 180],
-  });
 
   const styles = useMemo(() => createStyles(C), [C]);
 
@@ -324,7 +290,7 @@ export default function CaptureScreen() {
       {/* Toast */}
       <SuccessToast visible={showToast} C={C} />
 
-      <View style={styles.inner}>
+      <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false}>
         {/* ── HEADER ── */}
         <Animated.View
           style={[
@@ -343,12 +309,8 @@ export default function CaptureScreen() {
           ]}
         >
           <View style={styles.headerLeft}>
-            <View style={styles.headerDot} />
-            <Text style={styles.headerTitle}>CAPTURE</Text>
-          </View>
-          <View style={styles.headerBadge}>
-            <Zap color={C.accent} size={10} strokeWidth={2.5} />
-            <Text style={styles.headerBadgeText}>AI READY</Text>
+
+            <Text style={styles.headerTitle}>Capture</Text>
           </View>
         </Animated.View>
 
@@ -368,52 +330,19 @@ export default function CaptureScreen() {
             },
           ]}
         >
-          <Pressable style={styles.dropZone} onPress={openGallery}>
-            {/* Corner brackets */}
-            {(["tl", "tr", "bl", "br"] as const).map((pos) => (
-              <View
-                key={pos}
-                style={[
-                  styles.bracket,
-                  pos.includes("t") ? { top: 0 } : { bottom: 0 },
-                  pos.includes("l") ? { left: 0 } : { right: 0 },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.bH,
-                    pos.includes("r") && { right: 0, left: undefined },
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.bV,
-                    pos.includes("r") && { right: 0, left: undefined },
-                  ]}
-                />
-              </View>
-            ))}
-
-            {/* Animated scan line */}
-            <Animated.View
-              style={[
-                styles.dropScan,
-                { transform: [{ translateY: scanTranslate }] },
-              ]}
-            />
-
-            {/* Icon cluster */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose a site photo"
+            style={styles.dropZone}
+            onPress={openGallery}
+          >
             <View style={styles.dropIconWrap}>
-              <View style={styles.dropIconOuter}>
-                <View style={styles.dropIconInner}>
-                  <Upload color={C.accent} size={22} strokeWidth={2} />
-                </View>
-              </View>
+              <Upload color={C.accent} size={28} strokeWidth={1.8} />
             </View>
 
-            <Text style={styles.dropTitle}>Drop Evidence Here</Text>
+            <Text style={styles.dropTitle}>Add a site photo</Text>
             <Text style={styles.dropSub}>
-              Tap to select from gallery · AI will detect breeding sites
+              Choose a photo to check for mosquito breeding sites.
             </Text>
           </Pressable>
         </Animated.View>
@@ -435,25 +364,25 @@ export default function CaptureScreen() {
             },
           ]}
         >
-          <Pressable style={styles.actionBtn} onPress={openGallery}>
+          <Pressable accessibilityRole="button" style={styles.actionBtn} onPress={openGallery}>
             <View style={styles.actionIconBg}>
               <Images color={C.accent} size={16} strokeWidth={2} />
             </View>
             <View>
-              <Text style={styles.actionBtnLabel}>GALLERY</Text>
-              <Text style={styles.actionBtnSub}>Pick existing</Text>
+              <Text style={styles.actionBtnLabel}>Gallery</Text>
+              <Text style={styles.actionBtnSub}>Choose a photo</Text>
             </View>
           </Pressable>
 
           <View style={styles.actionDivider} />
 
-          <Pressable style={styles.actionBtn} onPress={openCamera}>
+          <Pressable accessibilityRole="button" style={styles.actionBtn} onPress={openCamera}>
             <View style={styles.actionIconBg}>
               <Camera color={C.accent} size={16} strokeWidth={2} />
             </View>
             <View>
-              <Text style={styles.actionBtnLabel}>CAMERA</Text>
-              <Text style={styles.actionBtnSub}>Capture live</Text>
+              <Text style={styles.actionBtnLabel}>Camera</Text>
+              <Text style={styles.actionBtnSub}>Take a photo</Text>
             </View>
           </Pressable>
         </Animated.View>
@@ -461,7 +390,7 @@ export default function CaptureScreen() {
         {/* ── RECENT PHOTOS ── */}
         {recentPhotos.length > 0 && (
           <Animated.View style={[{ opacity: fadeAnims[3] }]}>
-            <SectionLabel C={C}>RECENT CAPTURES</SectionLabel>
+            <SectionLabel C={C}>Recent captures</SectionLabel>
             <View style={styles.thumbGrid}>
               {recentPhotos.slice(0, 8).map((uri, i) => (
                 <Thumb
@@ -474,18 +403,15 @@ export default function CaptureScreen() {
             </View>
           </Animated.View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const BRACKET = 22;
-const BRACKET_T = 2;
-
 const createStyles = (C: ThemeColors) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: C.bg },
-    inner: { flex: 1, paddingHorizontal: 20, paddingTop: 16 },
+    inner: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 110 },
 
     // Header
     header: {
@@ -496,38 +422,11 @@ const createStyles = (C: ThemeColors) =>
       paddingTop: 8,
     },
     headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    headerDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
-      backgroundColor: C.accent,
-      shadowColor: C.accent,
-      shadowOpacity: 0.9,
-      shadowRadius: 6,
-      elevation: 4,
-    },
     headerTitle: {
-      fontSize: 13,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 24,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
-    },
-    headerBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      backgroundColor: C.accentGlow,
-      borderWidth: 1,
-      borderColor: C.accent + "30",
-      paddingVertical: 5,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-    },
-    headerBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-      color: C.accent,
     },
 
     // Drop zone
@@ -545,68 +444,19 @@ const createStyles = (C: ThemeColors) =>
       position: "relative",
       gap: 10,
     },
-    dropScan: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 1.5,
-      backgroundColor: C.accent + "60",
-      shadowColor: C.accent,
-      shadowOpacity: 0.8,
-      shadowRadius: 6,
-      elevation: 4,
-    },
     dropIconWrap: { marginBottom: 4 },
-    dropIconOuter: {
-      width: 64,
-      height: 64,
-      borderRadius: 20,
-      backgroundColor: C.accentGlow,
-      borderWidth: 1,
-      borderColor: C.accent + "25",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    dropIconInner: {
-      width: 44,
-      height: 44,
-      borderRadius: 13,
-      backgroundColor: C.surfaceRaised,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     dropTitle: {
-      fontSize: 15,
-      fontWeight: "800",
+      fontSize: 18,
+      fontWeight: "700",
       color: C.text,
       letterSpacing: 0.2,
     },
     dropSub: {
-      fontSize: 11,
+      fontSize: 13,
       color: C.textSub,
       textAlign: "center",
       paddingHorizontal: 24,
       lineHeight: 17,
-    },
-
-    // Corner brackets
-    bracket: { position: "absolute", width: BRACKET, height: BRACKET, zIndex: 5 },
-    bH: {
-      position: "absolute",
-      width: BRACKET,
-      height: BRACKET_T,
-      backgroundColor: C.accent,
-      top: 0,
-      left: 0,
-    },
-    bV: {
-      position: "absolute",
-      width: BRACKET_T,
-      height: BRACKET,
-      backgroundColor: C.accent,
-      top: 0,
-      left: 0,
     },
 
     // Action row
@@ -626,26 +476,26 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       gap: 12,
       paddingVertical: 18,
-      paddingHorizontal: 20,
+      paddingHorizontal: 14,
     },
     actionIconBg: {
       width: 36,
       height: 36,
       borderRadius: 10,
-      backgroundColor: C.accentGlow,
+      backgroundColor: C.surfaceRaised,
       borderWidth: 1,
-      borderColor: C.accent + "25",
+      borderColor: C.border,
       alignItems: "center",
       justifyContent: "center",
     },
     actionBtnLabel: {
       fontSize: 11,
-      fontWeight: "800",
-      letterSpacing: 1.4,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
       marginBottom: 2,
     },
-    actionBtnSub: { fontSize: 10, color: C.textSub },
+    actionBtnSub: { fontSize: 11, color: C.textSub },
     actionDivider: { width: 1, height: 40, backgroundColor: C.border },
 
     // Thumbs

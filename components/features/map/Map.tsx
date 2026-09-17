@@ -18,7 +18,7 @@ import {
   Satellite,
   Shield,
   ShieldCheck,
-  Sparkles,
+  ScanLine,
   User,
   Users,
   X,
@@ -78,20 +78,11 @@ interface RiskZone {
   isCritical: boolean;
 }
 
+import { PIN_DATA_URIS } from "./pinAssets";
+
 type TanodFilter = "ALL" | "ASSIGNED" | "CRITICAL" | "PENDING" | "RESOLVED";
 type CommunityFilter = "ALL" | "CRITICAL" | "NEARBY" | "RESOLVED";
 type MapExperience = "community" | "tanod";
-
-const PIN_IMAGES = {
-  critical: Image.resolveAssetSource(
-    require("../../../assets/images/pin_critical.png"),
-  ).uri,
-  moderate: Image.resolveAssetSource(
-    require("../../../assets/images/pin_moderate.png"),
-  ).uri,
-  safe: Image.resolveAssetSource(require("../../../assets/images/pin_safe.png"))
-    .uri,
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function calculateDistanceKm(
@@ -130,7 +121,7 @@ const formatTimeAgo = (time?: number) => {
   return `${Math.floor(h / 24)}d ago`;
 };
 
-// ─── Clean Leaflet HTML shell with Vector SVG User Pin ────────────────────────
+// ─── Clean Leaflet HTML shell with Compressed Pin Images & Pure Icons ─────────
 function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
   return `<!DOCTYPE html>
 <html>
@@ -142,46 +133,113 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.bg}; }
     .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
     
-    @keyframes userPulse {
-      0% { transform: scale(0.8); opacity: 0.85; }
-      50% { transform: scale(1.45); opacity: 0.2; }
-      100% { transform: scale(0.8); opacity: 0.85; }
+    @keyframes bluePulse {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      50% { transform: scale(1.6); opacity: 0.25; }
+      100% { transform: scale(0.8); opacity: 0.9; }
     }
-    .user-marker-box {
+    @keyframes tanodPulse {
+      0% { transform: scale(0.85); opacity: 0.8; }
+      50% { transform: scale(1.4); opacity: 0.2; }
+      100% { transform: scale(0.85); opacity: 0.8; }
+    }
+    @keyframes pinGlow {
+      0% { transform: scale(0.92); opacity: 0.7; }
+      50% { transform: scale(1.25); opacity: 0.15; }
+      100% { transform: scale(0.92); opacity: 0.7; }
+    }
+
+    /* Citizen User Blue Dot (NO square container) */
+    .user-blue-dot-box {
       position: relative;
-      width: 38px;
-      height: 38px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .user-pulse-ring {
+    .user-blue-dot-pulse {
       position: absolute;
-      width: 38px;
-      height: 38px;
-      border-radius: 19px;
-      background: ${C.accent}50;
-      animation: userPulse 2s infinite ease-in-out;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      background: rgba(0, 122, 255, 0.45);
+      animation: bluePulse 2s infinite ease-in-out;
     }
-    .user-avatar-badge {
-      width: 26px;
-      height: 26px;
-      border-radius: 13px;
-      background: ${C.accent};
+    .user-blue-dot-core {
+      width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      background: #007AFF;
       border: 2.5px solid #FFFFFF;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 16px ${C.accent};
+      box-shadow: 0 0 10px rgba(0, 122, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
       z-index: 2;
     }
-    .aedes-pin { filter: drop-shadow(0 5px 7px rgba(5, 12, 24, .32)); }
-    .aedes-pin > div { width: 48px !important; height: 48px !important; background-size: contain !important; background-repeat: no-repeat !important; background-position: center !important; }
-    .aedes-pin > div > div { display: none !important; }
-    .pin-critical > div { background-image: url('${PIN_IMAGES.critical}'); }
-    .pin-moderate > div { background-image: url('${PIN_IMAGES.moderate}'); }
-    .pin-safe > div { background-image: url('${PIN_IMAGES.safe}'); }
-    .pin-selected { transform: scale(1.18); }
+
+    /* Tanod Officer Icon (NO square or circular container wrapper, just the pure icon) */
+    .tanod-pure-icon-box {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tanod-pulse-glow {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      background: ${C.accent}40;
+      animation: tanodPulse 2s infinite ease-in-out;
+    }
+    .tanod-pure-svg {
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+      z-index: 2;
+    }
+
+    /* Compressed Pin Markers */
+    .compressed-pin-wrap {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.18s ease;
+    }
+    .pin-selected {
+      transform: scale(1.22);
+      z-index: 1000 !important;
+    }
+    .pin-glow-ring {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      animation: pinGlow 1.8s infinite ease-in-out;
+    }
+    .compressed-pin-img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+      z-index: 2;
+    }
+    .pin-stack-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: #FFFFFF;
+      color: #0B0E14;
+      font-size: 9px;
+      font-weight: 800;
+      border-radius: 8px;
+      padding: 1px 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      z-index: 4;
+    }
   </style>
 </head>
 <body>
@@ -201,6 +259,12 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
     var markersLayer = L.layerGroup().addTo(map);
     var zonesLayer = L.layerGroup().addTo(map);
 
+    var PIN_IMAGES = {
+      critical: '${PIN_DATA_URIS.critical}',
+      moderate: '${PIN_DATA_URIS.moderate}',
+      safe: '${PIN_DATA_URIS.safe}'
+    };
+
     function post(data) {
       if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
@@ -211,19 +275,24 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       if (userMarker) {
         map.removeLayer(userMarker);
       }
+      var html = isTanod
+        ? '<div class="tanod-pure-icon-box">' +
+            '<div class="tanod-pulse-glow"></div>' +
+            '<svg class="tanod-pure-svg" width="34" height="34" viewBox="0 0 24 24" fill="none">' +
+              '<path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z" fill="${C.accent}" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/>' +
+              '<path d="M12 6.5l1.3 2.64 2.91.42-2.11 2.05.5 2.9-2.6-1.37-2.6 1.37.5-2.9-2.11-2.05 2.91-.42L12 6.5z" fill="#FFFFFF"/>' +
+            '</svg>' +
+          '</div>'
+        : '<div class="user-blue-dot-box">' +
+            '<div class="user-blue-dot-pulse"></div>' +
+            '<div class="user-blue-dot-core"></div>' +
+          '</div>';
+
       var icon = L.divIcon({
-        className: 'custom-user-icon',
-        html: '<div class="user-marker-box">' +
-                '<div class="user-pulse-ring" style="background: ' + (isTanod ? '${C.accent}60' : '${C.safe}60') + '"></div>' +
-                '<div class="user-avatar-badge" style="background: ' + (isTanod ? '${C.accent}' : '${C.safe}') + '">' +
-                  (isTanod 
-                    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' 
-                    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-                  ) +
-                '</div>' +
-              '</div>',
-        iconSize: [38, 38],
-        iconAnchor: [19, 19]
+        className: '',
+        html: html,
+        iconSize: isTanod ? [36, 36] : [32, 32],
+        iconAnchor: isTanod ? [18, 18] : [16, 16]
       });
 
       userMarker = L.marker([lat, lng], { icon: icon, zIndexOffset: 1000 }).addTo(map);
@@ -244,20 +313,23 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       var items = JSON.parse(itemsJson);
       items.forEach(function(item) {
         var isSelected = item.id === selectedId;
-        var color = item.isCritical ? '${C.danger}' : item.isResolved ? '${C.safe}' : '${C.warn}';
+        var pinSrc = item.isCritical ? PIN_IMAGES.critical : item.isResolved ? PIN_IMAGES.safe : PIN_IMAGES.moderate;
+        var glowColor = item.isCritical ? '${C.danger}60' : item.isResolved ? '${C.safe}50' : '${C.warn}50';
+
+        var html = '<div class="compressed-pin-wrap' + (isSelected ? ' pin-selected' : '') + '">' +
+          (item.isCritical || isSelected ? '<div class="pin-glow-ring" style="background:' + glowColor + ';"></div>' : '') +
+          '<img class="compressed-pin-img" src="' + pinSrc + '" alt="pin" />' +
+          (item.stackCount && item.stackCount > 1 ? '<div class="pin-stack-badge" style="border:1px solid ' + (item.isCritical ? '${C.danger}' : item.isResolved ? '${C.safe}' : '${C.warn}') + ';">' + item.stackIndex + '/' + item.stackCount + '</div>' : '') +
+        '</div>';
+
         var icon = L.divIcon({
-          className: 'aedes-pin ' + (item.isCritical ? 'pin-critical' : item.isResolved ? 'pin-safe' : 'pin-moderate') + (isSelected ? ' pin-selected' : ''),
-          html: '<div style="position:relative; width:' + (isSelected ? '34px' : '28px') + '; height:' + (isSelected ? '34px' : '28px') + '; display:flex; align-items:center; justify-content:center;">' +
-                  (isSelected ? '<div style="position:absolute; width:100%; height:100%; border-radius:50%; background:' + color + '40; animation:userPulse 1.5s infinite;"></div>' : '') +
-                  '<div style="width:' + (isSelected ? '24px' : '20px') + '; height:' + (isSelected ? '24px' : '20px') + '; border-radius:50%; background:' + color + '; border:2px solid #FFFFFF; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px ' + color + '80;">' +
-                    '<span style="font-size:' + (isSelected ? '12px' : '10px') + ';">' + (item.isResolved ? '✓' : '🦟') + '</span>' +
-                  '</div>' +
-                '</div>',
-          iconSize: [48, 48],
-          iconAnchor: [24, 42]
+          className: '',
+          html: html,
+          iconSize: [44, 44],
+          iconAnchor: [22, 38]
         });
 
-        var m = L.marker([item.lat, item.lng], { icon: icon });
+        var m = L.marker([item.lat, item.lng], { icon: icon, zIndexOffset: isSelected ? 500 : 10 });
         m.on('click', function() {
           post({ type: 'markerPress', id: item.id });
         });
@@ -317,7 +389,7 @@ const ModePillBtn = ({
       modeStyles.btn,
       active && [
         modeStyles.btnActive,
-        { backgroundColor: C.accent, shadowColor: C.accent },
+        { backgroundColor: C.accent, shadowColor: "#000000" },
       ],
     ]}
   >
@@ -353,7 +425,7 @@ const modeStyles = StyleSheet.create({
     elevation: 4,
   },
   text: { fontSize: 11, fontWeight: "700" },
-  textActive: { color: "#FFFFFF", fontWeight: "800" },
+  textActive: { color: "#FFFFFF", fontWeight: "700" },
 });
 
 // ─── Filter Pill Button ───────────────────────────────────────────────────────
@@ -450,7 +522,7 @@ const filterStyles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   labelActive: {
-    fontWeight: "800",
+    fontWeight: "700",
   },
   countBadge: {
     paddingHorizontal: 6,
@@ -461,8 +533,8 @@ const filterStyles = StyleSheet.create({
     justifyContent: "center",
   },
   countText: {
-    fontSize: 9,
-    fontWeight: "800",
+    fontSize: 11,
+    fontWeight: "700",
   },
 });
 
@@ -540,8 +612,8 @@ const float = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   badgeText: {
-    fontSize: 8,
-    fontWeight: "900",
+    fontSize: 11,
+    fontWeight: "700",
     color: "#FFFFFF",
   },
 });
@@ -816,13 +888,13 @@ const ReportBottomSheet = ({
             >
               <View style={sheet.metricBox}>
                 <View style={sheet.metricIconWrap}>
-                  <Sparkles color={C.gold} size={12} strokeWidth={2.5} />
+                  <ScanLine color={C.gold} size={12} strokeWidth={2.5} />
                   <Text style={[sheet.metricValue, { color: C.text }]}>
                     {accuracyText}
                   </Text>
                 </View>
                 <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  AI CONFIDENCE
+                  AI confidence
                 </Text>
               </View>
 
@@ -838,7 +910,7 @@ const ReportBottomSheet = ({
                   </Text>
                 </View>
                 <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  THREAT RADIUS
+                  Threat radius
                 </Text>
               </View>
 
@@ -867,7 +939,7 @@ const ReportBottomSheet = ({
                   </Text>
                 </View>
                 <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  STATUS
+                  Status
                 </Text>
               </View>
             </View>
@@ -884,9 +956,9 @@ const ReportBottomSheet = ({
                 ]}
               >
                 <View style={sheet.aiCalloutHeader}>
-                  <Sparkles color={C.gold} size={11} strokeWidth={2.5} />
+                  <ScanLine color={C.gold} size={11} strokeWidth={2.5} />
                   <Text style={[sheet.aiCalloutTitle, { color: C.gold }]}>
-                    AI VECTOR DIAGNOSTICS
+                    AI vector diagnostics
                   </Text>
                 </View>
                 <Text
@@ -913,7 +985,7 @@ const ReportBottomSheet = ({
                 onPress={onViewFullReport}
                 activeOpacity={0.8}
               >
-                <Sparkles color="#FFFFFF" size={14} strokeWidth={2.5} />
+                <ScanLine color="#FFFFFF" size={14} strokeWidth={2.5} />
                 <Text style={sheet.actionBtnPrimaryText}>
                   {isTanod
                     ? "INSPECT & ACTION REPORT"
@@ -949,8 +1021,8 @@ const sheet = StyleSheet.create({
   snackbarHost: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
-    paddingHorizontal: 12,
-    paddingBottom: Platform.OS === "ios" ? 96 : 82,
+    paddingHorizontal: 14,
+    paddingBottom: Platform.OS === "ios" ? 116 : 104,
   },
   card: {
     width: "100%",
@@ -998,7 +1070,7 @@ const sheet = StyleSheet.create({
     borderWidth: 1,
   },
   badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  badgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
   verifiedBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1008,7 +1080,7 @@ const sheet = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
-  verifiedBadgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  verifiedBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
   distanceBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1018,7 +1090,7 @@ const sheet = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
-  distanceBadgeText: { fontSize: 9, fontWeight: "700" },
+  distanceBadgeText: { fontSize: 11, fontWeight: "700" },
   closeBtn: {
     width: 30,
     height: 30,
@@ -1061,9 +1133,9 @@ const sheet = StyleSheet.create({
     borderRadius: 4,
   },
   thumbBadgeText: {
-    fontSize: 7,
-    fontWeight: "900",
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   mainInfo: {
     flex: 1,
@@ -1071,7 +1143,7 @@ const sheet = StyleSheet.create({
   },
   locationTitle: {
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "700",
     lineHeight: 20,
   },
   reporterRow: {
@@ -1090,7 +1162,7 @@ const sheet = StyleSheet.create({
     gap: 5,
     marginTop: 2,
   },
-  metaText: { fontSize: 10, fontWeight: "500" },
+  metaText: { fontSize: 11, fontWeight: "500" },
   metaDot: {
     width: 3,
     height: 3,
@@ -1119,12 +1191,12 @@ const sheet = StyleSheet.create({
   },
   metricValue: {
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "700",
   },
   metricLabel: {
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 0.6,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   metricDivider: {
     width: 1,
@@ -1144,9 +1216,9 @@ const sheet = StyleSheet.create({
     gap: 5,
   },
   aiCalloutTitle: {
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   aiCalloutText: {
     fontSize: 11,
@@ -1177,9 +1249,9 @@ const sheet = StyleSheet.create({
   },
   actionBtnPrimaryText: {
     fontSize: 11,
-    fontWeight: "900",
+    fontWeight: "700",
     color: "#FFFFFF",
-    letterSpacing: 1,
+    letterSpacing: 0.3,
   },
   actionBtnFocus: {
     width: 46,
@@ -1278,11 +1350,14 @@ export default function MapComponent({
     return new Set(tanodAssignments?.map((a) => a.reportId as string) ?? []);
   }, [tanodAssignments]);
 
-  // Calculate filtered hotspots
-  const verifiedHotspots: Partial<Report>[] = useMemo(() => {
+  // Calculate filtered hotspots with radial offset for stacked/overlapping reports
+  const verifiedHotspots: (Partial<Report> & {
+    stackCount?: number;
+    stackIndex?: number;
+  })[] = useMemo(() => {
     if (!allReports) return [];
 
-    return allReports.filter((r: Report) => {
+    const baseList = allReports.filter((r: Report) => {
       if (!r.lat || !r.lng) return false;
 
       // Only show verified hotspots on the community & tanod map
@@ -1326,6 +1401,37 @@ export default function MapComponent({
         }
         return true; // ALL
       }
+    });
+
+    // Group items by rounded coordinates (approx 15-20 meters)
+    const coordGroups: Record<string, Report[]> = {};
+    baseList.forEach((r) => {
+      const key = `${r.lat!.toFixed(4)}_${r.lng!.toFixed(4)}`;
+      if (!coordGroups[key]) coordGroups[key] = [];
+      coordGroups[key].push(r);
+    });
+
+    // Apply radial offsets for stacked reports so they fan out visibly
+    return baseList.map((r) => {
+      const key = `${r.lat!.toFixed(4)}_${r.lng!.toFixed(4)}`;
+      const group = coordGroups[key];
+      if (group && group.length > 1) {
+        const index = group.findIndex((item) => item._id === r._id);
+        const total = group.length;
+        const angle = (2 * Math.PI * index) / total;
+        const radius = 0.00025; // ~27 meters radial spread
+        const offsetLat = r.lat! + radius * Math.cos(angle);
+        const latRad = (r.lat! * Math.PI) / 180;
+        const offsetLng = r.lng! + (radius * Math.sin(angle)) / Math.cos(latRad);
+        return {
+          ...r,
+          lat: offsetLat,
+          lng: offsetLng,
+          stackCount: total,
+          stackIndex: index + 1,
+        };
+      }
+      return r;
     });
   }, [
     allReports,
@@ -1380,7 +1486,7 @@ export default function MapComponent({
       lat: r.lat!,
       lng: r.lng!,
       radius: RISK_ZONE_RADIUS,
-      isCritical: r.status === "CRITICAL",
+      isCritical: r.status === "CRITICAL" || r.status === "HIGH RISK",
     }));
   }, [verifiedHotspots]);
 
@@ -1392,7 +1498,7 @@ export default function MapComponent({
     );
   }, [mapReady, userPos.lat, userPos.lng, isTanod]);
 
-  // Sync markers
+  // Sync markers with stack metadata
   useEffect(() => {
     if (!mapReady) return;
     const simplified = verifiedHotspots.map((r) => ({
@@ -1401,6 +1507,8 @@ export default function MapComponent({
       lng: r.lng,
       isCritical: r.status === "CRITICAL" || r.status === "HIGH RISK",
       isResolved: r.status === "Resolved" || r.status === "Completed",
+      stackCount: r.stackCount,
+      stackIndex: r.stackIndex,
     }));
     webviewRef.current?.injectJavaScript(
       `window.setMarkers(${JSON.stringify(
@@ -1530,81 +1638,65 @@ export default function MapComponent({
       </View>
 
       <Animated.View style={[styles.overlays, { opacity: fadeAnim }]}>
-        {/* ── TOP CONTROL STACK ── */}
+        {/* ── STREAMLINED TOP CONTROL STACK ── */}
         <View
           style={[
             styles.topControlContainer,
-            { top: Math.max(insets.top, 12) + 6 },
+            { top: Math.max(insets.top, 12) + 4 },
           ]}
         >
-          <View style={styles.brandHeader}>
-            <View style={styles.brandMark}>
-              <Image
-                source={
-                  isTanod
-                    ? require("../../../assets/images/pin_critical.png")
-                    : require("../../../assets/images/pin_safe.png")
-                }
-                style={styles.brandPin}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.brandCopy}>
-              <Text style={styles.eyebrow}>AEDEX · LIVE SURVEILLANCE</Text>
-              <Text style={styles.screenTitle}>
-                {isTanod ? "Response map" : "Community risk map"}
+          {/* Top Header Card */}
+          <View style={styles.topHeaderCard}>
+            <View style={styles.topHeaderLeft}>
+              <View
+                style={[
+                  styles.brandBadge,
+                  {
+                    backgroundColor: isTanod ? C.accentGlow : C.safeGlow,
+                    borderColor: (isTanod ? C.accent : C.safe) + "40",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.liveDot,
+                    { backgroundColor: isTanod ? C.accent : C.safe },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.brandBadgeText,
+                    { color: isTanod ? C.accent : C.safe },
+                  ]}
+                >
+                  {isTanod ? "TANOD OPS" : "COMMUNITY"}
+                </Text>
+              </View>
+              <Text style={styles.screenTitle} numberOfLines={1}>
+                {isTanod ? "Response Map" : "Vector Risk Map"}
               </Text>
             </View>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
-            </View>
-          </View>
 
-          {/* Top Bar: Mode Toggle + Radar Status Chip */}
-          <View style={styles.topBarRow}>
+            {/* Mode switch */}
             <View style={styles.modeToggle}>
               <ModePillBtn
                 icon={Map}
-                label="Vector"
+                label="Map"
                 active={mode === "vector"}
                 onPress={() => setMode("vector")}
                 C={C}
               />
               <ModePillBtn
                 icon={Satellite}
-                label="Satellite"
+                label="Sat"
                 active={mode === "satellite"}
                 onPress={() => setMode("satellite")}
                 C={C}
               />
             </View>
-
-            {/* Radar status pill badge */}
-            <View style={styles.radarStatusBadge}>
-              <View
-                style={[
-                  styles.radarPulseDot,
-                  { backgroundColor: isTanod ? C.accent : C.safe },
-                ]}
-              />
-              {isTanod ? (
-                <Shield color={C.accent} size={11} strokeWidth={2.5} />
-              ) : (
-                <Globe color={C.safe} size={11} strokeWidth={2.5} />
-              )}
-              <Text
-                style={[
-                  styles.radarStatusText,
-                  { color: isTanod ? C.accent : C.safe },
-                ]}
-              >
-                {isTanod ? "TANOD OPS" : "COMMUNITY"}
-              </Text>
-            </View>
           </View>
 
-          {/* ── DYNAMIC HORIZONTAL FILTER BAR (FOR BOTH TANOD & COMMUNITY) ── */}
+          {/* ── DYNAMIC HORIZONTAL FILTER BAR ── */}
           <View style={styles.filterRibbonContainer}>
             <ScrollView
               horizontal
@@ -1683,7 +1775,7 @@ export default function MapComponent({
                   />
                   <FilterPill
                     icon={Navigation}
-                    label="Nearby (<1.5km)"
+                    label="Nearby"
                     count={filterCounts.nearby}
                     active={communityFilter === "NEARBY"}
                     onPress={() => setCommunityFilter("NEARBY")}
@@ -1737,45 +1829,35 @@ export default function MapComponent({
           />
         </View>
 
-        {/* ── BOTTOM MAP LEGEND ── */}
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <Image
-              source={require("../../../assets/images/pin_critical.png")}
-              style={styles.legendPin}
-              resizeMode="contain"
-            />
-            <Text style={styles.legendText}>Critical</Text>
+        {/* ── BOTTOM MAP LEGEND (Hidden when report detail sheet is active) ── */}
+        {!selectedReport && (
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: C.danger }]} />
+              <Text style={styles.legendText}>Critical</Text>
+            </View>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: C.warn }]} />
+              <Text style={styles.legendText}>Moderate</Text>
+            </View>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: C.safe }]} />
+              <Text style={styles.legendText}>Safe</Text>
+            </View>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItem}>
+              <View
+                style={[
+                  styles.legendSwatch,
+                  { borderColor: C.danger + "90", backgroundColor: C.dangerGlow },
+                ]}
+              />
+              <Text style={styles.legendText}>Zone</Text>
+            </View>
           </View>
-          <View style={styles.legendDivider} />
-          <View style={styles.legendItem}>
-            <Image
-              source={require("../../../assets/images/pin_moderate.png")}
-              style={styles.legendPin}
-              resizeMode="contain"
-            />
-            <Text style={styles.legendText}>Moderate</Text>
-          </View>
-          <View style={styles.legendDivider} />
-          <View style={styles.legendItem}>
-            <Image
-              source={require("../../../assets/images/pin_safe.png")}
-              style={styles.legendPin}
-              resizeMode="contain"
-            />
-            <Text style={styles.legendText}>Safe</Text>
-          </View>
-          <View style={styles.legendDivider} />
-          <View style={styles.legendItem}>
-            <View
-              style={[
-                styles.legendSwatch,
-                { borderColor: C.danger + "90", backgroundColor: C.dangerGlow },
-              ]}
-            />
-            <Text style={styles.legendText}>Zone</Text>
-          </View>
-        </View>
+        )}
 
         {(isLoading || !mapReady) && (
           <View style={styles.statusOverlayBox}>
@@ -1828,129 +1910,82 @@ const createStyles = (C: ThemeColors) =>
     // Top Control Container
     topControlContainer: {
       position: "absolute",
-      left: 14,
-      right: 14,
-      gap: 8,
+      left: 12,
+      right: 12,
+      gap: 6,
     },
-    brandHeader: {
-      minHeight: 62,
+    topHeaderCard: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 18,
       backgroundColor: C.surface + "F5",
       borderWidth: 1,
       borderColor: C.border,
       shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.16,
-      shadowRadius: 12,
-      elevation: 8,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 6,
     },
-    brandMark: {
-      width: 44,
-      height: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 15,
-      backgroundColor: C.surfaceRaised,
+    topHeaderLeft: {
+      flex: 1,
+      gap: 2,
     },
-    brandPin: { width: 42, height: 42 },
-    brandCopy: { flex: 1 },
-    eyebrow: {
-      color: C.accent,
-      fontSize: 8,
-      fontWeight: "900",
-      letterSpacing: 1.2,
-      marginBottom: 2,
-    },
-    screenTitle: {
-      color: C.text,
-      fontSize: 18,
-      fontWeight: "900",
-      letterSpacing: -0.4,
-    },
-    liveBadge: {
+    brandBadge: {
+      alignSelf: "flex-start",
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 2.5,
       borderRadius: 999,
-      backgroundColor: C.safeGlow,
       borderWidth: 1,
-      borderColor: C.safe + "35",
     },
-    liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.safe },
-    liveText: {
-      color: C.safe,
-      fontSize: 8,
-      fontWeight: "900",
-      letterSpacing: 0.8,
+    liveDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
     },
-    topBarRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 10,
+    brandBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.3,
+    },
+    screenTitle: {
+      color: C.text,
+      fontSize: 16,
+      fontWeight: "700",
+      letterSpacing: -0.3,
     },
     modeToggle: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: C.surface + "E6",
+      backgroundColor: C.surfaceRaised,
       borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 14,
-      padding: 3,
+      borderRadius: 12,
+      padding: 2,
       gap: 2,
-      shadowColor: "#000",
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 4,
     },
-    radarStatusBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
+
+    // Filter Ribbon Container
+    filterRibbonContainer: {
       backgroundColor: C.surface + "E6",
       borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 14,
-      paddingVertical: 7,
-      paddingHorizontal: 12,
+      borderRadius: 18,
+      paddingVertical: 5,
+      paddingHorizontal: 6,
       shadowColor: "#000",
       shadowOpacity: 0.12,
       shadowRadius: 6,
       elevation: 4,
     },
-    radarPulseDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    radarStatusText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1,
-    },
-
-    // Filter Ribbon Container
-    filterRibbonContainer: {
-      backgroundColor: C.surface + "F2",
-      borderWidth: 1,
-      borderColor: C.border,
-      borderRadius: 24,
-      paddingVertical: 6,
-      paddingHorizontal: 8,
-      shadowColor: "#000",
-      shadowOpacity: 0.18,
-      shadowRadius: 10,
-      elevation: 6,
-    },
     filterRibbonScroll: {
-      gap: 8,
+      gap: 6,
       alignItems: "center",
       paddingRight: 6,
     },
@@ -1958,13 +1993,13 @@ const createStyles = (C: ThemeColors) =>
     // Floating controls positioned safely above bottom tab bar
     rightPanel: {
       position: "absolute",
-      right: 16,
-      bottom: 165,
-      gap: 10,
+      right: 14,
+      bottom: 110,
+      gap: 8,
     },
     legend: {
       position: "absolute",
-      bottom: 112,
+      bottom: 110,
       left: 14,
       flexDirection: "row",
       alignItems: "center",
@@ -1972,30 +2007,34 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.surface + "E6",
       borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 14,
-      paddingVertical: 8,
+      borderRadius: 12,
+      paddingVertical: 6,
       paddingHorizontal: 10,
       shadowColor: "#000",
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.12,
       shadowRadius: 6,
       elevation: 4,
     },
     legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-    legendPin: { width: 20, height: 20 },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
     legendSwatch: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
       borderWidth: 1.5,
     },
-    legendText: { fontSize: 9, fontWeight: "700", color: C.textSub },
+    legendText: { fontSize: 10, fontWeight: "700", color: C.textSub },
     legendDivider: { width: 1, height: 10, backgroundColor: C.border },
 
     // Status overlay
     statusOverlayBox: {
       position: "absolute",
       alignSelf: "center",
-      top: 130,
+      top: 120,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
@@ -2011,9 +2050,9 @@ const createStyles = (C: ThemeColors) =>
       elevation: 6,
     },
     statusOverlayText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "700",
       color: C.textSub,
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
   });

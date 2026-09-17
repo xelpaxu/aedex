@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -115,7 +116,7 @@ function StepDot({ active, C }: { active?: boolean; C: ThemeColors }) {
         { backgroundColor: C.border },
         active && {
           backgroundColor: C.accent,
-          shadowColor: C.accent,
+          shadowColor: "#000000",
           shadowOpacity: 0.8,
           shadowRadius: 6,
           elevation: 4,
@@ -150,7 +151,7 @@ const btnStyles = StyleSheet.create({
   },
   socialBtnLabels: { flex: 1, gap: 2 },
   socialBtnLabel: { fontSize: 14, fontWeight: "700" },
-  socialBtnSublabel: { fontSize: 10, fontWeight: "500" },
+  socialBtnSublabel: { fontSize: 11, fontWeight: "500" },
   socialBtnChevron: { fontSize: 20, marginRight: 2 },
 });
 
@@ -268,7 +269,7 @@ export default function SignupScreen() {
         backgroundColor={C.bg}
       />
 
-      <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
         {/* ── Top Bar ── */}
         <View style={styles.topBar}>
           <View style={styles.stepGroup}>
@@ -288,33 +289,11 @@ export default function SignupScreen() {
             />
           </View>
 
-          <View style={styles.tagWrap}>
-            <View style={styles.tagDot} />
-            <Text style={styles.tagText}>NEW ACCOUNT REGISTRATION</Text>
-          </View>
-
-          <Text style={styles.heroTitle}>Join the{"\n"}defense network</Text>
+          <Text style={styles.heroTitle}>Create your account</Text>
           <Text style={styles.heroSub}>
             Create your account to start reporting and monitoring mosquito
             breeding grounds in your local community.
           </Text>
-
-          <View style={styles.infoStrip}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>◆</Text>
-              <Text style={styles.infoText}>Real-time alerts</Text>
-            </View>
-            <View style={styles.infoSep} />
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>◆</Text>
-              <Text style={styles.infoText}>AI site detection</Text>
-            </View>
-            <View style={styles.infoSep} />
-            <View style={styles.infoItem}>
-              <Text style={styles.infoIcon}>◆</Text>
-              <Text style={styles.infoText}>Community map</Text>
-            </View>
-          </View>
         </View>
 
         {/* ── Auth Buttons ── */}
@@ -322,7 +301,7 @@ export default function SignupScreen() {
           <SocialBtn
             onPress={() => onSelectAuth("google")}
             label="Sign up with Google"
-            sublabel="Fastest — connects your Google profile"
+            sublabel="Use your Google account"
             icon={<GoogleLogo size={20} />}
             C={C}
           />
@@ -332,8 +311,6 @@ export default function SignupScreen() {
             label="Sign up with Facebook"
             sublabel="Connect your Facebook identity"
             icon={<FacebookLogo size={20} />}
-            surfaceColor={isDark ? "#0F1E3A" : "#EEF3FF"}
-            borderColor={isDark ? "#1D3060" : "#D0DEFF"}
             accentColor={C.text}
             C={C}
           />
@@ -347,9 +324,6 @@ export default function SignupScreen() {
         {/* ── Tanod Registration ── */}
         <View style={styles.tanodSection}>
           <View style={styles.tanodHeader}>
-            <View style={styles.tanodBadge}>
-              <Text style={styles.tanodBadgeText}>OFFICER PORTAL</Text>
-            </View>
             <Text style={styles.tanodTitle}>Register as Barangay Tanod</Text>
             <Text style={styles.tanodSub}>
               Are you a barangay officer? Register here to get incident triage
@@ -393,7 +367,7 @@ export default function SignupScreen() {
             </TouchableOpacity>
           </Link>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -424,7 +398,7 @@ const createStyles = (C: ThemeColors) =>
     },
     socialBtnLabels: { flex: 1, gap: 2 },
     socialBtnLabel: { fontSize: 14, fontWeight: "700" },
-    socialBtnSublabel: { fontSize: 10, fontWeight: "500" },
+    socialBtnSublabel: { fontSize: 11, fontWeight: "500" },
     socialBtnChevron: { fontSize: 20, marginRight: 2 },
     root: {
       flex: 1,
@@ -438,13 +412,14 @@ const createStyles = (C: ThemeColors) =>
       gap: 14,
     },
     loadingText: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     screen: {
-      flex: 1,
+      flexGrow: 1,
+      paddingTop: 24,
       paddingHorizontal: 24,
       paddingBottom: 24,
     },
@@ -460,10 +435,10 @@ const createStyles = (C: ThemeColors) =>
       gap: 6,
     },
     stepLabel: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "700",
       color: C.textDim,
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
       marginLeft: 6,
     },
 
@@ -481,45 +456,20 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
       marginBottom: 16,
       padding: 10,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
+      shadowOpacity: 0,
       shadowRadius: 12,
-      elevation: 6,
+      elevation: 0,
     },
     logoImage: {
       width: "100%",
       height: "100%",
     },
 
-    // Tag
-    tagWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 7,
-      marginBottom: 12,
-    },
-    tagDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: C.warn,
-      shadowColor: C.warn,
-      shadowOpacity: 0.9,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    tagText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 2,
-      color: C.warn,
-      textTransform: "uppercase",
-    },
-
     heroTitle: {
       fontSize: 32,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       lineHeight: 38,
       letterSpacing: -0.5,
@@ -534,34 +484,12 @@ const createStyles = (C: ThemeColors) =>
       marginBottom: 16,
     },
 
-    // Info strip
-    infoStrip: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: C.surface,
-      borderWidth: 1,
-      borderColor: C.border,
-      borderRadius: 10,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-    },
-    infoItem: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 5,
-    },
-    infoSep: { width: 1, height: 14, backgroundColor: C.border },
-    infoIcon: { fontSize: 8, color: C.accent },
-    infoText: { fontSize: 10, fontWeight: "600", color: C.textSub },
-
     // ── Card Section
     cardSection: { gap: 10, marginTop: 20 },
 
     // ── Terms
     terms: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       textAlign: "center",
       lineHeight: 16,
@@ -588,24 +516,9 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       marginBottom: 8,
     },
-    tanodBadge: {
-      backgroundColor: C.warnGlow,
-      borderWidth: 1,
-      borderColor: C.warn + "40",
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      borderRadius: 6,
-      marginBottom: 8,
-    },
-    tanodBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.5,
-      color: C.warn,
-    },
     tanodTitle: {
       fontSize: 16,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       marginBottom: 4,
     },

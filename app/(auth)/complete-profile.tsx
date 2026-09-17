@@ -261,7 +261,7 @@ export default function CompleteProfileScreen() {
               >
                 <ArrowLeft color={C.text} size={18} strokeWidth={2.5} />
               </TouchableOpacity>
-              <Text style={styles.editNavTitle}>EDIT PROFILE</Text>
+              <Text style={styles.editNavTitle}>Edit profile</Text>
               <View style={{ width: 38 }} />
             </View>
           ) : (
@@ -347,7 +347,7 @@ export default function CompleteProfileScreen() {
             {/* First Name & Last Name Row */}
             <View style={styles.row}>
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>FIRST NAME</Text>
+                <Text style={styles.label}>First name</Text>
                 <View
                   style={[
                     styles.inputWrap,
@@ -374,7 +374,7 @@ export default function CompleteProfileScreen() {
               </View>
 
               <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.label}>LAST NAME</Text>
+                <Text style={styles.label}>Last name</Text>
                 <View
                   style={[
                     styles.inputWrap,
@@ -403,7 +403,7 @@ export default function CompleteProfileScreen() {
 
             {/* Phone Number */}
             <View style={styles.field}>
-              <Text style={styles.label}>MOBILE PHONE NUMBER</Text>
+              <Text style={styles.label}>Mobile phone number</Text>
               <View
                 style={[
                   styles.inputWrap,
@@ -432,7 +432,7 @@ export default function CompleteProfileScreen() {
             {/* Barangay Picker */}
             <View style={styles.field}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>SELECT BARANGAY</Text>
+                <Text style={styles.label}>Select barangay</Text>
                 <Text style={styles.fieldHint}>Surveillance Zone</Text>
               </View>
 
@@ -493,7 +493,7 @@ export default function CompleteProfileScreen() {
             {isTanod && barangay && (
               <View style={styles.field}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.label}>ASSIGNED RESPONSE TEAM</Text>
+                  <Text style={styles.label}>Assigned response team</Text>
                   <Text style={styles.fieldHint}>Teams in {barangay}</Text>
                 </View>
 
@@ -625,9 +625,9 @@ const createStyles = (C: ThemeColors) =>
       gap: 12,
     },
     loadingText: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     scroll: {
@@ -655,8 +655,8 @@ const createStyles = (C: ThemeColors) =>
     },
     editNavTitle: {
       fontSize: 12,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
 
@@ -688,9 +688,9 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 2,
     },
     progressText: {
-      fontSize: 8,
-      fontWeight: "800",
-      letterSpacing: 1.2,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
 
@@ -760,13 +760,13 @@ const createStyles = (C: ThemeColors) =>
       borderColor: C.warn + "40",
     },
     badgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     title: {
       fontSize: 26,
-      fontWeight: "900",
+      fontWeight: "700",
       letterSpacing: -0.5,
       color: C.text,
       lineHeight: 32,
@@ -795,13 +795,13 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
     },
     label: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 1,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     fieldHint: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       fontWeight: "500",
     },
@@ -886,7 +886,7 @@ const createStyles = (C: ThemeColors) =>
       color: C.accent,
     },
     optionDesc: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textSub,
       marginTop: 1,
     },
@@ -918,12 +918,12 @@ const createStyles = (C: ThemeColors) =>
     },
     emptyTeamsTitle: {
       fontSize: 12,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.warn,
       marginTop: 4,
     },
     emptyTeamsSub: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textSub,
       textAlign: "center",
     },
@@ -935,7 +935,7 @@ const createStyles = (C: ThemeColors) =>
       height: 52,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.35,
       shadowRadius: 10,
@@ -952,14 +952,14 @@ const createStyles = (C: ThemeColors) =>
     },
     saveBtnText: {
       fontSize: 13,
-      fontWeight: "900",
-      letterSpacing: 1.5,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.bg,
     },
     footerNote: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       textAlign: "center",
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
   });

@@ -91,8 +91,8 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         <View style={styles.navCenter}>
-          <View style={styles.navDash} />
-          <Text style={styles.navTitle}>NOTIFICATIONS</Text>
+
+          <Text style={styles.navTitle}>Notifications</Text>
           {unreadCount > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadText}>{unreadCount}</Text>
@@ -205,16 +205,10 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
     },
     navCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
-    navDash: {
-      width: 16,
-      height: 2,
-      backgroundColor: C.accent,
-      borderRadius: 1,
-    },
     navTitle: {
-      fontSize: 11,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 20,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.text,
     },
     unreadBadge: {
@@ -227,8 +221,8 @@ const createStyles = (C: ThemeColors) =>
       paddingHorizontal: 5,
     },
     unreadText: {
-      fontSize: 9,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
       color: "#FFF",
     },
     markAllBtn: {
@@ -265,7 +259,7 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
       marginBottom: 4,
     },
-    emptyTitle: { fontSize: 16, fontWeight: "800", color: C.text },
+    emptyTitle: { fontSize: 16, fontWeight: "700", color: C.text },
     emptySub: {
       fontSize: 12,
       color: C.textSub,
@@ -309,7 +303,7 @@ const createStyles = (C: ThemeColors) =>
       lineHeight: 16,
     },
     notifTime: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textDim,
       marginTop: 2,
     },

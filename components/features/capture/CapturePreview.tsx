@@ -8,7 +8,7 @@ import {
   Clock,
   MapPin,
   RotateCcw,
-  Sparkles,
+  ScanLine,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -42,68 +42,6 @@ interface CapturePreviewProps {
   metadata: Metadata | null;
   onReset: () => void;
 }
-
-// ─── Corner bracket SVG-style corners via Views ───────────────────────────────
-const CornerBracket = ({
-  position,
-  accentColor,
-}: {
-  position: "tl" | "tr" | "bl" | "br";
-  accentColor: string;
-}) => {
-  const isRight = position === "tr" || position === "br";
-  const isBottom = position === "bl" || position === "br";
-  return (
-    <View
-      style={[
-        cbStyles.corner,
-        isRight ? { right: 0 } : { left: 0 },
-        isBottom ? { bottom: 0 } : { top: 0 },
-      ]}
-    >
-      {/* Horizontal arm */}
-      <View
-        style={[
-          cbStyles.cornerH,
-          { backgroundColor: accentColor },
-          isRight ? { right: 0 } : { left: 0 },
-          isBottom ? { bottom: 0 } : { top: 0 },
-        ]}
-      />
-      {/* Vertical arm */}
-      <View
-        style={[
-          cbStyles.cornerV,
-          { backgroundColor: accentColor },
-          isRight ? { right: 0 } : { left: 0 },
-          isBottom ? { bottom: 0 } : { top: 0 },
-        ]}
-      />
-    </View>
-  );
-};
-
-const CORNER_SIZE = 20;
-const CORNER_THICK = 2;
-
-const cbStyles = StyleSheet.create({
-  corner: {
-    position: "absolute",
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-    zIndex: 10,
-  },
-  cornerH: {
-    position: "absolute",
-    height: CORNER_THICK,
-    width: CORNER_SIZE,
-  },
-  cornerV: {
-    position: "absolute",
-    width: CORNER_THICK,
-    height: CORNER_SIZE,
-  },
-});
 
 export default function CapturePreview({
   image,
@@ -232,7 +170,7 @@ export default function CapturePreview({
 
             <View style={styles.navCenter}>
               <View style={styles.navStatusDot} />
-              <Text style={styles.navTitle}>EVIDENCE REVIEW</Text>
+              <Text style={styles.navTitle}>Evidence review</Text>
             </View>
 
             {/* Step breadcrumb */}
@@ -251,11 +189,6 @@ export default function CapturePreview({
 
           {/* ── IMAGE VIEWER ── */}
           <View style={styles.imageCard}>
-            {/* Corner brackets — tactical feel */}
-            <CornerBracket position="tl" accentColor={C.accent} />
-            <CornerBracket position="tr" accentColor={C.accent} />
-            <CornerBracket position="bl" accentColor={C.accent} />
-            <CornerBracket position="br" accentColor={C.accent} />
 
             <Image
               source={{ uri: image }}
@@ -274,7 +207,7 @@ export default function CapturePreview({
                 />
                 <View style={styles.scanningBanner}>
                   <ActivityIndicator color={C.accent} size="small" />
-                  <Text style={styles.scanningText}>PROCESSING IMAGE</Text>
+                  <Text style={styles.scanningText}>Processing image</Text>
                 </View>
               </>
             )}
@@ -330,8 +263,8 @@ export default function CapturePreview({
           <View style={styles.section}>
             {/* Label row */}
             <View style={styles.sectionLabelRow}>
-              <View style={styles.sectionDash} />
-              <Text style={styles.sectionLabel}>SITE DESCRIPTION</Text>
+
+              <Text style={styles.sectionLabel}>Site description</Text>
             </View>
 
             <View
@@ -389,7 +322,7 @@ export default function CapturePreview({
                 </View>
               ) : (
                 <View style={styles.submitInner}>
-                  <Sparkles
+                  <ScanLine
                     color={canSubmit ? "#FFFFFF" : C.textDim}
                     size={16}
                     strokeWidth={2.5}
@@ -401,7 +334,7 @@ export default function CapturePreview({
                       !canSubmit && styles.submitTextDisabled,
                     ]}
                   >
-                    ANALYZE WITH AI
+                    Analyze with AI
                   </Text>
                   <ChevronRight
                     color={canSubmit ? "#FFFFFF" : C.textDim}
@@ -470,8 +403,8 @@ const createStyles = (C: ThemeColors) =>
     navTitle: {
       color: C.text,
       fontSize: 11,
-      fontWeight: "800",
-      letterSpacing: 2.5,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     stepRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     stepLine: { width: 14, height: 1, backgroundColor: C.border },
@@ -488,12 +421,12 @@ const createStyles = (C: ThemeColors) =>
     stepDotActive: {
       backgroundColor: C.accent,
       borderColor: C.accent,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.5,
       shadowRadius: 6,
       elevation: 4,
     },
-    stepDotText: { fontSize: 9, fontWeight: "800", color: C.textSub },
+    stepDotText: { fontSize: 11, fontWeight: "700", color: C.textSub },
     stepDotTextActive: { color: "#FFFFFF" },
 
     // ── Image card
@@ -519,7 +452,7 @@ const createStyles = (C: ThemeColors) =>
       height: 1.5,
       backgroundColor: C.accent,
       zIndex: 10,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.9,
       shadowRadius: 8,
       elevation: 8,
@@ -541,9 +474,9 @@ const createStyles = (C: ThemeColors) =>
     },
     scanningText: {
       color: C.accent,
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 1.8,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
 
     // Crosshair
@@ -573,7 +506,7 @@ const createStyles = (C: ThemeColors) =>
       height: 5,
       borderRadius: 3,
       backgroundColor: C.accent,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 1,
       shadowRadius: 6,
       elevation: 6,
@@ -610,16 +543,10 @@ const createStyles = (C: ThemeColors) =>
       gap: 8,
       marginBottom: 12,
     },
-    sectionDash: {
-      width: 20,
-      height: 2,
-      backgroundColor: C.accent,
-      borderRadius: 1,
-    },
     sectionLabel: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontSize: 16,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
 
@@ -652,7 +579,7 @@ const createStyles = (C: ThemeColors) =>
       marginTop: 8,
       paddingLeft: 4,
     },
-    nudgeText: { fontSize: 10, color: C.textDim, fontWeight: "500" },
+    nudgeText: { fontSize: 11, color: C.textDim, fontWeight: "500" },
 
     // ── Submit
     submitWrap: { marginTop: 4 },
@@ -662,7 +589,7 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 16,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.35,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
@@ -679,8 +606,8 @@ const createStyles = (C: ThemeColors) =>
     submitText: {
       color: "#FFFFFF",
       fontSize: 13,
-      fontWeight: "800",
-      letterSpacing: 1.8,
+      fontWeight: "700",
+      letterSpacing: 0.3,
     },
     submitTextDisabled: { color: C.textDim },
 

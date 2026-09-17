@@ -43,7 +43,7 @@ const CountUp = ({
 
   return (
     <Text
-      style={{ fontSize: size, fontWeight: "800", color, letterSpacing: -0.5 }}
+      style={{ fontSize: size, fontWeight: "700", color, letterSpacing: -0.5 }}
     >
       {display}
     </Text>
@@ -67,13 +67,11 @@ const StatCell = ({
   <View
     style={[
       cell.wrap,
-      { backgroundColor: glowColor, borderColor: color + "30" },
+      { backgroundColor: glowColor },
     ]}
   >
     <CountUp value={value} color={color} size={24} />
     <Text style={[cell.label, { color: textColor }]}>{label}</Text>
-    {/* Bottom accent line */}
-    <View style={[cell.line, { backgroundColor: color }]} />
   </View>
 );
 
@@ -83,24 +81,15 @@ const cell = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
     position: "relative",
     overflow: "hidden",
   },
   label: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.4,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
     marginTop: 5,
-    textTransform: "uppercase",
-  },
-  line: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    opacity: 0.7,
+    textTransform: "none",
   },
 });
 
@@ -146,22 +135,17 @@ export default function ReportStatsCard({
       {/* ── Header row ── */}
       <View style={styles.headerRow}>
         <View style={styles.headerLeft}>
-          <View style={styles.sectionDash} />
-          <Text style={styles.sectionLabel}>YOUR ACTIVITY</Text>
-        </View>
-        {/* Live indicator */}
-        <View style={styles.livePill}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>LIVE</Text>
+
+          <Text style={styles.sectionLabel}>Your activity</Text>
         </View>
       </View>
 
       {/* ── Total ── */}
       <View style={styles.totalRow}>
-        <CountUp value={total} color={C.accent} size={52} />
+        <CountUp value={total} color={C.text} size={40} />
         <View style={styles.totalMeta}>
-          <Text style={styles.totalLabel}>TOTAL{"\n"}REPORTS</Text>
-          <View style={styles.totalAccentBar} />
+          <Text style={styles.totalLabel}>Total reports</Text>
+
         </View>
       </View>
 
@@ -174,21 +158,21 @@ export default function ReportStatsCard({
           value={resolved}
           label="Resolved"
           color={C.safe}
-          glowColor={C.safeGlow}
+          glowColor={C.surfaceRaised}
           textColor={C.textSub}
         />
         <StatCell
           value={active}
           label="Active"
           color={C.danger}
-          glowColor={C.dangerGlow}
+          glowColor={C.surfaceRaised}
           textColor={C.textSub}
         />
         <StatCell
           value={pending}
           label="Pending"
           color={C.warn}
-          glowColor={C.warnGlow}
+          glowColor={C.surfaceRaised}
           textColor={C.textSub}
         />
       </View>
@@ -217,44 +201,11 @@ const createStyles = (C: ThemeColors) =>
       marginBottom: 20,
     },
     headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    sectionDash: {
-      width: 20,
-      height: 2,
-      backgroundColor: C.accent,
-      borderRadius: 1,
-    },
     sectionLabel: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 2,
+      fontSize: 16,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
-    },
-    livePill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      backgroundColor: C.safeGlow,
-      borderWidth: 1,
-      borderColor: C.safe + "40",
-      paddingVertical: 4,
-      paddingHorizontal: 9,
-      borderRadius: 7,
-    },
-    liveDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: C.safe,
-      shadowColor: C.safe,
-      shadowOpacity: 1,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    liveText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-      color: C.safe,
     },
 
     // Total
@@ -267,16 +218,10 @@ const createStyles = (C: ThemeColors) =>
     totalMeta: { gap: 6 },
     totalLabel: {
       fontSize: 11,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.textSub,
-      letterSpacing: 1.5,
+      letterSpacing: 0.3,
       lineHeight: 16,
-    },
-    totalAccentBar: {
-      width: 32,
-      height: 2,
-      backgroundColor: C.accent,
-      borderRadius: 1,
     },
 
     // Divider

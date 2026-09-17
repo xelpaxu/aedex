@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -136,7 +137,7 @@ const btnStyles = StyleSheet.create({
     fontWeight: "700",
   },
   socialBtnSublabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "500",
   },
   socialBtnChevron: {
@@ -284,7 +285,7 @@ export default function LoginScreen() {
         backgroundColor={C.bg}
       />
 
-      <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
         {/* ── Hero ── */}
         <View style={styles.hero}>
           <View style={styles.logoWrap}>
@@ -295,20 +296,10 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={styles.badgeRow}>
-            <View style={styles.pulse} />
-            <View style={[styles.badge, styles.badgeBlue]}>
-              <Text style={[styles.badgeText, { color: C.accent }]}>
-                AEDEX v2
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.eyebrow}>AEDEX SURVEILLANCE</Text>
+          <Text style={styles.eyebrow}>AEDEX surveillance</Text>
           <Text style={styles.heroTitle}>Sign in to{"\n"}your account</Text>
           <Text style={styles.heroSub}>
-            Authenticate to access the vector surveillance network and field
-            reporting system.
+            Report mosquito breeding sites and follow updates in your barangay.
           </Text>
         </View>
 
@@ -327,8 +318,6 @@ export default function LoginScreen() {
             label="Continue with Facebook"
             sublabel="Sign in using your Facebook account"
             icon={<FacebookLogo size={20} />}
-            surfaceColor={isDark ? "#0F1E3A" : "#EEF3FF"}
-            borderColor={isDark ? "#1D3060" : "#D0DEFF"}
             accentColor={C.text}
             C={C}
           />
@@ -343,9 +332,6 @@ export default function LoginScreen() {
         {/* ── Tanod Registration ── */}
         <View style={styles.tanodSection}>
           <View style={styles.tanodHeader}>
-            <View style={styles.tanodBadge}>
-              <Text style={styles.tanodBadgeText}>TANOD</Text>
-            </View>
             <Text style={styles.tanodTitle}>Register as Tanod</Text>
             <Text style={styles.tanodSub}>
               Join as a field officer and help resolve reports in your barangay
@@ -381,14 +367,14 @@ export default function LoginScreen() {
 
         {/* ── Footer ── */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
           <Link href="/(auth)/signup" asChild>
             <TouchableOpacity>
               <Text style={styles.footerLink}>Sign Up</Text>
             </TouchableOpacity>
           </Link>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -421,7 +407,7 @@ const createStyles = (C: ThemeColors) =>
       fontWeight: "700",
     },
     socialBtnSublabel: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "500",
     },
     socialBtnChevron: {
@@ -440,13 +426,14 @@ const createStyles = (C: ThemeColors) =>
       gap: 14,
     },
     loadingText: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.textSub,
     },
     screen: {
-      flex: 1,
+      flexGrow: 1,
+      paddingTop: 24,
       paddingHorizontal: 24,
       paddingBottom: 24,
     },
@@ -468,61 +455,28 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
       marginBottom: 20,
       padding: 10,
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.2,
+      shadowOpacity: 0,
       shadowRadius: 12,
-      elevation: 6,
+      elevation: 0,
     },
     logoImage: {
       width: "100%",
       height: "100%",
     },
 
-    // Badges
-    badgeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      marginBottom: 16,
-    },
-    pulse: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: C.safe,
-      shadowColor: C.safe,
-      shadowOpacity: 0.9,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    badge: {
-      paddingVertical: 4,
-      paddingHorizontal: 9,
-      borderRadius: 6,
-      borderWidth: 1,
-    },
-    badgeBlue: {
-      backgroundColor: C.accentGlow,
-      borderColor: C.accent + "40",
-    },
-    badgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-    },
-
     eyebrow: {
-      fontSize: 10,
-      fontWeight: "800",
-      letterSpacing: 3,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
       color: C.accent,
-      textTransform: "uppercase",
+      textTransform: "none",
       marginBottom: 8,
     },
     heroTitle: {
       fontSize: 32,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       lineHeight: 38,
       letterSpacing: -0.5,
@@ -555,10 +509,10 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.border,
     },
     dividerText: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: "700",
       color: C.textDim,
-      letterSpacing: 1,
+      letterSpacing: 0.3,
     },
 
     // ── Footer
@@ -588,24 +542,9 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       marginBottom: 8,
     },
-    tanodBadge: {
-      backgroundColor: C.warnGlow,
-      borderWidth: 1,
-      borderColor: C.warn + "40",
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      borderRadius: 6,
-      marginBottom: 8,
-    },
-    tanodBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
-      letterSpacing: 1.5,
-      color: C.warn,
-    },
     tanodTitle: {
       fontSize: 16,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
       marginBottom: 4,
     },

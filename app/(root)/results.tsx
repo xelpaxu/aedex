@@ -13,7 +13,7 @@ import {
   Maximize2,
   Navigation,
   Shield,
-  Sparkles,
+  ScanLine,
   X,
   Zap,
 } from "lucide-react-native";
@@ -93,7 +93,7 @@ const tagStyles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
   },
-  tagText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  tagText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });
 
 // ─── Stat block ───────────────────────────────────────────────────────────────
@@ -106,34 +106,29 @@ const StatBlock = ({ label, value, sub, color, C }: any) => (
 );
 const sbStyles = StyleSheet.create({
   statBlock: { alignItems: "center", flex: 1 },
-  statValue: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
+  statValue: { fontSize: 18, fontWeight: "700", letterSpacing: 0.3 },
   statLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
     marginTop: 2,
   },
-  statSub: { fontSize: 9, marginTop: 1 },
+  statSub: { fontSize: 11, marginTop: 1 },
 });
 
 // ─── Section label ────────────────────────────────────────────────────────────
 const SectionLabel = ({ children, C }: { children: string; C: ThemeColors }) => (
   <Row style={{ marginBottom: 12, gap: 8 }}>
-    <View style={[secStyles.sectionLabelDash, { backgroundColor: C.accent }]} />
+
     <Text style={[secStyles.sectionLabelText, { color: C.textSub }]}>{children}</Text>
   </Row>
 );
 const secStyles = StyleSheet.create({
-  sectionLabelDash: {
-    width: 3,
-    height: 12,
-    borderRadius: 1.5,
-  },
   sectionLabelText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    textTransform: "none",
   },
 });
 
@@ -204,8 +199,8 @@ const tlStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   tlLine: { flex: 1, width: 2, marginTop: 4, marginBottom: 4 },
-  tlTitle: { fontSize: 12, fontWeight: "800" },
-  tlDate: { fontSize: 10, marginTop: 2 },
+  tlTitle: { fontSize: 12, fontWeight: "700" },
+  tlDate: { fontSize: 11, marginTop: 2 },
 });
 
 // ─── Interactive Location Preview with Road Routing Support ───────────────────
@@ -216,6 +211,7 @@ function buildPreviewMapHtml(
   radiusMeters: number,
   C: ThemeColors,
   isDark: boolean,
+  isTanod: boolean,
 ) {
   const zoneColor = isCritical ? C.danger : C.warn;
   return `<!DOCTYPE html>
@@ -228,6 +224,62 @@ function buildPreviewMapHtml(
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.surfaceRaised}; }
     .leaflet-control-attribution { font-size: 7px; opacity: 0.5; }
     .leaflet-control-zoom { display: none; }
+    
+    @keyframes bluePulse {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      50% { transform: scale(1.6); opacity: 0.25; }
+      100% { transform: scale(0.8); opacity: 0.9; }
+    }
+    @keyframes tanodPulse {
+      0% { transform: scale(0.85); opacity: 0.8; }
+      50% { transform: scale(1.4); opacity: 0.2; }
+      100% { transform: scale(0.85); opacity: 0.8; }
+    }
+    .tanod-route-marker {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tanod-pulse-glow {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      background: ${C.accent}40;
+      animation: tanodPulse 2s infinite ease-in-out;
+    }
+    .tanod-svg {
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+      z-index: 2;
+    }
+    .user-blue-dot-box {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .user-blue-dot-pulse {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+      background: rgba(0, 122, 255, 0.45);
+      animation: bluePulse 2s infinite ease-in-out;
+    }
+    .user-blue-dot-core {
+      width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      background: #007AFF;
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 0 10px rgba(0, 122, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
@@ -245,7 +297,6 @@ function buildPreviewMapHtml(
     }).addTo(map);
 
     var routeLayer = L.layerGroup().addTo(map);
-    var userLocationMarker = null;
 
     L.circle([${lat}, ${lng}], {
       radius: ${radiusMeters},
@@ -258,9 +309,9 @@ function buildPreviewMapHtml(
 
     var reportIcon = L.divIcon({
       className: '',
-      html: '<div style="width:32px;height:32px;border-radius:16px;background:${isCritical ? C.danger : C.accent};display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.4);"><span style="font-size:16px;">🦟</span></div>',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
+      html: '<div style="width:34px;height:34px;border-radius:17px;background:${isCritical ? C.danger : C.accent};display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 3px 6px rgba(0,0,0,0.45);"><span style="font-size:16px;">🦟</span></div>',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
     });
     L.marker([${lat}, ${lng}], { icon: reportIcon }).addTo(map);
 
@@ -270,9 +321,34 @@ function buildPreviewMapHtml(
       }
     }
 
-    window.drawRoute = function(startLat, startLng, endLat, endLng) {
+    window.drawRoute = function(startLat, startLng, endLat, endLng, tanodActive) {
       routeLayer.clearLayers();
       if (!startLat || !startLng || !endLat || !endLng) return;
+
+      var isTanodOfficer = (tanodActive !== undefined) ? tanodActive : ${isTanod ? "true" : "false"};
+
+      // Start Location Marker (Distinct Tanod standalone emblem vs Citizen Blue Dot)
+      var startIconHtml = isTanodOfficer
+        ? '<div class="tanod-route-marker">' +
+            '<div class="tanod-pulse-glow"></div>' +
+            '<svg class="tanod-svg" width="34" height="34" viewBox="0 0 24 24" fill="none">' +
+              '<path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z" fill="${C.accent}" stroke="#FFFFFF" stroke-width="1.8" stroke-linejoin="round"/>' +
+              '<path d="M12 6.5l1.3 2.64 2.91.42-2.11 2.05.5 2.9-2.6-1.37-2.6 1.37.5-2.9-2.11-2.05 2.91-.42L12 6.5z" fill="#FFFFFF"/>' +
+            '</svg>' +
+          '</div>'
+        : '<div class="user-blue-dot-box">' +
+            '<div class="user-blue-dot-pulse"></div>' +
+            '<div class="user-blue-dot-core"></div>' +
+          '</div>';
+
+      var startMarkerIcon = L.divIcon({
+        className: '',
+        html: startIconHtml,
+        iconSize: isTanodOfficer ? [36, 36] : [32, 32],
+        iconAnchor: isTanodOfficer ? [18, 18] : [16, 16],
+      });
+
+      L.marker([startLat, startLng], { icon: startMarkerIcon, zIndexOffset: 1000 }).addTo(routeLayer);
 
       var latlngs = [[startLat, startLng], [endLat, endLng]];
       
@@ -305,6 +381,7 @@ function buildPreviewMapHtml(
         .then(function(data) {
           if (data && data.routes && data.routes.length > 0) {
             routeLayer.clearLayers();
+            L.marker([startLat, startLng], { icon: startMarkerIcon, zIndexOffset: 1000 }).addTo(routeLayer);
             var route = data.routes[0];
             var coords = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
 
@@ -347,7 +424,7 @@ export default function ResultsScreen() {
   const reportId = params.reportId as string;
 
   const currentUser = useQuery(api.users.getMe);
-  const isTanod = currentUser?.role === "tanod";
+  const isTanod = currentUser?.role?.toLowerCase() === "tanod";
 
   const report = useQuery(api.reports.getReport, {
     id: reportId as Id<"reports">,
@@ -366,7 +443,7 @@ export default function ResultsScreen() {
   const [imageInspectorVisible, setImageInspectorVisible] = useState(false);
 
   const handleResolveReport = async () => {
-    if (!report?._id) return;
+    if (!report?._id || !isTanod) return;
     try {
       setIsResolving(true);
       await resolveReportMutation({
@@ -401,7 +478,7 @@ export default function ResultsScreen() {
         const userLng = loc.coords.longitude;
 
         previewWebViewRef.current?.injectJavaScript(
-          `window.drawRoute(${userLat}, ${userLng}, ${report.lat}, ${report.lng}); true;`
+          `window.drawRoute(${userLat}, ${userLng}, ${report.lat}, ${report.lng}, ${isTanod}); true;`
         );
       }
     } catch (err) {
@@ -444,8 +521,9 @@ export default function ResultsScreen() {
       isCriticalForPreview ? 200 : 150,
       C,
       isDark,
+      isTanod,
     );
-  }, [report, hasLocation, C, isDark]);
+  }, [report, hasLocation, C, isDark, isTanod]);
 
   const styles = useMemo(() => createStyles(C), [C]);
 
@@ -459,8 +537,8 @@ export default function ResultsScreen() {
       >
         <ActivityIndicator size="large" color={C.accent} />
         <Spacer h={12} />
-        <Text style={{ color: C.textSub, fontSize: 12, letterSpacing: 1 }}>
-          LOADING REPORT
+        <Text style={{ color: C.textSub, fontSize: 12, letterSpacing: 0.3 }}>
+          Loading report
         </Text>
       </View>
     );
@@ -563,7 +641,7 @@ export default function ResultsScreen() {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false },
         )}
-        contentContainerStyle={{ paddingBottom: isTanod ? 110 : 60 }}
+        contentContainerStyle={{ paddingBottom: isTanod && !isResolved ? 110 : 40 }}
       >
         {/* ── HERO IMAGE WITH PARALLAX ── */}
         <View style={styles.heroWrapper}>
@@ -584,7 +662,7 @@ export default function ResultsScreen() {
             onPress={() => setImageInspectorVisible(true)}
           >
             <Maximize2 color={C.text} size={12} strokeWidth={2.5} />
-            <Text style={styles.inspectImageBadgeText}>INSPECT IMAGE</Text>
+            <Text style={styles.inspectImageBadgeText}>Inspect image</Text>
           </TouchableOpacity>
 
           {/* Raw / Annotated toggle */}
@@ -608,7 +686,7 @@ export default function ResultsScreen() {
                     viewMode === "annotated" && { color: "#FFFFFF" },
                   ]}
                 >
-                  AI MASK
+                  AI mask
                 </Text>
               </Pressable>
               <Pressable
@@ -681,7 +759,7 @@ export default function ResultsScreen() {
           <Spacer h={22} />
 
           {/* ── SITE PHOTO INSPECTOR CARD ── */}
-          <SectionLabel C={C}>SITE PHOTO INSPECTION</SectionLabel>
+          <SectionLabel C={C}>Site photo inspection</SectionLabel>
           <View style={styles.sitePhotoCard}>
             <TouchableOpacity
               style={styles.sitePhotoBtn}
@@ -713,7 +791,7 @@ export default function ResultsScreen() {
           <Spacer h={22} />
 
           {/* ── VECTOR RISK & WATER CONTAINER SPEC ── */}
-          <SectionLabel C={C}>VECTOR BREEDING ASSESSMENT</SectionLabel>
+          <SectionLabel C={C}>Vector breeding assessment</SectionLabel>
           <View style={styles.riskCard}>
             <View
               style={[
@@ -765,11 +843,11 @@ export default function ResultsScreen() {
           <Spacer h={22} />
 
           {/* ── AI BREEDING SITE REASONING ── */}
-          <SectionLabel C={C}>AI DETECTION REASONING</SectionLabel>
+          <SectionLabel C={C}>AI detection reasoning</SectionLabel>
           <View style={styles.aiCard}>
             <Row style={{ gap: 8, marginBottom: 12 }}>
               <View style={styles.aiIconBg}>
-                <Sparkles color={C.gold} size={13} strokeWidth={2.5} />
+                <ScanLine color={C.gold} size={13} strokeWidth={2.5} />
               </View>
               <Text style={styles.aiTitle}>AI Diagnostics Engine</Text>
               <Spacer w={4} />
@@ -786,7 +864,7 @@ export default function ResultsScreen() {
           {/* ── INTERACTIVE LOCATION & DIRECTIONS MAP ── */}
           {hasLocation && (
             <>
-              <SectionLabel C={C}>GEOSPATIAL COORDINATES</SectionLabel>
+              <SectionLabel C={C}>Geospatial coordinates</SectionLabel>
               <View style={styles.locationCard}>
                 <View style={styles.locationMap}>
                   <WebView
@@ -824,7 +902,7 @@ export default function ResultsScreen() {
                           strokeWidth={2.5}
                         />
                         <Text style={styles.inlineNavTitle}>
-                          ROUTE TO BREEDING SITE
+                          Route to breeding site
                         </Text>
                       </View>
                       <TouchableOpacity
@@ -839,7 +917,7 @@ export default function ResultsScreen() {
                         <Text style={styles.inlineNavMetricVal}>
                           {routeMetrics.distanceKm} km
                         </Text>
-                        <Text style={styles.inlineNavMetricLbl}>DISTANCE</Text>
+                        <Text style={styles.inlineNavMetricLbl}>Distance</Text>
                       </View>
                       <View style={styles.inlineNavMetricBox}>
                         <Text
@@ -900,7 +978,7 @@ export default function ResultsScreen() {
           )}
 
           {/* ── SUBMITTED BY CARD ── */}
-          <SectionLabel C={C}>REPORT ORIGIN</SectionLabel>
+          <SectionLabel C={C}>Report origin</SectionLabel>
           <View style={styles.submitterCard}>
             <Row style={{ gap: 12 }}>
               <View style={styles.submitterAvatar}>
@@ -914,7 +992,7 @@ export default function ResultsScreen() {
               </View>
               <View style={styles.submitterRight}>
                 <CheckCircle2 color={C.safe} size={11} strokeWidth={2.5} />
-                <Text style={styles.submitterVerifiedText}>AUTHENTICATED</Text>
+                <Text style={styles.submitterVerifiedText}>Authenticated</Text>
               </View>
             </Row>
           </View>
@@ -922,7 +1000,7 @@ export default function ResultsScreen() {
           <Spacer h={22} />
 
           {/* ── TIMELINE TRACKER ── */}
-          <SectionLabel C={C}>INCIDENT LIFECYCLE</SectionLabel>
+          <SectionLabel C={C}>Incident lifecycle</SectionLabel>
           <View style={styles.timelineCard}>
             <TimelineItem
               title="Report Uploaded & Processed"
@@ -1032,7 +1110,7 @@ export default function ResultsScreen() {
                     viewMode === "annotated" && { color: "#FFFFFF" },
                   ]}
                 >
-                  AI DETECTION
+                  AI detection
                 </Text>
               </Pressable>
               <Pressable
@@ -1048,7 +1126,7 @@ export default function ResultsScreen() {
                     viewMode === "raw" && { color: "#FFFFFF" },
                   ]}
                 >
-                  RAW PHOTO
+                  Raw photo
                 </Text>
               </Pressable>
             </View>
@@ -1092,7 +1170,7 @@ const createStyles = (C: ThemeColors) =>
     headerTitle: {
       flex: 1,
       fontSize: 14,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
     },
     headerStatusBadge: {
@@ -1104,7 +1182,7 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 20,
       borderWidth: 1,
     },
-    headerStatusText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
+    headerStatusText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 
     // Hero
     heroWrapper: {
@@ -1133,10 +1211,10 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 20,
     },
     inspectImageBadgeText: {
-      fontSize: 9,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.text,
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
     },
     heroToggle: {
       position: "absolute",
@@ -1161,10 +1239,10 @@ const createStyles = (C: ThemeColors) =>
     },
     heroToggleBtnActive: { backgroundColor: C.accent },
     heroToggleText: {
-      fontSize: 9,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.textSub,
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
     },
     heroCaption: {
       position: "absolute",
@@ -1223,11 +1301,11 @@ const createStyles = (C: ThemeColors) =>
     },
     sitePhotoTitle: {
       fontSize: 13,
-      fontWeight: "800",
+      fontWeight: "700",
       color: C.text,
     },
     sitePhotoSub: {
-      fontSize: 10,
+      fontSize: 11,
       color: C.textSub,
       marginTop: 2,
     },
@@ -1251,7 +1329,7 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 2,
       marginRight: 14,
     },
-    riskCardTitle: { fontSize: 14, fontWeight: "800", color: C.text },
+    riskCardTitle: { fontSize: 14, fontWeight: "700", color: C.text },
     fieldLabel: { fontSize: 12, color: C.textSub },
     fieldValue: { fontSize: 12, fontWeight: "700", color: C.text },
 
@@ -1271,7 +1349,7 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    aiTitle: { fontSize: 13, fontWeight: "800", color: C.text },
+    aiTitle: { fontSize: 13, fontWeight: "700", color: C.text },
     aiModelBadge: {
       flexDirection: "row",
       alignItems: "center",
@@ -1283,7 +1361,7 @@ const createStyles = (C: ThemeColors) =>
       paddingHorizontal: 8,
       borderRadius: 10,
     },
-    aiModelText: { fontSize: 9, fontWeight: "800", color: C.accent },
+    aiModelText: { fontSize: 11, fontWeight: "700", color: C.accent },
     aiBody: { fontSize: 13, color: C.textSub, lineHeight: 20 },
 
     // Location
@@ -1305,8 +1383,8 @@ const createStyles = (C: ThemeColors) =>
       borderTopColor: C.border,
     },
     locationFooterLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    locationTitle: { fontSize: 12, fontWeight: "800", color: C.text },
-    locationSub: { fontSize: 10, color: C.textSub, marginTop: 1 },
+    locationTitle: { fontSize: 12, fontWeight: "700", color: C.text },
+    locationSub: { fontSize: 11, color: C.textSub, marginTop: 1 },
     trackDirectionBtn: {
       flexDirection: "row",
       alignItems: "center",
@@ -1322,10 +1400,10 @@ const createStyles = (C: ThemeColors) =>
       borderColor: C.accent,
     },
     trackDirectionBtnText: {
-      fontSize: 10,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
       color: "#FFFFFF",
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
     },
 
     // Inline Nav Snackbar
@@ -1347,10 +1425,10 @@ const createStyles = (C: ThemeColors) =>
       gap: 6,
     },
     inlineNavTitle: {
-      fontSize: 10,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.accent,
-      letterSpacing: 1.2,
+      letterSpacing: 0.3,
     },
     closeInlineNavBtn: {
       padding: 4,
@@ -1373,14 +1451,14 @@ const createStyles = (C: ThemeColors) =>
     },
     inlineNavMetricVal: {
       fontSize: 12,
-      fontWeight: "900",
+      fontWeight: "700",
       color: C.text,
     },
     inlineNavMetricLbl: {
-      fontSize: 8,
-      fontWeight: "800",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.textSub,
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
       marginTop: 2,
     },
 
@@ -1400,8 +1478,8 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    submitterName: { fontSize: 13, fontWeight: "800", color: C.text },
-    submitterRole: { fontSize: 10, color: C.textSub, marginTop: 1 },
+    submitterName: { fontSize: 13, fontWeight: "700", color: C.text },
+    submitterRole: { fontSize: 11, color: C.textSub, marginTop: 1 },
     submitterRight: {
       flexDirection: "row",
       alignItems: "center",
@@ -1413,7 +1491,7 @@ const createStyles = (C: ThemeColors) =>
       paddingHorizontal: 8,
       borderRadius: 10,
     },
-    submitterVerifiedText: { fontSize: 9, fontWeight: "800", color: C.safe },
+    submitterVerifiedText: { fontSize: 11, fontWeight: "700", color: C.safe },
 
     // Timeline
     timelineCard: {
@@ -1451,9 +1529,9 @@ const createStyles = (C: ThemeColors) =>
     },
     resolveBtnText: {
       fontSize: 12,
-      fontWeight: "900",
+      fontWeight: "700",
       color: "#FFFFFF",
-      letterSpacing: 1.2,
+      letterSpacing: 0.3,
     },
 
     // Modal Image Inspector
@@ -1472,7 +1550,7 @@ const createStyles = (C: ThemeColors) =>
       borderBottomWidth: 1,
       borderBottomColor: C.border,
     },
-    modalTitle: { fontSize: 16, fontWeight: "800", color: C.text },
+    modalTitle: { fontSize: 16, fontWeight: "700", color: C.text },
     modalSub: { fontSize: 11, color: C.textSub, marginTop: 2 },
     modalCloseBtn: {
       width: 36,
@@ -1518,9 +1596,9 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.accent,
     },
     modalToggleText: {
-      fontSize: 10,
-      fontWeight: "900",
+      fontSize: 11,
+      fontWeight: "700",
       color: C.textSub,
-      letterSpacing: 0.8,
+      letterSpacing: 0.3,
     },
   });

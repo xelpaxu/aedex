@@ -302,7 +302,7 @@ const createStyles = (C: ThemeColors) =>
       shadowRadius: 4,
       elevation: 4,
     },
-    pillText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.9 },
+    pillText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 
     tsChip: {
       position: "absolute",
@@ -318,7 +318,7 @@ const createStyles = (C: ThemeColors) =>
       borderWidth: 1,
       borderColor: C.border,
     },
-    tsText: { fontSize: 10, color: C.textSub, fontWeight: "600" },
+    tsText: { fontSize: 11, color: C.textSub, fontWeight: "600" },
 
     meta: {
       flexDirection: "row",
@@ -340,9 +340,9 @@ const createStyles = (C: ThemeColors) =>
       borderColor: C.borderBright,
     },
     metaBody: { flex: 1, gap: 4 },
-    userName: { fontSize: 13, fontWeight: "800", color: C.text },
+    userName: { fontSize: 13, fontWeight: "700", color: C.text },
     locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    locText: { fontSize: 10, color: C.textSub, fontWeight: "500", flex: 1 },
+    locText: { fontSize: 11, color: C.textSub, fontWeight: "500", flex: 1 },
 
     viewBtn: {
       width: 30,
@@ -351,7 +351,7 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.accent,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: C.accent,
+      shadowColor: "#000000",
       shadowOpacity: 0.35,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 2 },
