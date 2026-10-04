@@ -2,20 +2,15 @@ import { useMutation, useQuery } from "convex/react";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  Compass,
   Eye,
   EyeOff,
-  LocateFixed,
   MapPin,
   Maximize2,
   Navigation,
   Shield,
-  ScanLine,
-  X,
-  Zap,
+  X
 } from "lucide-react-native";
 import React, { useMemo, useRef, useState } from "react";
 import {
@@ -486,6 +481,8 @@ export default function ResultsScreen() {
     }
   };
 
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+
   const [viewMode, setViewMode] = useState<"annotated" | "raw">("annotated");
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -565,7 +562,7 @@ export default function ResultsScreen() {
       ? rawAccuracy
       : `${accuracyNum.toFixed(1)}%`;
 
-  const aiMessage = report.reasoning || "No detailed reasoning provided.";
+  const aiMessage = report.reasoning || "No detailed field notes provided.";
   const verified = report.verified;
   const submitterName = report.userName || "Anonymous";
 
@@ -686,7 +683,7 @@ export default function ResultsScreen() {
                     viewMode === "annotated" && { color: "#FFFFFF" },
                   ]}
                 >
-                  AI mask
+                  Evidence
                 </Text>
               </Pressable>
               <Pressable
@@ -718,7 +715,7 @@ export default function ResultsScreen() {
             <Tag
               label={
                 viewMode === "annotated"
-                  ? "AI DETECTED BREEDING SITES"
+                  ? "DETECTED BREEDING SITES"
                   : "ORIGINAL CAPTURE"
               }
               color={viewMode === "annotated" ? C.accent : C.textSub}
@@ -735,9 +732,9 @@ export default function ResultsScreen() {
           {/* Quick Metrics Bar */}
           <View style={styles.statRow}>
             <StatBlock
-              label="ACCURACY"
-              value={accuracy}
-              color={C.accent}
+              label="PRIORITY"
+              value={isCritical ? "URGENT" : "ROUTINE"}
+              color={isCritical ? C.danger : C.accent}
               C={C}
             />
             <View style={styles.statDivider} />
@@ -790,7 +787,7 @@ export default function ResultsScreen() {
 
           <Spacer h={22} />
 
-          {/* ── VECTOR RISK & WATER CONTAINER SPEC ── */}
+          {/* ── VECTOR RISK & INCIDENT ASSESSMENT ── */}
           <SectionLabel C={C}>Vector breeding assessment</SectionLabel>
           <View style={styles.riskCard}>
             <View
@@ -809,10 +806,6 @@ export default function ResultsScreen() {
               </Row>
               <View style={{ gap: 6 }}>
                 <Row style={{ justifyContent: "space-between" }}>
-                  <Text style={styles.fieldLabel}>Detection Model:</Text>
-                  <Text style={styles.fieldValue}>YOLOv8 + Gemini 2.0</Text>
-                </Row>
-                <Row style={{ justifyContent: "space-between" }}>
                   <Text style={styles.fieldLabel}>Risk Classification:</Text>
                   <Text
                     style={[
@@ -826,7 +819,7 @@ export default function ResultsScreen() {
                   </Text>
                 </Row>
                 <Row style={{ justifyContent: "space-between" }}>
-                  <Text style={styles.fieldLabel}>Verified by Health Unit:</Text>
+                  <Text style={styles.fieldLabel}>Field Verification:</Text>
                   <Text
                     style={[
                       styles.fieldValue,
@@ -842,19 +835,14 @@ export default function ResultsScreen() {
 
           <Spacer h={22} />
 
-          {/* ── AI BREEDING SITE REASONING ── */}
-          <SectionLabel C={C}>AI detection reasoning</SectionLabel>
+          {/* ── FIELD ASSESSMENT & SITE OBSERVATIONS ── */}
+          <SectionLabel C={C}>Field assessment & notes</SectionLabel>
           <View style={styles.aiCard}>
             <Row style={{ gap: 8, marginBottom: 12 }}>
               <View style={styles.aiIconBg}>
-                <ScanLine color={C.gold} size={13} strokeWidth={2.5} />
+                <Shield color={C.accent} size={13} strokeWidth={2.5} />
               </View>
-              <Text style={styles.aiTitle}>AI Diagnostics Engine</Text>
-              <Spacer w={4} />
-              <View style={styles.aiModelBadge}>
-                <Zap color={C.accent} size={9} />
-                <Text style={styles.aiModelText}>AEDEX-VISION</Text>
-              </View>
+              <Text style={styles.aiTitle}>Officer Assessment Notes</Text>
             </Row>
             <Text style={styles.aiBody}>{aiMessage}</Text>
           </View>
@@ -864,7 +852,20 @@ export default function ResultsScreen() {
           {/* ── INTERACTIVE LOCATION & DIRECTIONS MAP ── */}
           {hasLocation && (
             <>
-              <SectionLabel C={C}>Geospatial coordinates</SectionLabel>
+              <Row style={{ justifyContent: "space-between", marginBottom: 12 }}>
+                <SectionLabel C={C}>Geospatial coordinates & map</SectionLabel>
+                <TouchableOpacity
+                  style={styles.expandMapHeaderBtn}
+                  onPress={() => setIsMapExpanded(true)}
+                  activeOpacity={0.8}
+                >
+                  <Maximize2 color={C.accent} size={13} strokeWidth={2.5} />
+                  <Text style={[styles.expandMapHeaderText, { color: C.accent }]}>
+                    EXPAND MAP
+                  </Text>
+                </TouchableOpacity>
+              </Row>
+
               <View style={styles.locationCard}>
                 <View style={styles.locationMap}>
                   <WebView
@@ -1003,14 +1004,14 @@ export default function ResultsScreen() {
           <SectionLabel C={C}>Incident lifecycle</SectionLabel>
           <View style={styles.timelineCard}>
             <TimelineItem
-              title="Report Uploaded & Processed"
+              title="Report Uploaded & Documented"
               date={`${dateStr} • ${timeStr}`}
               completed
               C={C}
             />
             <TimelineItem
-              title="AI Classification & Site Mapping"
-              date={`Confidence Score: ${accuracy}`}
+              title="Site Mapping & Risk Assessment"
+              date="Geo-Tagged & Classified"
               completed
               C={C}
             />
@@ -1076,7 +1077,7 @@ export default function ResultsScreen() {
             <View>
               <Text style={styles.modalTitle}>Image Inspection</Text>
               <Text style={styles.modalSub}>
-                {viewMode === "annotated" ? "AI Detection Overlay" : "Raw Capture"}
+                {viewMode === "annotated" ? "Annotated Evidence" : "Raw Capture"}
               </Text>
             </View>
             <TouchableOpacity
@@ -1110,7 +1111,7 @@ export default function ResultsScreen() {
                     viewMode === "annotated" && { color: "#FFFFFF" },
                   ]}
                 >
-                  AI detection
+                  Evidence
                 </Text>
               </Pressable>
               <Pressable
@@ -1130,6 +1131,74 @@ export default function ResultsScreen() {
                 </Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── FULLSCREEN EXPANDED MAP MODAL FOR FIELD NAVIGATION ── */}
+      <Modal
+        visible={isMapExpanded}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setIsMapExpanded(false)}
+      >
+        <View style={[styles.root, { backgroundColor: C.bg }]}>
+          <View style={styles.expandedMapHeader}>
+            <View style={styles.expandedMapHeaderLeft}>
+              <View style={[styles.expandedMapBadge, { backgroundColor: C.accent + "18", borderColor: C.accent + "40" }]}>
+                <Navigation color={C.accent} size={13} strokeWidth={2.5} />
+                <Text style={[styles.expandedMapBadgeText, { color: C.accent }]}>
+                  FIELD NAVIGATION MAP
+                </Text>
+              </View>
+              <Text style={[styles.expandedMapLocationTitle, { color: C.text }]} numberOfLines={1}>
+                {report.locationName || "Report Location"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.modalCloseBtn, { backgroundColor: C.surfaceRaised, borderColor: C.border }]}
+              onPress={() => setIsMapExpanded(false)}
+            >
+              <X color={C.text} size={18} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <WebView
+              originWhitelist={["*"]}
+              source={{ html: previewHtml }}
+              style={{ flex: 1, backgroundColor: C.surfaceRaised }}
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          </View>
+
+          <View style={[styles.expandedMapFooter, { backgroundColor: C.surface, borderColor: C.border }]}>
+            <View style={styles.expandedMapFooterInfo}>
+              <MapPin color={C.accent} size={16} strokeWidth={2.5} />
+              <View>
+                <Text style={[styles.expandedMapCoords, { color: C.text }]}>
+                  {report.lat?.toFixed(5)}, {report.lng?.toFixed(5)}
+                </Text>
+                <Text style={[styles.expandedMapCoordsSub, { color: C.textSub }]}>
+                  {isCritical ? "High Risk Threat Zone (200m)" : "Moderate Risk Zone (150m)"}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.trackDirectionBtn, isTrackingDirections && styles.trackDirectionBtnActive]}
+              onPress={handleTrackDirectionPress}
+              activeOpacity={0.8}
+            >
+              <Navigation
+                color={isTrackingDirections ? C.accent : "#FFFFFF"}
+                size={13}
+                strokeWidth={2.5}
+              />
+              <Text style={[styles.trackDirectionBtnText, isTrackingDirections && { color: C.accent }]}>
+                {isTrackingDirections ? "CLEAR ROUTE" : "NAVIGATE"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1248,37 +1317,39 @@ const createStyles = (C: ThemeColors) =>
       position: "absolute",
       bottom: 20,
       left: 16,
-      alignItems: "flex-start",
     },
     heroCaptionSub: {
       fontSize: 11,
-      fontWeight: "600",
-      color: "rgba(255,255,255,0.75)",
+      color: "#FFFFFFCC",
+      fontWeight: "700",
     },
 
     // Sheet
     sheet: {
-      marginTop: -20,
+      paddingHorizontal: 18,
+      paddingTop: 20,
+      backgroundColor: C.bg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      backgroundColor: C.bg,
-      paddingHorizontal: 18,
-      paddingTop: 24,
+      marginTop: -20,
     },
 
     // Stats
     statRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-around",
       backgroundColor: C.surface,
       borderWidth: 1,
       borderColor: C.border,
       borderRadius: 16,
       paddingVertical: 14,
-      paddingHorizontal: 8,
+      paddingHorizontal: 10,
     },
-    statDivider: { width: 1, height: 28, backgroundColor: C.border },
+    statDivider: {
+      width: 1,
+      height: 24,
+      backgroundColor: C.border,
+    },
 
     // Site Photo Card
     sitePhotoCard: {
@@ -1294,8 +1365,8 @@ const createStyles = (C: ThemeColors) =>
       gap: 12,
     },
     sitePhotoThumb: {
-      width: 56,
-      height: 56,
+      width: 54,
+      height: 54,
       borderRadius: 12,
       backgroundColor: C.surfaceRaised,
     },
@@ -1323,15 +1394,28 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 16,
       padding: 16,
       overflow: "hidden",
+      gap: 14,
     },
     riskStripe: {
       width: 4,
       borderRadius: 2,
-      marginRight: 14,
+      alignSelf: "stretch",
     },
-    riskCardTitle: { fontSize: 14, fontWeight: "700", color: C.text },
-    fieldLabel: { fontSize: 12, color: C.textSub },
-    fieldValue: { fontSize: 12, fontWeight: "700", color: C.text },
+    riskCardTitle: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: C.text,
+    },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: C.textSub,
+    },
+    fieldValue: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: C.text,
+    },
 
     // AI Card
     aiCard: {
@@ -1342,14 +1426,18 @@ const createStyles = (C: ThemeColors) =>
       padding: 16,
     },
     aiIconBg: {
-      width: 24,
-      height: 24,
-      borderRadius: 7,
-      backgroundColor: C.gold + "18",
+      width: 26,
+      height: 26,
+      borderRadius: 8,
+      backgroundColor: C.accentGlow || C.surfaceRaised,
       alignItems: "center",
       justifyContent: "center",
     },
-    aiTitle: { fontSize: 13, fontWeight: "700", color: C.text },
+    aiTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: C.text,
+    },
     aiModelBadge: {
       flexDirection: "row",
       alignItems: "center",
@@ -1362,9 +1450,27 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 10,
     },
     aiModelText: { fontSize: 11, fontWeight: "700", color: C.accent },
-    aiBody: { fontSize: 13, color: C.textSub, lineHeight: 20 },
+    aiBody: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: C.textSub,
+    },
 
-    // Location
+    // Location Card
+    expandMapHeaderBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: C.accentGlow || "rgba(79, 142, 247, 0.12)",
+    },
+    expandMapHeaderText: {
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.3,
+    },
     locationCard: {
       backgroundColor: C.surface,
       borderWidth: 1,
@@ -1372,47 +1478,72 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 16,
       overflow: "hidden",
     },
-    locationMap: { height: 180 },
+    locationMap: {
+      height: 180,
+      position: "relative",
+    },
     locationFooter: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       padding: 14,
-      backgroundColor: C.surfaceRaised,
       borderTopWidth: 1,
       borderTopColor: C.border,
     },
-    locationFooterLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-    locationTitle: { fontSize: 12, fontWeight: "700", color: C.text },
-    locationSub: { fontSize: 11, color: C.textSub, marginTop: 1 },
+    locationFooterLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flex: 1,
+    },
+    locationTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: C.text,
+    },
+    locationSub: {
+      fontSize: 11,
+      color: C.textSub,
+      marginTop: 2,
+    },
     trackDirectionBtn: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-      backgroundColor: C.accent,
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 10,
+      backgroundColor: C.accent,
     },
     trackDirectionBtnActive: {
-      backgroundColor: C.surfaceElevated,
+      backgroundColor: C.surfaceRaised,
       borderWidth: 1,
       borderColor: C.accent,
     },
     trackDirectionBtnText: {
       fontSize: 11,
-      fontWeight: "700",
+      fontWeight: "800",
       color: "#FFFFFF",
       letterSpacing: 0.3,
     },
 
     // Inline Nav Snackbar
     inlineNavSnackbar: {
-      backgroundColor: C.surfaceElevated,
-      borderTopWidth: 1,
-      borderTopColor: C.accent + "60",
-      padding: 14,
-      gap: 10,
+      position: "absolute",
+      top: 10,
+      left: 10,
+      right: 10,
+      backgroundColor: C.surface + "F2",
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: 12,
+      padding: 10,
+      gap: 8,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 6,
     },
     inlineNavHeader: {
       flexDirection: "row",
@@ -1460,6 +1591,67 @@ const createStyles = (C: ThemeColors) =>
       color: C.textSub,
       letterSpacing: 0.3,
       marginTop: 2,
+    },
+
+    // Expanded Fullscreen Map Modal
+    expandedMapHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingTop: 50,
+      paddingBottom: 14,
+      paddingHorizontal: 18,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    expandedMapHeaderLeft: {
+      flex: 1,
+      gap: 4,
+    },
+    expandedMapBadge: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    expandedMapBadgeText: {
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 0.4,
+    },
+    expandedMapLocationTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: C.text,
+    },
+    expandedMapFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 14,
+      paddingHorizontal: 18,
+      borderTopWidth: 1,
+      borderTopColor: C.border,
+    },
+    expandedMapFooterInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flex: 1,
+    },
+    expandedMapCoords: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: C.text,
+    },
+    expandedMapCoordsSub: {
+      fontSize: 11,
+      marginTop: 1,
+      color: C.textSub,
     },
 
     // Submitter

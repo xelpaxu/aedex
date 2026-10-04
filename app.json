@@ -1,13 +1,19 @@
 {
   "expo": {
-    "name": "moskito",
-    "slug": "moskito",
+    "name": "AEDEX",
+    "slug": "aedex",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Aedex.png",
-    "scheme": "moskito",
+    "icon": "./assets/logo/aedex.png",
+    "scheme": "aedex",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3e66f8a4-a53a-4c79-baf6-b7f66d832adf"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -23,16 +29,16 @@
         "android.permission.READ_MEDIA_AUDIO"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/Aedex.png"
+        "backgroundColor": "#0B0E14",
+        "foregroundImage": "./assets/logo/aedex.png"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
-      "package": "com.xelpaxu.moskito"
+      "package": "com.xelpaxu.aedex"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/Aedex.png"
+      "favicon": "./assets/logo/aedex.png"
     },
     "plugins": [
       [
@@ -53,7 +59,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/Aedex.png",
+          "image": "./assets/logo/aedex.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#0B0E14",

@@ -14,6 +14,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StatusBar, Text, View } from "react-native";
 import SplashScreenView from "../components/SplashScreen";
+import { UpdateModal } from "../components/features/updates/UpdateModal";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { tokenCache } from "../lib/cache";
 
@@ -122,6 +123,7 @@ export default function RootLayout() {
   });
 
   const [splashDone, setSplashDone] = useState(false);
+  const [showUpdateCheck, setShowUpdateCheck] = useState(false);
   const [appReady, setAppReady] = useState(false);
 
   // Hide native splash once fonts are ready
@@ -133,10 +135,15 @@ export default function RootLayout() {
 
   const onSplashFinish = useCallback(() => {
     setSplashDone(true);
-    // ========== FIX: Delay app mount to prevent Convex loops ==========
+    // Open the update check modal right after splash screen
+    setShowUpdateCheck(true);
+  }, []);
+
+  const onUpdateCheckFinish = useCallback(() => {
+    setShowUpdateCheck(false);
     setTimeout(() => {
       setAppReady(true);
-    }, 300);
+    }, 200);
   }, []);
 
   // While fonts are loading, render nothing (native splash stays visible)
@@ -144,7 +151,6 @@ export default function RootLayout() {
 
   // Fonts loaded but custom splash hasn't finished yet
   if (!splashDone) {
-    // ========== FIX: Create Convex client only when needed ==========
     const convex = getConvexClient();
 
     return (
@@ -155,6 +161,20 @@ export default function RootLayout() {
           </ConvexProviderWithClerk>
         </ClerkLoaded>
       </ClerkProvider>
+    );
+  }
+
+  // Update check modal right after splash screen
+  if (showUpdateCheck) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0B0E14" }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
+        <UpdateModal
+          visible={showUpdateCheck}
+          onFinish={onUpdateCheckFinish}
+          autoCheckOnMount={true}
+        />
+      </View>
     );
   }
 

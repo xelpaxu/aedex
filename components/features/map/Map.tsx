@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Compass,
   Eye,
   EyeOff,
   Flame,
@@ -14,6 +15,8 @@ import {
   LocateFixed,
   Map,
   MapPin,
+  Maximize2,
+  Minimize2,
   Navigation,
   Satellite,
   Shield,
@@ -366,66 +369,454 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
 </html>`;
 }
 
-// ─── Top Mode Pill Button ─────────────────────────────────────────────────────
-const ModePillBtn = ({
-  onPress,
-  active,
-  icon: Icon,
-  label,
+// ─── Top Mode Toggle Switch ───────────────────────────────────────────────────
+const ModeToggleBar = ({
+  mode,
+  setMode,
   C,
 }: {
-  onPress: () => void;
-  active?: boolean;
-  icon: React.ComponentType<any>;
-  label: string;
+  mode: MapMode;
+  setMode: (m: MapMode) => void;
   C: ThemeColors;
 }) => (
-  <Pressable
-    onPress={onPress}
-    accessibilityRole="button"
-    accessibilityLabel={`${label} map style`}
-    accessibilityState={{ selected: active }}
+  <View
     style={[
-      modeStyles.btn,
-      active && [
-        modeStyles.btnActive,
-        { backgroundColor: C.accent, shadowColor: "#000000" },
-      ],
+      modeStyles.container,
+      { backgroundColor: C.surface, borderColor: C.border },
     ]}
   >
-    <Icon
-      color={active ? "#FFFFFF" : C.textSub}
-      size={12}
-      strokeWidth={active ? 2.5 : 2}
-    />
-    <Text
+    <TouchableOpacity
+      onPress={() => setMode("vector")}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Vector map mode"
+      accessibilityState={{ selected: mode === "vector" }}
       style={[
-        modeStyles.text,
-        { color: C.textSub },
-        active && modeStyles.textActive,
+        modeStyles.pill,
+        mode === "vector" && [
+          modeStyles.pillActive,
+          { backgroundColor: C.accent },
+        ],
       ]}
     >
-      {label}
-    </Text>
-  </Pressable>
+      <Map
+        size={13}
+        color={mode === "vector" ? "#FFFFFF" : C.textSub}
+        strokeWidth={2.5}
+      />
+      <Text
+        style={[
+          modeStyles.pillText,
+          { color: mode === "vector" ? "#FFFFFF" : C.textSub },
+        ]}
+      >
+        Vector
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      onPress={() => setMode("satellite")}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Satellite map mode"
+      accessibilityState={{ selected: mode === "satellite" }}
+      style={[
+        modeStyles.pill,
+        mode === "satellite" && [
+          modeStyles.pillActive,
+          { backgroundColor: C.accent },
+        ],
+      ]}
+    >
+      <Satellite
+        size={13}
+        color={mode === "satellite" ? "#FFFFFF" : C.textSub}
+        strokeWidth={2.5}
+      />
+      <Text
+        style={[
+          modeStyles.pillText,
+          { color: mode === "satellite" ? "#FFFFFF" : C.textSub },
+        ]}
+      >
+        Satellite
+      </Text>
+    </TouchableOpacity>
+  </View>
 );
 
 const modeStyles = StyleSheet.create({
-  btn: {
+  container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    padding: 3,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    gap: 2,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 11,
+  },
+  pillActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+});
+
+// ─── Role / Ops Badge ─────────────────────────────────────────────────────────
+const RoleBadge = ({
+  isTanod,
+  C,
+}: {
+  isTanod: boolean;
+  C: ThemeColors;
+}) => (
+  <View
+    style={[
+      roleBadgeStyles.container,
+      { backgroundColor: C.surface, borderColor: C.border },
+    ]}
+  >
+    <View
+      style={[
+        roleBadgeStyles.dot,
+        { backgroundColor: isTanod ? C.accent : C.safe },
+      ]}
+    />
+    {isTanod ? (
+      <Shield size={13} color={C.accent} strokeWidth={2.5} />
+    ) : (
+      <Globe size={13} color={C.safe} strokeWidth={2.5} />
+    )}
+    <Text
+      style={[
+        roleBadgeStyles.text,
+        { color: isTanod ? C.accent : C.safe },
+      ]}
+    >
+      {isTanod ? "TANOD OPS" : "COMMUNITY"}
+    </Text>
+  </View>
+);
+
+const roleBadgeStyles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  text: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+});
+
+// ─── Compact Status Stat Filter Card ──────────────────────────────────────────
+const StatusFilterCard = ({
+  counts,
+  tanodFilter,
+  setTanodFilter,
+  communityFilter,
+  setCommunityFilter,
+  isTanod,
+  C,
+}: {
+  counts: {
+    critical: number;
+    pending: number;
+    resolved: number;
+    nearby?: number;
+  };
+  tanodFilter: TanodFilter;
+  setTanodFilter: (f: TanodFilter) => void;
+  communityFilter: CommunityFilter;
+  setCommunityFilter: (f: CommunityFilter) => void;
+  isTanod: boolean;
+  C: ThemeColors;
+}) => {
+  const isUrgentActive = isTanod
+    ? tanodFilter === "CRITICAL"
+    : communityFilter === "CRITICAL";
+
+  const isPendingActive = isTanod
+    ? tanodFilter === "PENDING"
+    : communityFilter === "NEARBY";
+
+  const isResolvedActive = isTanod
+    ? tanodFilter === "RESOLVED"
+    : communityFilter === "RESOLVED";
+
+  return (
+    <View
+      style={[
+        statusCardStyles.card,
+        { backgroundColor: C.surface, borderColor: C.border },
+      ]}
+    >
+      {/* Urgent Segment */}
+      <TouchableOpacity
+        style={[
+          statusCardStyles.segment,
+          isUrgentActive && [
+            statusCardStyles.segmentActive,
+            { borderBottomColor: C.danger },
+          ],
+        ]}
+        onPress={() => {
+          if (isTanod) {
+            setTanodFilter(tanodFilter === "CRITICAL" ? "ALL" : "CRITICAL");
+          } else {
+            setCommunityFilter(
+              communityFilter === "CRITICAL" ? "ALL" : "CRITICAL",
+            );
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={[
+            statusCardStyles.label,
+            { color: isUrgentActive ? C.danger : C.text },
+          ]}
+        >
+          Urgent
+        </Text>
+        <View
+          style={[
+            statusCardStyles.badge,
+            {
+              backgroundColor: isUrgentActive
+                ? C.danger
+                : C.dangerGlow || "rgba(239, 68, 68, 0.12)",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              statusCardStyles.badgeText,
+              { color: isUrgentActive ? "#FFFFFF" : C.danger },
+            ]}
+          >
+            {counts.critical}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={[statusCardStyles.divider, { backgroundColor: C.border }]} />
+
+      {/* Pending / Nearby Segment */}
+      <TouchableOpacity
+        style={[
+          statusCardStyles.segment,
+          isPendingActive && [
+            statusCardStyles.segmentActive,
+            { borderBottomColor: isTanod ? C.warn : C.accent },
+          ],
+        ]}
+        onPress={() => {
+          if (isTanod) {
+            setTanodFilter(tanodFilter === "PENDING" ? "ALL" : "PENDING");
+          } else {
+            setCommunityFilter(communityFilter === "NEARBY" ? "ALL" : "NEARBY");
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        {isTanod ? (
+          <Clock
+            size={13}
+            color={isPendingActive ? C.warn : C.warn}
+            strokeWidth={2.5}
+          />
+        ) : (
+          <Navigation
+            size={13}
+            color={isPendingActive ? C.accent : C.accent}
+            strokeWidth={2.5}
+          />
+        )}
+        <Text
+          style={[
+            statusCardStyles.label,
+            {
+              color: isPendingActive
+                ? isTanod
+                  ? C.warn
+                  : C.accent
+                : C.text,
+            },
+          ]}
+        >
+          {isTanod ? "Pending" : "Nearby"}
+        </Text>
+        <View
+          style={[
+            statusCardStyles.badge,
+            {
+              backgroundColor: isPendingActive
+                ? isTanod
+                  ? C.warn
+                  : C.accent
+                : isTanod
+                ? C.warnGlow || "rgba(245, 158, 11, 0.12)"
+                : C.accentGlow || "rgba(79, 142, 247, 0.12)",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              statusCardStyles.badgeText,
+              {
+                color: isPendingActive
+                  ? "#FFFFFF"
+                  : isTanod
+                  ? C.warn
+                  : C.accent,
+              },
+            ]}
+          >
+            {isTanod ? counts.pending : counts.nearby || 0}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <View style={[statusCardStyles.divider, { backgroundColor: C.border }]} />
+
+      {/* Resolved / Treated Segment */}
+      <TouchableOpacity
+        style={[
+          statusCardStyles.segment,
+          isResolvedActive && [
+            statusCardStyles.segmentActive,
+            { borderBottomColor: C.safe },
+          ],
+        ]}
+        onPress={() => {
+          if (isTanod) {
+            setTanodFilter(tanodFilter === "RESOLVED" ? "ALL" : "RESOLVED");
+          } else {
+            setCommunityFilter(
+              communityFilter === "RESOLVED" ? "ALL" : "RESOLVED",
+            );
+          }
+        }}
+        activeOpacity={0.7}
+      >
+        <CheckCircle2 size={13} color={C.safe} strokeWidth={2.5} />
+        <Text
+          style={[
+            statusCardStyles.label,
+            { color: isResolvedActive ? C.safe : C.text },
+          ]}
+        >
+          {isTanod ? "Resolved" : "Treated"}
+        </Text>
+        <View
+          style={[
+            statusCardStyles.badge,
+            {
+              backgroundColor: isResolvedActive
+                ? C.safe
+                : C.safeGlow || "rgba(16, 185, 129, 0.12)",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              statusCardStyles.badgeText,
+              { color: isResolvedActive ? "#FFFFFF" : C.safe },
+            ]}
+          >
+            {counts.resolved}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const statusCardStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 6,
     paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 5,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  segmentActive: {
+    borderRadius: 2,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  badge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 10,
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  btnActive: {
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "800",
   },
-  text: { fontSize: 11, fontWeight: "700" },
-  textActive: { color: "#FFFFFF", fontWeight: "700" },
+  divider: {
+    width: 1,
+    height: 20,
+    opacity: 0.7,
+  },
 });
 
 // ─── Filter Pill Button ───────────────────────────────────────────────────────
@@ -440,7 +831,7 @@ const FilterPill = ({
 }: {
   icon: React.ComponentType<any>;
   label: string;
-  count: number;
+  count?: number;
   active: boolean;
   onPress: () => void;
   accentColor?: string;
@@ -451,7 +842,7 @@ const FilterPill = ({
     <TouchableOpacity
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${count} reports`}
+      accessibilityLabel={`${label}${count !== undefined ? `, ${count} reports` : ""}`}
       accessibilityState={{ selected: active }}
       activeOpacity={0.75}
       style={[
@@ -465,7 +856,7 @@ const FilterPill = ({
       ]}
     >
       <Icon
-        size={12}
+        size={13}
         color={active ? "#FFFFFF" : color}
         strokeWidth={active ? 2.5 : 2}
       />
@@ -478,25 +869,27 @@ const FilterPill = ({
       >
         {label}
       </Text>
-      <View
-        style={[
-          filterStyles.countBadge,
-          {
-            backgroundColor: active
-              ? "rgba(255,255,255,0.25)"
-              : C.surfaceRaised,
-          },
-        ]}
-      >
-        <Text
+      {count !== undefined && (
+        <View
           style={[
-            filterStyles.countText,
-            { color: active ? "#FFFFFF" : C.textSub },
+            filterStyles.countBadge,
+            {
+              backgroundColor: active
+                ? "rgba(255,255,255,0.25)"
+                : C.surfaceRaised,
+            },
           ]}
         >
-          {count}
-        </Text>
-      </View>
+          <Text
+            style={[
+              filterStyles.countText,
+              { color: active ? "#FFFFFF" : C.textSub },
+            ]}
+          >
+            {count}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -507,22 +900,28 @@ const filterStyles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     borderRadius: 20,
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   pillActiveShadow: {
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 4,
   },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.2,
   },
   labelActive: {
-    fontWeight: "700",
+    color: "#FFFFFF",
   },
   countBadge: {
     paddingHorizontal: 6,
@@ -593,18 +992,18 @@ const float = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 5,
     position: "relative",
   },
   badge: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -3,
+    right: -3,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
@@ -612,8 +1011,8 @@ const float = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
 });
@@ -836,7 +1235,7 @@ const ReportBottomSheet = ({
                   ]}
                 >
                   <Text style={[sheet.thumbBadgeText, { color: C.accent }]}>
-                    {report.processedImage ? "AI MASK" : "PHOTO"}
+                    {report.processedImage ? "EVIDENCE" : "PHOTO"}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -888,13 +1287,13 @@ const ReportBottomSheet = ({
             >
               <View style={sheet.metricBox}>
                 <View style={sheet.metricIconWrap}>
-                  <ScanLine color={C.gold} size={12} strokeWidth={2.5} />
-                  <Text style={[sheet.metricValue, { color: C.text }]}>
-                    {accuracyText}
+                  <Shield color={badgeColor} size={12} strokeWidth={2.5} />
+                  <Text style={[sheet.metricValue, { color: badgeColor }]}>
+                    {isCritical ? "URGENT" : "ROUTINE"}
                   </Text>
                 </View>
                 <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  AI confidence
+                  Priority
                 </Text>
               </View>
 
@@ -904,8 +1303,8 @@ const ReportBottomSheet = ({
 
               <View style={sheet.metricBox}>
                 <View style={sheet.metricIconWrap}>
-                  <Shield color={badgeColor} size={12} strokeWidth={2.5} />
-                  <Text style={[sheet.metricValue, { color: badgeColor }]}>
+                  <Navigation color={C.accent} size={12} strokeWidth={2.5} />
+                  <Text style={[sheet.metricValue, { color: C.accent }]}>
                     150m
                   </Text>
                 </View>
@@ -944,7 +1343,7 @@ const ReportBottomSheet = ({
               </View>
             </View>
 
-            {/* AI Diagnostics Callout */}
+            {/* Field Notes & Description Callout */}
             {report.reasoning ? (
               <View
                 style={[
@@ -956,9 +1355,9 @@ const ReportBottomSheet = ({
                 ]}
               >
                 <View style={sheet.aiCalloutHeader}>
-                  <ScanLine color={C.gold} size={11} strokeWidth={2.5} />
-                  <Text style={[sheet.aiCalloutTitle, { color: C.gold }]}>
-                    AI vector diagnostics
+                  <MapPin color={C.accent} size={11} strokeWidth={2.5} />
+                  <Text style={[sheet.aiCalloutTitle, { color: C.accent }]}>
+                    Field notes & observations
                   </Text>
                 </View>
                 <Text
@@ -985,11 +1384,11 @@ const ReportBottomSheet = ({
                 onPress={onViewFullReport}
                 activeOpacity={0.8}
               >
-                <ScanLine color="#FFFFFF" size={14} strokeWidth={2.5} />
+                <Shield color="#FFFFFF" size={14} strokeWidth={2.5} />
                 <Text style={sheet.actionBtnPrimaryText}>
                   {isTanod
                     ? "INSPECT & ACTION REPORT"
-                    : "VIEW FULL REPORT & SCAN"}
+                    : "VIEW REPORT DETAILS"}
                 </Text>
                 <ArrowRight color="#FFFFFF" size={14} strokeWidth={2.5} />
               </TouchableOpacity>
@@ -1284,6 +1683,7 @@ export default function MapComponent({
   const [mode, setMode] = useState<MapMode>("vector");
   const [showZones, setShowZones] = useState(true);
   const [showReports, setShowReports] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Filters for Tanod and Community
   const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ALL");
@@ -1638,163 +2038,190 @@ export default function MapComponent({
       </View>
 
       <Animated.View style={[styles.overlays, { opacity: fadeAnim }]}>
-        {/* ── STREAMLINED TOP CONTROL STACK ── */}
-        <View
-          style={[
-            styles.topControlContainer,
-            { top: Math.max(insets.top, 12) + 4 },
-          ]}
-        >
-          {/* Top Header Card */}
-          <View style={styles.topHeaderCard}>
-            <View style={styles.topHeaderLeft}>
-              <View
-                style={[
-                  styles.brandBadge,
-                  {
-                    backgroundColor: isTanod ? C.accentGlow : C.safeGlow,
-                    borderColor: (isTanod ? C.accent : C.safe) + "40",
-                  },
-                ]}
-              >
+        {/* ── TOP CONTROL STACK ── */}
+        <View style={styles.topControlContainer}>
+          {isExpanded ? (
+            /* Field Navigation Minimalist Header */
+            <View
+              style={[
+                styles.expandedHeaderCard,
+                { backgroundColor: C.surface + "F5", borderColor: C.border },
+              ]}
+            >
+              <View style={styles.expandedHeaderLeft}>
                 <View
                   style={[
-                    styles.liveDot,
-                    { backgroundColor: isTanod ? C.accent : C.safe },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.brandBadgeText,
-                    { color: isTanod ? C.accent : C.safe },
+                    styles.fieldModeBadge,
+                    {
+                      backgroundColor: C.accent + "18",
+                      borderColor: C.accent + "40",
+                    },
                   ]}
                 >
-                  {isTanod ? "TANOD OPS" : "COMMUNITY"}
-                </Text>
+                  <Compass color={C.accent} size={14} strokeWidth={2.5} />
+                  <Text
+                    style={[styles.fieldModeBadgeText, { color: C.accent }]}
+                  >
+                    FIELD NAV
+                  </Text>
+                </View>
+                <ModeToggleBar mode={mode} setMode={setMode} C={C} />
               </View>
-              <Text style={styles.screenTitle} numberOfLines={1}>
-                {isTanod ? "Response Map" : "Vector Risk Map"}
-              </Text>
-            </View>
 
-            {/* Mode switch */}
-            <View style={styles.modeToggle}>
-              <ModePillBtn
-                icon={Map}
-                label="Map"
-                active={mode === "vector"}
-                onPress={() => setMode("vector")}
+              <TouchableOpacity
+                onPress={() => setIsExpanded(false)}
+                style={[
+                  styles.collapseBtn,
+                  { backgroundColor: C.surfaceRaised, borderColor: C.border },
+                ]}
+                accessibilityLabel="Exit fullscreen map"
+                activeOpacity={0.8}
+              >
+                <Minimize2 color={C.text} size={15} strokeWidth={2.5} />
+                <Text style={[styles.collapseBtnText, { color: C.text }]}>
+                  Exit
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {/* Row 1: Mode Switch + Role / Ops Badge + Expand Btn */}
+              <View style={styles.topRow}>
+                <ModeToggleBar mode={mode} setMode={setMode} C={C} />
+                <View style={styles.topRowRight}>
+                  <RoleBadge isTanod={isTanod ?? false} C={C} />
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsExpanded(true);
+                      fetchNativeGpsLocation(true);
+                    }}
+                    style={[
+                      styles.expandToggleBtn,
+                      {
+                        backgroundColor: C.surface,
+                        borderColor: C.border,
+                      },
+                    ]}
+                    accessibilityLabel="Expand map for navigation"
+                    activeOpacity={0.8}
+                  >
+                    <Maximize2 color={C.accent} size={14} strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Row 2: Compact 3-Segment Interactive Filter Bar */}
+              <StatusFilterCard
+                counts={filterCounts}
+                tanodFilter={tanodFilter}
+                setTanodFilter={setTanodFilter}
+                communityFilter={communityFilter}
+                setCommunityFilter={setCommunityFilter}
+                isTanod={isTanod ?? false}
                 C={C}
               />
-              <ModePillBtn
-                icon={Satellite}
-                label="Sat"
-                active={mode === "satellite"}
-                onPress={() => setMode("satellite")}
-                C={C}
-              />
-            </View>
-          </View>
 
-          {/* ── DYNAMIC HORIZONTAL FILTER BAR ── */}
-          <View style={styles.filterRibbonContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRibbonScroll}
-            >
-              {isTanod ? (
-                // ── TANOD FILTER BUTTONS ──
-                <>
-                  <FilterPill
-                    icon={Layers}
-                    label="All Hotspots"
-                    count={filterCounts.all}
-                    active={tanodFilter === "ALL"}
-                    onPress={() => setTanodFilter("ALL")}
-                    accentColor={C.accent}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={Users}
-                    label="My Team"
-                    count={filterCounts.assigned}
-                    active={tanodFilter === "ASSIGNED"}
-                    onPress={() => setTanodFilter("ASSIGNED")}
-                    accentColor={C.accent}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={Flame}
-                    label="Urgent"
-                    count={filterCounts.critical}
-                    active={tanodFilter === "CRITICAL"}
-                    onPress={() => setTanodFilter("CRITICAL")}
-                    accentColor={C.danger}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={Clock}
-                    label="Pending"
-                    count={filterCounts.pending}
-                    active={tanodFilter === "PENDING"}
-                    onPress={() => setTanodFilter("PENDING")}
-                    accentColor={C.warn}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={CheckCircle2}
-                    label="Resolved"
-                    count={filterCounts.resolved}
-                    active={tanodFilter === "RESOLVED"}
-                    onPress={() => setTanodFilter("RESOLVED")}
-                    accentColor={C.safe}
-                    C={C}
-                  />
-                </>
-              ) : (
-                // ── CITIZEN / COMMUNITY FILTER BUTTONS ──
-                <>
-                  <FilterPill
-                    icon={Layers}
-                    label="All Sites"
-                    count={filterCounts.all}
-                    active={communityFilter === "ALL"}
-                    onPress={() => setCommunityFilter("ALL")}
-                    accentColor={C.accent}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={Flame}
-                    label="Critical"
-                    count={filterCounts.critical}
-                    active={communityFilter === "CRITICAL"}
-                    onPress={() => setCommunityFilter("CRITICAL")}
-                    accentColor={C.danger}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={Navigation}
-                    label="Nearby"
-                    count={filterCounts.nearby}
-                    active={communityFilter === "NEARBY"}
-                    onPress={() => setCommunityFilter("NEARBY")}
-                    accentColor={C.accent}
-                    C={C}
-                  />
-                  <FilterPill
-                    icon={CheckCircle2}
-                    label="Treated"
-                    count={filterCounts.resolved}
-                    active={communityFilter === "RESOLVED"}
-                    onPress={() => setCommunityFilter("RESOLVED")}
-                    accentColor={C.safe}
-                    C={C}
-                  />
-                </>
-              )}
-            </ScrollView>
-          </View>
+              {/* Row 3: Dynamic Horizontal Filter Pills */}
+              <View style={styles.filterRowWrapper}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterPillScroll}
+                >
+                  {isTanod ? (
+                    // ── TANOD FILTER BUTTONS ──
+                    <>
+                      <FilterPill
+                        icon={Layers}
+                        label="All Hotspots"
+                        count={filterCounts.all}
+                        active={tanodFilter === "ALL"}
+                        onPress={() => setTanodFilter("ALL")}
+                        accentColor={C.accent}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={Users}
+                        label="My Team"
+                        count={filterCounts.assigned}
+                        active={tanodFilter === "ASSIGNED"}
+                        onPress={() => setTanodFilter("ASSIGNED")}
+                        accentColor={C.accent}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={Flame}
+                        label="Urgent"
+                        count={filterCounts.critical}
+                        active={tanodFilter === "CRITICAL"}
+                        onPress={() => setTanodFilter("CRITICAL")}
+                        accentColor={C.danger}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={Clock}
+                        label="Pending"
+                        count={filterCounts.pending}
+                        active={tanodFilter === "PENDING"}
+                        onPress={() => setTanodFilter("PENDING")}
+                        accentColor={C.warn}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={CheckCircle2}
+                        label="Resolved"
+                        count={filterCounts.resolved}
+                        active={tanodFilter === "RESOLVED"}
+                        onPress={() => setTanodFilter("RESOLVED")}
+                        accentColor={C.safe}
+                        C={C}
+                      />
+                    </>
+                  ) : (
+                    // ── CITIZEN / COMMUNITY FILTER BUTTONS ──
+                    <>
+                      <FilterPill
+                        icon={Layers}
+                        label="All Sites"
+                        count={filterCounts.all}
+                        active={communityFilter === "ALL"}
+                        onPress={() => setCommunityFilter("ALL")}
+                        accentColor={C.accent}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={Flame}
+                        label="Critical"
+                        count={filterCounts.critical}
+                        active={communityFilter === "CRITICAL"}
+                        onPress={() => setCommunityFilter("CRITICAL")}
+                        accentColor={C.danger}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={Navigation}
+                        label="Nearby"
+                        count={filterCounts.nearby}
+                        active={communityFilter === "NEARBY"}
+                        onPress={() => setCommunityFilter("NEARBY")}
+                        accentColor={C.accent}
+                        C={C}
+                      />
+                      <FilterPill
+                        icon={CheckCircle2}
+                        label="Treated"
+                        count={filterCounts.resolved}
+                        active={communityFilter === "RESOLVED"}
+                        onPress={() => setCommunityFilter("RESOLVED")}
+                        accentColor={C.safe}
+                        C={C}
+                      />
+                    </>
+                  )}
+                </ScrollView>
+              </View>
+            </>
+          )}
         </View>
 
         {/* ── RIGHT FLOATING CONTROLS ── */}
@@ -1807,6 +2234,19 @@ export default function MapComponent({
             C={C}
             onPress={() => {
               fetchNativeGpsLocation(true);
+            }}
+          />
+          <FloatBtn
+            icon={isExpanded ? Minimize2 : Maximize2}
+            accessibilityLabel={isExpanded ? "Exit fullscreen navigation" : "Expand map for field navigation"}
+            active={isExpanded}
+            color={C.accent}
+            C={C}
+            onPress={() => {
+              setIsExpanded((v) => !v);
+              if (!isExpanded) {
+                fetchNativeGpsLocation(true);
+              }
             }}
           />
           <FloatBtn
@@ -1829,8 +2269,8 @@ export default function MapComponent({
           />
         </View>
 
-        {/* ── BOTTOM MAP LEGEND (Hidden when report detail sheet is active) ── */}
-        {!selectedReport && (
+        {/* ── BOTTOM MAP LEGEND (Hidden when report detail sheet is active or in expanded mode) ── */}
+        {!selectedReport && !isExpanded && (
           <View style={styles.legend}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: C.danger }]} />
@@ -1851,7 +2291,7 @@ export default function MapComponent({
               <View
                 style={[
                   styles.legendSwatch,
-                  { borderColor: C.danger + "90", backgroundColor: C.dangerGlow },
+                  { borderColor: C.danger + "90", backgroundColor: C.dangerGlow || "rgba(239, 68, 68, 0.15)" },
                 ]}
               />
               <Text style={styles.legendText}>Zone</Text>
@@ -1910,84 +2350,91 @@ const createStyles = (C: ThemeColors) =>
     // Top Control Container
     topControlContainer: {
       position: "absolute",
-      left: 12,
-      right: 12,
-      gap: 6,
+      top: 10,
+      left: 14,
+      right: 14,
+      gap: 8,
     },
-    topHeaderCard: {
+    topRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 18,
-      backgroundColor: C.surface + "F5",
+    },
+    topRowRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    expandToggleBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
       borderWidth: 1,
-      borderColor: C.border,
-      shadowColor: "#000000",
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+
+    // Field Navigation Expanded Header
+    expandedHeaderCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.15,
       shadowRadius: 10,
       elevation: 6,
     },
-    topHeaderLeft: {
-      flex: 1,
-      gap: 2,
+    expandedHeaderLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
-    brandBadge: {
-      alignSelf: "flex-start",
+    fieldModeBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      paddingHorizontal: 7,
-      paddingVertical: 2.5,
-      borderRadius: 999,
+      paddingVertical: 5,
+      paddingHorizontal: 8,
+      borderRadius: 10,
       borderWidth: 1,
     },
-    liveDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 2.5,
-    },
-    brandBadgeText: {
+    fieldModeBadgeText: {
       fontSize: 10,
-      fontWeight: "700",
-      letterSpacing: 0.3,
+      fontWeight: "800",
+      letterSpacing: 0.4,
     },
-    screenTitle: {
-      color: C.text,
-      fontSize: 16,
-      fontWeight: "700",
-      letterSpacing: -0.3,
-    },
-    modeToggle: {
+    collapseBtn: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: C.surfaceRaised,
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 10,
       borderWidth: 1,
-      borderColor: C.border,
-      borderRadius: 12,
-      padding: 2,
-      gap: 2,
+    },
+    collapseBtnText: {
+      fontSize: 11,
+      fontWeight: "700",
     },
 
-    // Filter Ribbon Container
-    filterRibbonContainer: {
-      backgroundColor: C.surface + "E6",
-      borderWidth: 1,
-      borderColor: C.border,
-      borderRadius: 18,
-      paddingVertical: 5,
-      paddingHorizontal: 6,
-      shadowColor: "#000",
-      shadowOpacity: 0.12,
-      shadowRadius: 6,
-      elevation: 4,
-    },
-    filterRibbonScroll: {
-      gap: 6,
+    filterRowWrapper: {
+      flexDirection: "row",
       alignItems: "center",
-      paddingRight: 6,
+    },
+    filterPillScroll: {
+      gap: 7,
+      alignItems: "center",
+      paddingRight: 10,
     },
 
     // Floating controls positioned safely above bottom tab bar
@@ -1995,7 +2442,7 @@ const createStyles = (C: ThemeColors) =>
       position: "absolute",
       right: 14,
       bottom: 110,
-      gap: 8,
+      gap: 10,
     },
     legend: {
       position: "absolute",
@@ -2003,15 +2450,16 @@ const createStyles = (C: ThemeColors) =>
       left: 14,
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      backgroundColor: C.surface + "E6",
+      gap: 7,
+      backgroundColor: C.surface + "F2",
       borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 12,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
+      borderRadius: 14,
+      paddingVertical: 7,
+      paddingHorizontal: 11,
       shadowColor: "#000",
-      shadowOpacity: 0.12,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
       shadowRadius: 6,
       elevation: 4,
     },
@@ -2027,14 +2475,14 @@ const createStyles = (C: ThemeColors) =>
       borderRadius: 4,
       borderWidth: 1.5,
     },
-    legendText: { fontSize: 10, fontWeight: "700", color: C.textSub },
-    legendDivider: { width: 1, height: 10, backgroundColor: C.border },
+    legendText: { fontSize: 11, fontWeight: "700", color: C.textSub },
+    legendDivider: { width: 1, height: 12, backgroundColor: C.border, opacity: 0.8 },
 
     // Status overlay
     statusOverlayBox: {
       position: "absolute",
       alignSelf: "center",
-      top: 120,
+      top: 130,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,

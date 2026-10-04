@@ -1,0 +1,193 @@
+name: AEDEX CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      force_action:
+        description: 'Action to perform'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - 'auto'
+          - 'build_apk'
+          - 'ota_update'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # =========================================================================
+  # STEP 1: Smart Change Detection
+  # =========================================================================
+  detect_changes:
+    name: 🔍 Analyze Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_build_apk: ${{ steps.decide.outputs.should_build_apk }}
+      should_ota_update: ${{ steps.decide.outputs.should_ota_update }}
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 🔎 Check Modified Paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            native:
+              - 'app.json'
+              - 'eas.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'android/**'
+              - 'ios/**'
+              - 'tsconfig.json'
+              - '.github/workflows/**'
+            app_code:
+              - 'app/**'
+              - 'components/**'
+              - 'constants/**'
+              - 'context/**'
+              - 'hooks/**'
+              - 'lib/**'
+              - 'services/**'
+              - 'assets/**'
+
+      - name: 🧠 Decide Pipeline Action
+        id: decide
+        run: |
+          FORCE_ACTION="${{ github.event.inputs.force_action }}"
+          IS_TAG="${{ startsWith(github.ref, 'refs/tags/v') }}"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          NATIVE_CHANGED="${{ steps.filter.outputs.native }}"
+          APP_CHANGED="${{ steps.filter.outputs.app_code }}"
+
+          echo "Analysis:"
+          echo " - Force action: $FORCE_ACTION"
+          echo " - Is Tag: $IS_TAG"
+          echo " - Commit message: $COMMIT_MSG"
+          echo " - Native config changed: $NATIVE_CHANGED"
+          echo " - App code changed: $APP_CHANGED"
+
+          # Condition 1: Force APK via manual trigger, git tag, commit flag, or native change
+          if [ "$FORCE_ACTION" = "build_apk" ] || \
+             [ "$IS_TAG" = "true" ] || \
+             [[ "$COMMIT_MSG" == *"[build-apk]"* ]] || \
+             [[ "$COMMIT_MSG" == *"[release]"* ]] || \
+             [ "$NATIVE_CHANGED" = "true" ]; then
+            echo "🚀 Decision: Build & Release new APK"
+            echo "should_build_apk=true" >> $GITHUB_OUTPUT
+            echo "should_ota_update=false" >> $GITHUB_OUTPUT
+
+          # Condition 2: Pure JS/TS/Asset changes -> Over-The-Air Update
+          elif [ "$FORCE_ACTION" = "ota_update" ] || [ "$APP_CHANGED" = "true" ]; then
+            echo "📡 Decision: Publish Over-The-Air (OTA) Update"
+            echo "should_build_apk=false" >> $GITHUB_OUTPUT
+            echo "should_ota_update=true" >> $GITHUB_OUTPUT
+
+          else
+            echo "ℹ️ No relevant mobile changes detected. Skipping builds."
+            echo "should_build_apk=false" >> $GITHUB_OUTPUT
+            echo "should_ota_update=false" >> $GITHUB_OUTPUT
+          fi
+
+  # =========================================================================
+  # STEP 2A: Full APK Build & Release to GitHub Releases
+  # =========================================================================
+  build_and_release_apk:
+    name: 📦 Build Android APK & GitHub Release
+    needs: detect_changes
+    if: needs.detect_changes.outputs.should_build_apk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🏗️ Setup Expo & EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 🚀 Build Standalone Android APK (EAS Cloud)
+        run: |
+          eas build --platform android --profile production --non-interactive --wait --output=./aedex-release.apk
+
+      - name: 🏷️ Generate Release Tag Name
+        id: tag_gen
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="v1.0.0-build-$(date +'%Y%m%d%H%M%S')"
+          fi
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: 🎉 Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_gen.outputs.tag }}
+          name: AEDEX Release ${{ steps.tag_gen.outputs.tag }}
+          files: ./aedex-release.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =========================================================================
+  # STEP 2B: Instant Over-The-Air Update (EAS Update)
+  # =========================================================================
+  ota_update:
+    name: 📡 Publish Over-The-Air Update
+    needs: detect_changes
+    if: needs.detect_changes.outputs.should_ota_update == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🏗️ Setup Expo CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📡 Publish Update to Production Channel
+        run: |
+          eas update --branch production --message "${{ github.event.head_commit.message }}"

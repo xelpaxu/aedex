@@ -1,0 +1,413 @@
+import { LinearGradient } from "expo-linear-gradient";
+import * as Updates from "expo-updates";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CloudDownload,
+  RotateCw,
+  Sparkles,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Easing,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+const { width } = Dimensions.get("window");
+
+export type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "downloading"
+  | "ready"
+  | "up-to-date"
+  | "error";
+
+interface UpdateModalProps {
+  visible: boolean;
+  onFinish: () => void;
+  autoCheckOnMount?: boolean;
+}
+
+export const UpdateModal: React.FC<UpdateModalProps> = ({
+  visible,
+  onFinish,
+  autoCheckOnMount = true,
+}) => {
+  const [status, setStatus] = useState<UpdateStatus>("idle");
+  const [statusMessage, setStatusMessage] = useState("Checking for updates...");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Animations
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Pulsing effect
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+
+      if (autoCheckOnMount) {
+        handleCheckForUpdates();
+      }
+    }
+  }, [visible]);
+
+  const handleCheckForUpdates = async () => {
+    // In local development or Expo Go, expo-updates does not run live OTA updates
+    if (__DEV__) {
+      setStatus("checking");
+      setStatusMessage("Development environment detected");
+
+      const timer = setTimeout(() => {
+        setStatus("up-to-date");
+        setStatusMessage("App is running latest local code");
+        const dismissTimer = setTimeout(() => {
+          onFinish();
+        }, 1200);
+        return () => clearTimeout(dismissTimer);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    try {
+      setStatus("checking");
+      setStatusMessage("Connecting to AEDEX update channel...");
+
+      const update = await Updates.checkForUpdateAsync();
+
+      if (update.isAvailable) {
+        setStatus("downloading");
+        setStatusMessage("Downloading new AEDEX update package...");
+
+        // Animate fake progress bar smoothly to 85%
+        Animated.timing(progressAnim, {
+          toValue: 0.85,
+          duration: 3500,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }).start();
+
+        const result = await Updates.fetchUpdateAsync();
+
+        if (result.isNew) {
+          // Finish progress bar
+          Animated.timing(progressAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: false,
+          }).start();
+
+          setStatus("ready");
+          setStatusMessage("Update ready! Restarting to apply changes...");
+
+          // Start 3 second countdown to reload
+          let count = 3;
+          setCountdown(count);
+          const interval = setInterval(async () => {
+            count -= 1;
+            if (count > 0) {
+              setCountdown(count);
+            } else {
+              clearInterval(interval);
+              try {
+                await Updates.reloadAsync();
+              } catch (reloadErr) {
+                console.error("Reload error:", reloadErr);
+                onFinish();
+              }
+            }
+          }, 1000);
+        } else {
+          setStatus("up-to-date");
+          setStatusMessage("AEDEX is up to date");
+          setTimeout(onFinish, 1200);
+        }
+      } else {
+        setStatus("up-to-date");
+        setStatusMessage("You are running the latest AEDEX build");
+        setTimeout(onFinish, 1000);
+      }
+    } catch (err: any) {
+      console.warn("OTA Update check error:", err);
+      setStatus("error");
+      setErrorMessage(err?.message || "Could not connect to update servers");
+      // Auto-continue after 2.5s on failure so users aren't locked out
+      setTimeout(onFinish, 2500);
+    }
+  };
+
+  const handleManualRestart = async () => {
+    try {
+      await Updates.reloadAsync();
+    } catch {
+      onFinish();
+    }
+  };
+
+  if (!visible) return null;
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      statusBarTranslucent
+    >
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+          {/* Glowing Header Gradient */}
+          <LinearGradient
+            colors={["rgba(79, 142, 247, 0.15)", "rgba(34, 211, 238, 0.03)"]}
+            style={styles.cardHeader}
+          >
+            {/* Status Icon */}
+            <Animated.View
+              style={[
+                styles.iconWrapper,
+                (status === "checking" || status === "downloading") && {
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            >
+              {status === "checking" && (
+                <RotateCw size={34} color="#4F8EF7" />
+              )}
+              {status === "downloading" && (
+                <CloudDownload size={36} color="#22D3EE" />
+              )}
+              {status === "ready" && (
+                <CheckCircle2 size={36} color="#10B981" />
+              )}
+              {status === "up-to-date" && (
+                <Sparkles size={34} color="#10B981" />
+              )}
+              {status === "error" && (
+                <AlertTriangle size={34} color="#F59E0B" />
+              )}
+            </Animated.View>
+
+            <Text style={styles.title}>
+              {status === "ready"
+                ? "Update Ready"
+                : status === "downloading"
+                  ? "Updating AEDEX"
+                  : status === "up-to-date"
+                    ? "Up to Date"
+                    : status === "error"
+                      ? "Update Notice"
+                      : "Checking Updates"}
+            </Text>
+
+            <Text style={styles.subtitle}>{statusMessage}</Text>
+
+            {/* Progress Bar for Downloading */}
+            {status === "downloading" && (
+              <View style={styles.progressTrack}>
+                <Animated.View
+                  style={[styles.progressBar, { width: progressWidth }]}
+                >
+                  <LinearGradient
+                    colors={["#4F8EF7", "#22D3EE"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </Animated.View>
+              </View>
+            )}
+
+            {/* Ready Status / Countdown */}
+            {status === "ready" && (
+              <View style={styles.readyContainer}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.restartButton}
+                  onPress={handleManualRestart}
+                >
+                  <LinearGradient
+                    colors={["#10B981", "#059669"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.restartButtonText}>
+                      Restart Now {countdown !== null ? `(${countdown}s)` : ""}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Error or skip button */}
+            {(status === "error" || status === "up-to-date") && (
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={onFinish}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipButtonText}>Continue to App</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Spinner indicator during check */}
+            {status === "checking" && (
+              <View style={styles.spinnerRow}>
+                <ActivityIndicator size="small" color="#4F8EF7" />
+                <Text style={styles.spinnerText}>Syncing with server...</Text>
+              </View>
+            )}
+          </LinearGradient>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(5, 8, 14, 0.88)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: Math.min(width - 48, 380),
+    backgroundColor: "#101622",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(79, 142, 247, 0.22)",
+    overflow: "hidden",
+    shadowColor: "#4F8EF7",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  cardHeader: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: "center",
+  },
+  iconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(22, 28, 42, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(79, 142, 247, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  title: {
+    fontFamily: "Manrope_700Bold",
+    fontSize: 20,
+    color: "#FFFFFF",
+    marginBottom: 8,
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  subtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: "#94A3B8",
+    textAlign: "center",
+    lineHeight: 19,
+    marginBottom: 20,
+    paddingHorizontal: 12,
+  },
+  progressTrack: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginVertical: 12,
+  },
+  progressBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  readyContainer: {
+    width: "100%",
+    marginTop: 8,
+  },
+  restartButton: {
+    width: "100%",
+    height: 48,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  buttonGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  restartButtonText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    color: "#FFFFFF",
+  },
+  skipButton: {
+    marginTop: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  skipButtonText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: "#CBD5E1",
+  },
+  spinnerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+  },
+  spinnerText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#64748B",
+  },
+});
+
+export default UpdateModal;

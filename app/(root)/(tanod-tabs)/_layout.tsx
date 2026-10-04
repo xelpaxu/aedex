@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../../../../convex/_generated/api";
 import { ThemeColors, useTheme } from "@/context/ThemeContext";
 
@@ -35,7 +36,7 @@ const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
       >
         <LayoutDashboard
           color={focused ? "#FFFFFF" : C.textSub}
-          size={32}
+          size={30}
           strokeWidth={2.5}
         />
       </View>
@@ -45,13 +46,13 @@ const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
 
 const ctb = StyleSheet.create({
   outer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 35,
+    marginBottom: 26,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -104,8 +105,9 @@ export default function TanodTabLayout() {
   const { colors: C } = useTheme();
   const router = useRouter();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const currentUser = useQuery(api.users.getMe);
-  const styles = useMemo(() => createStyles(C), [C]);
+  const styles = useMemo(() => createStyles(C, insets.top), [C, insets.top]);
 
   return (
     <Tabs
@@ -138,7 +140,7 @@ export default function TanodTabLayout() {
 
             {/* Screen title with Tanod Shield */}
             <View style={styles.titleWrap}>
-              <Shield size={14} color={C.accent} strokeWidth={2.5} />
+              <Shield size={15} color={C.accent} strokeWidth={2.5} />
               <Text style={styles.headerTitle}>
                 {options.title?.toUpperCase() || "TANOD DASHBOARD"}
               </Text>
@@ -168,7 +170,7 @@ export default function TanodTabLayout() {
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.textDim,
         tabBarIconStyle: {
-          marginTop: 10,
+          marginTop: 6,
         },
       }}
     >
@@ -201,7 +203,7 @@ export default function TanodTabLayout() {
   );
 }
 
-const createStyles = (C: ThemeColors) =>
+const createStyles = (C: ThemeColors, topInset: number) =>
   StyleSheet.create({
     // ── Header
     header: {
@@ -209,8 +211,8 @@ const createStyles = (C: ThemeColors) =>
       alignItems: "center",
       justifyContent: "space-between",
       backgroundColor: C.bg,
-      paddingTop: Platform.OS === "ios" ? 56 : 40,
-      paddingBottom: 14,
+      paddingTop: Math.max(topInset, Platform.OS === "ios" ? 44 : 20) + 6,
+      paddingBottom: 12,
       paddingHorizontal: 20,
       borderBottomWidth: 1,
       borderBottomColor: C.border,
@@ -223,7 +225,7 @@ const createStyles = (C: ThemeColors) =>
     avatarImg: {
       width: 38,
       height: 38,
-      borderRadius: 20,
+      borderRadius: 19,
       borderWidth: 1.5,
       borderColor: C.border,
       backgroundColor: C.surfaceRaised,
@@ -251,18 +253,18 @@ const createStyles = (C: ThemeColors) =>
     headerTitle: {
       fontSize: 14,
       fontWeight: "700",
-      letterSpacing: 0.3,
+      letterSpacing: 0.5,
       color: C.text,
     },
     actions: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 4,
+      gap: 6,
     },
     iconBtn: {
       width: 36,
       height: 36,
-      borderRadius: 10,
+      borderRadius: 12,
       backgroundColor: C.surface,
       borderWidth: 1,
       borderColor: C.border,
@@ -273,13 +275,11 @@ const createStyles = (C: ThemeColors) =>
     // ── Tab bar
     tabBar: {
       position: "absolute",
-      bottom: 28,
-      left: 40,
-      right: 40,
-      height: 70,
-      width: 350,
-      marginLeft: 30,
-      borderRadius: 50,
+      bottom: Platform.OS === "ios" ? 28 : 20,
+      left: 20,
+      right: 20,
+      height: 68,
+      borderRadius: 36,
       backgroundColor: C.surface,
       borderTopWidth: 1,
       borderTopColor: C.border,
@@ -289,10 +289,12 @@ const createStyles = (C: ThemeColors) =>
       paddingTop: 0,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 20,
+      shadowOpacity: 0.22,
+      shadowRadius: 18,
       elevation: 16,
       alignItems: "center",
       justifyContent: "center",
+      maxWidth: 420,
+      marginHorizontal: "auto",
     },
   });

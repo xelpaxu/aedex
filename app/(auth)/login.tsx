@@ -176,7 +176,7 @@ export default function LoginScreen() {
 
       try {
         const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "moskito" }),
+          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
         });
 
         if (createdSessionId && setActive) {
@@ -222,7 +222,7 @@ export default function LoginScreen() {
 
       try {
         const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "moskito" }),
+          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
         });
 
         if (createdSessionId && setActive) {
