@@ -49,6 +49,8 @@ jobs:
               - 'eas.json'
               - 'package.json'
               - 'package-lock.json'
+              - 'metro.config.js'
+              - 'babel.config.js'
               - 'android/**'
               - 'ios/**'
               - 'tsconfig.json'
@@ -62,6 +64,7 @@ jobs:
               - 'lib/**'
               - 'services/**'
               - 'assets/**'
+              - 'scripts/**'
 
       - name: 🧠 Decide Pipeline Action
         id: decide
