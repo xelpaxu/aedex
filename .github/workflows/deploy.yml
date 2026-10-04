@@ -136,8 +136,25 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: 🚀 Build Standalone Android APK (EAS Cloud)
+        id: eas_build
         run: |
-          eas build --platform android --profile production --non-interactive --wait --output=./aedex-release.apk
+          echo "Starting EAS Cloud Android Build..."
+          BUILD_OUTPUT=$(eas build --platform android --profile production --non-interactive --json)
+          echo "Build complete."
+
+          # Extract APK download URL from EAS build output
+          APK_URL=$(echo "$BUILD_OUTPUT" | jq -r 'if type=="array" then .[0].artifacts.buildUrl else .artifacts.buildUrl end')
+
+          if [ -z "$APK_URL" ] || [ "$APK_URL" = "null" ]; then
+            echo "❌ Error: Could not retrieve APK download URL from EAS output."
+            echo "Raw response: $BUILD_OUTPUT"
+            exit 1
+          fi
+
+          echo "📥 Downloading APK from EAS cloud storage: $APK_URL"
+          curl -L -o ./aedex-release.apk "$APK_URL"
+          echo "✅ APK ready for release:"
+          ls -lh ./aedex-release.apk
 
       - name: 🏷️ Generate Release Tag Name
         id: tag_gen

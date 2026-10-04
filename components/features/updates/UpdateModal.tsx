@@ -1,9 +1,11 @@
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Updates from "expo-updates";
 import {
   AlertTriangle,
   CheckCircle2,
   CloudDownload,
+  Download,
   RotateCw,
   Sparkles,
 } from "lucide-react-native";
@@ -13,6 +15,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Linking,
   Modal,
   StyleSheet,
   Text,
@@ -27,6 +30,7 @@ export type UpdateStatus =
   | "checking"
   | "downloading"
   | "ready"
+  | "apk_available"
   | "up-to-date"
   | "error";
 
@@ -34,6 +38,13 @@ interface UpdateModalProps {
   visible: boolean;
   onFinish: () => void;
   autoCheckOnMount?: boolean;
+}
+
+interface NewReleaseInfo {
+  tagName: string;
+  releaseName: string;
+  downloadUrl: string;
+  htmlUrl: string;
 }
 
 export const UpdateModal: React.FC<UpdateModalProps> = ({
@@ -50,6 +61,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const [newRelease, setNewRelease] = useState<NewReleaseInfo | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -83,6 +96,44 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   }, [visible]);
 
+  const checkGitHubRelease = async (): Promise<boolean> => {
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/xelpaxu/aedex/releases/latest",
+        {
+          headers: { Accept: "application/vnd.github.v3+json" },
+        },
+      );
+      if (!res.ok) return false;
+      const data = await res.json();
+      const tagName = data.tag_name || "";
+      const apkAsset = data.assets?.find((a: any) =>
+        a.name?.toLowerCase().endsWith(".apk"),
+      );
+      const downloadUrl = apkAsset?.browser_download_url || data.html_url;
+
+      const currentVersion = Constants.expoConfig?.version || "1.0.0";
+
+      // If GitHub release tag indicates a new major/minor build and has an APK asset
+      if (tagName && !tagName.includes(currentVersion) && apkAsset) {
+        setNewRelease({
+          tagName,
+          releaseName: data.name || tagName,
+          downloadUrl,
+          htmlUrl: data.html_url,
+        });
+        setStatus("apk_available");
+        setStatusMessage(
+          `New base release (${tagName}) with native updates is available for download.`,
+        );
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
   const handleCheckForUpdates = async () => {
     // In local development or Expo Go, expo-updates does not run live OTA updates
     if (__DEV__) {
@@ -110,7 +161,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         setStatus("downloading");
         setStatusMessage("Downloading new AEDEX update package...");
 
-        // Animate fake progress bar smoothly to 85%
+        // Animate progress bar smoothly to 85%
         Animated.timing(progressAnim, {
           toValue: 0.85,
           duration: 3500,
@@ -148,22 +199,26 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               }
             }
           }, 1000);
-        } else {
-          setStatus("up-to-date");
-          setStatusMessage("AEDEX is up to date");
-          setTimeout(onFinish, 1200);
+          return;
         }
-      } else {
+      }
+
+      // If no OTA update, check if there's a new standalone APK release on GitHub
+      const hasNewApk = await checkGitHubRelease();
+      if (!hasNewApk) {
         setStatus("up-to-date");
         setStatusMessage("You are running the latest AEDEX build");
-        setTimeout(onFinish, 1000);
+        setTimeout(onFinish, 1200);
       }
     } catch (err: any) {
-      console.warn("OTA Update check error:", err);
-      setStatus("error");
-      setErrorMessage(err?.message || "Could not connect to update servers");
-      // Auto-continue after 2.5s on failure so users aren't locked out
-      setTimeout(onFinish, 2500);
+      console.warn("Update check error:", err);
+      // Fallback: check GitHub release on OTA error
+      const hasNewApk = await checkGitHubRelease();
+      if (!hasNewApk) {
+        setStatus("error");
+        setErrorMessage(err?.message || "Could not connect to update servers");
+        setTimeout(onFinish, 2500);
+      }
     }
   };
 
@@ -172,6 +227,16 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
       await Updates.reloadAsync();
     } catch {
       onFinish();
+    }
+  };
+
+  const handleDownloadApk = async () => {
+    if (newRelease?.downloadUrl) {
+      try {
+        await Linking.openURL(newRelease.downloadUrl);
+      } catch (err) {
+        console.error("Could not open download URL:", err);
+      }
     }
   };
 
@@ -214,6 +279,9 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               {status === "ready" && (
                 <CheckCircle2 size={36} color="#10B981" />
               )}
+              {status === "apk_available" && (
+                <Download size={36} color="#38BDF8" />
+              )}
               {status === "up-to-date" && (
                 <Sparkles size={34} color="#10B981" />
               )}
@@ -227,11 +295,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                 ? "Update Ready"
                 : status === "downloading"
                   ? "Updating AEDEX"
-                  : status === "up-to-date"
-                    ? "Up to Date"
-                    : status === "error"
-                      ? "Update Notice"
-                      : "Checking Updates"}
+                  : status === "apk_available"
+                    ? "New APK Available"
+                    : status === "up-to-date"
+                      ? "Up to Date"
+                      : status === "error"
+                        ? "Update Notice"
+                        : "Checking Updates"}
             </Text>
 
             <Text style={styles.subtitle}>{statusMessage}</Text>
@@ -274,16 +344,40 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               </View>
             )}
 
-            {/* Error or skip button */}
-            {(status === "error" || status === "up-to-date") && (
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={onFinish}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.skipButtonText}>Continue to App</Text>
-              </TouchableOpacity>
+            {/* APK Available Status: Direct Download Button */}
+            {status === "apk_available" && (
+              <View style={styles.readyContainer}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.restartButton}
+                  onPress={handleDownloadApk}
+                >
+                  <LinearGradient
+                    colors={["#38BDF8", "#0284C7"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.restartButtonText}>
+                      Download APK ({newRelease?.tagName || "Latest"})
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             )}
+
+            {/* Error, skip, or continue button */}
+            {(status === "error" ||
+              status === "up-to-date" ||
+              status === "apk_available") && (
+                <TouchableOpacity
+                  style={styles.skipButton}
+                  onPress={onFinish}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.skipButtonText}>Continue to App</Text>
+                </TouchableOpacity>
+              )}
 
             {/* Spinner indicator during check */}
             {status === "checking" && (
