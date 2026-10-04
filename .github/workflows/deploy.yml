@@ -3,6 +3,7 @@ name: AEDEX CI/CD Pipeline
 on:
   push:
     branches:
+      - prod
       - main
     tags:
       - 'v*'
