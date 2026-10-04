@@ -399,6 +399,10 @@ export default function ReportsScreen() {
     "Community",
   );
   const tabIndicator = useRef(new Animated.Value(0)).current;
+  const [tabBarWidth, setTabBarWidth] = useState(0);
+
+  // Exact inner pill width (accounting for 4px left + 4px right padding)
+  const pillWidth = tabBarWidth > 0 ? (tabBarWidth - 8) / 2 : 0;
 
   const allReports = useQuery(api.reports.getAllReports);
   const myReports = useQuery(api.reports.getMyReports);
@@ -417,7 +421,7 @@ export default function ReportsScreen() {
 
   const tabSlide = tabIndicator.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, (width - 40) / 2],
+    outputRange: [0, pillWidth],
   });
 
   // Stagger fade-in
@@ -487,11 +491,25 @@ export default function ReportsScreen() {
       </View>
 
       {/* ── TAB SWITCHER ── */}
-      <View style={styles.tabBar}>
+      <View
+        style={styles.tabBar}
+        onLayout={(e) => {
+          const w = e.nativeEvent.layout.width;
+          if (w > 0) setTabBarWidth(w);
+        }}
+      >
         {/* Sliding pill */}
-        <Animated.View
-          style={[styles.tabPill, { transform: [{ translateX: tabSlide }] }]}
-        />
+        {pillWidth > 0 && (
+          <Animated.View
+            style={[
+              styles.tabPill,
+              {
+                width: pillWidth,
+                transform: [{ translateX: tabSlide }],
+              },
+            ]}
+          />
+        )}
         <Pressable
           style={styles.tabBtn}
           onPress={() => setActiveTab("Community")}
@@ -748,12 +766,10 @@ const createStyles = (C: ThemeColors) =>
     tabPill: {
       position: "absolute",
       top: 4,
+      bottom: 4,
       left: 4,
-      width: (width - 48) / 2,
-      height: "100%",
-      marginTop: -4,
       backgroundColor: C.accent,
-      borderRadius: 11,
+      borderRadius: 10,
       shadowColor: "#000000",
       shadowOpacity: 0.35,
       shadowRadius: 10,

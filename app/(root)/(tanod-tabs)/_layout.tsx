@@ -1,3 +1,5 @@
+import { ThemeColors, useTheme } from "@/context/ThemeContext";
+import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/clerk-expo";
 import { useQuery } from "convex/react";
 import { Tabs, useRouter } from "expo-router";
@@ -13,8 +15,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/convex/_generated/api";
-import { ThemeColors, useTheme } from "@/context/ThemeContext";
 
 // ─── Custom centre tab button for Tanod Dashboard ────────────────────────────
 const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
@@ -36,7 +36,7 @@ const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
       >
         <LayoutDashboard
           color={focused ? "#FFFFFF" : C.textSub}
-          size={30}
+          size={28}
           strokeWidth={2.5}
         />
       </View>
@@ -46,22 +46,22 @@ const DashboardTabIcon = ({ focused }: { focused: boolean }) => {
 
 const ctb = StyleSheet.create({
   outer: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 1,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 26,
+    marginTop: -22,
     shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   inner: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -71,7 +71,7 @@ const ctb = StyleSheet.create({
 const TabIcon = ({
   Icon,
   focused,
-  size = 20,
+  size = 22,
 }: {
   Icon: React.ComponentType<any>;
   focused: boolean;
@@ -95,8 +95,6 @@ const ti = StyleSheet.create({
     justifyContent: "center",
     width: 44,
     height: 44,
-    borderRadius: 25,
-    gap: 4,
   },
 });
 
@@ -107,7 +105,10 @@ export default function TanodTabLayout() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const currentUser = useQuery(api.users.getMe);
-  const styles = useMemo(() => createStyles(C, insets.top), [C, insets.top]);
+  const styles = useMemo(
+    () => createStyles(C, insets.top, insets.bottom),
+    [C, insets.top, insets.bottom],
+  );
 
   return (
     <Tabs
@@ -169,9 +170,7 @@ export default function TanodTabLayout() {
         tabBarShowLabel: false,
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.textDim,
-        tabBarIconStyle: {
-          marginTop: 6,
-        },
+        tabBarItemStyle: styles.tabBarItem,
       }}
     >
       <Tabs.Screen
@@ -203,7 +202,11 @@ export default function TanodTabLayout() {
   );
 }
 
-const createStyles = (C: ThemeColors, topInset: number) =>
+const createStyles = (
+  C: ThemeColors,
+  topInset: number,
+  bottomInset: number,
+) =>
   StyleSheet.create({
     // ── Header
     header: {
@@ -275,14 +278,12 @@ const createStyles = (C: ThemeColors, topInset: number) =>
     // ── Tab bar
     tabBar: {
       position: "absolute",
-      bottom: Platform.OS === "ios" ? 28 : 20,
+      bottom: Math.max(bottomInset, Platform.OS === "ios" ? 24 : 16),
       left: 20,
       right: 20,
-      height: 68,
-      borderRadius: 36,
+      height: 64,
+      borderRadius: 32,
       backgroundColor: C.surface,
-      borderTopWidth: 1,
-      borderTopColor: C.border,
       borderWidth: 1,
       borderColor: C.border,
       paddingBottom: 0,
@@ -292,9 +293,11 @@ const createStyles = (C: ThemeColors, topInset: number) =>
       shadowOpacity: 0.22,
       shadowRadius: 18,
       elevation: 16,
-      alignItems: "center",
+    },
+    tabBarItem: {
+      height: 64,
       justifyContent: "center",
-      maxWidth: 420,
-      marginHorizontal: "auto",
+      alignItems: "center",
+      paddingVertical: 0,
     },
   });
