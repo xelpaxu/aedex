@@ -180,25 +180,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
           }).start();
 
           setStatus("ready");
-          setStatusMessage("Update ready! Restarting to apply changes...");
-
-          // Start 3 second countdown to reload
-          let count = 3;
-          setCountdown(count);
-          const interval = setInterval(async () => {
-            count -= 1;
-            if (count > 0) {
-              setCountdown(count);
-            } else {
-              clearInterval(interval);
-              try {
-                await Updates.reloadAsync();
-              } catch (reloadErr) {
-                console.error("Reload error:", reloadErr);
-                onFinish();
-              }
-            }
-          }, 1000);
+          setStatusMessage("Update downloaded! Restart to apply changes now, or continue and apply on next launch.");
           return;
         }
       }
@@ -222,12 +204,21 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
-  const handleManualRestart = async () => {
-    try {
-      await Updates.reloadAsync();
-    } catch {
-      onFinish();
-    }
+  const handleSafeRestart = async () => {
+    setStatusMessage("Applying update and restarting AEDEX...");
+    // Stop ongoing animated loops to prevent native freeze
+    pulseAnim.stopAnimation();
+    fadeAnim.stopAnimation();
+
+    // Small delay allows the React view and native layout to stabilize before context recreation
+    setTimeout(async () => {
+      try {
+        await Updates.reloadAsync();
+      } catch (e) {
+        console.warn("ReloadAsync failed, proceeding:", e);
+        onFinish();
+      }
+    }, 400);
   };
 
   const handleDownloadApk = async () => {
@@ -322,13 +313,13 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               </View>
             )}
 
-            {/* Ready Status / Countdown */}
+            {/* Ready Status: Safe Restart or Continue */}
             {status === "ready" && (
               <View style={styles.readyContainer}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.restartButton}
-                  onPress={handleManualRestart}
+                  onPress={handleSafeRestart}
                 >
                   <LinearGradient
                     colors={["#10B981", "#059669"]}
@@ -336,10 +327,16 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     end={{ x: 1, y: 0 }}
                     style={styles.buttonGradient}
                   >
-                    <Text style={styles.restartButtonText}>
-                      Restart Now {countdown !== null ? `(${countdown}s)` : ""}
-                    </Text>
+                    <Text style={styles.restartButtonText}>Restart AEDEX Now</Text>
                   </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.skipButton, { marginTop: 10, alignSelf: "center" }]}
+                  onPress={onFinish}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.skipButtonText}>Apply on Next Launch</Text>
                 </TouchableOpacity>
               </View>
             )}

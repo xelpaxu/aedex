@@ -209,6 +209,14 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: 📝 Setup Environment Variables for Bundler
+        run: |
+          echo "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bXVzaWNhbC1mb3dsLTM4LmNsZXJrLmFjY291bnRzLmRldiQ' }}" > .env
+          echo "EXPO_PUBLIC_CONVEX_URL=${{ secrets.EXPO_PUBLIC_CONVEX_URL || 'https://admired-yak-177.convex.cloud' }}" >> .env
+
       - name: 📡 Publish Update to Production Channel
+        env:
+          EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bXVzaWNhbC1mb3dsLTM4LmNsZXJrLmFjY291bnRzLmRldiQ' }}
+          EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL || 'https://admired-yak-177.convex.cloud' }}
         run: |
           eas update --branch production --message "${{ github.event.head_commit.message }}"

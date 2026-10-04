@@ -18,15 +18,19 @@ import { UpdateModal } from "../components/features/updates/UpdateModal";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { tokenCache } from "../lib/cache";
 
-const PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL ?? "";
+const PUBLISHABLE_KEY =
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  "pk_test_bXVzaWNhbC1mb3dsLTM4LmNsZXJrLmFjY291bnRzLmRldiQ";
+const CONVEX_URL =
+  process.env.EXPO_PUBLIC_CONVEX_URL ||
+  "https://admired-yak-177.convex.cloud";
 
 if (!PUBLISHABLE_KEY) {
-  console.warn("Missing Clerk Publishable Key. Check your .env file.");
+  console.warn("Missing Clerk Publishable Key. Using default fallback.");
 }
 
-// Keep native splash visible while fonts load
-SplashScreen.preventAutoHideAsync();
+// Keep native splash visible while fonts load (safely catch to prevent crashes on reload)
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // ========== FIX: Create Convex client lazily ==========
 let convexInstance: ConvexReactClient | null = null;
@@ -113,7 +117,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const [fontsLoaded, fontError] = useFonts({
     Manrope_700Bold,
     Inter_400Regular,
@@ -129,7 +133,7 @@ export default function RootLayout() {
   // Hide native splash once fonts are ready
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
@@ -210,5 +214,64 @@ export default function RootLayout() {
         </ConvexProviderWithClerk>
       </ClerkLoaded>
     </ClerkProvider>
+  );
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+import React from "react";
+
+class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("RootErrorBoundary caught an unhandled error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#0B0E14",
+            padding: 24,
+          }}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
+          <Text style={{ color: "#EF4444", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>
+            AEDEX Startup Warning
+          </Text>
+          <Text style={{ color: "#94A3B8", fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
+            {this.state.error?.message || "An issue occurred while initializing the app interface."}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function RootLayout() {
+  return (
+    <RootErrorBoundary>
+      <RootLayoutContent />
+    </RootErrorBoundary>
   );
 }
