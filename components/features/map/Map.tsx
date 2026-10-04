@@ -1,3 +1,5 @@
+import { api } from "@/convex/_generated/api";
+import { Doc } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -21,10 +23,9 @@ import {
   Satellite,
   Shield,
   ShieldCheck,
-  ScanLine,
   User,
   Users,
-  X,
+  X
 } from "lucide-react-native";
 import React, {
   useCallback,
@@ -39,17 +40,14 @@ import {
   Easing,
   Image,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { api } from "../../../../convex/_generated/api";
-import { Doc } from "../../../../convex/_generated/dataModel";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 // ─── Map data ─────────────────────────────────────────────────────────────────
@@ -691,8 +689,8 @@ const StatusFilterCard = ({
                   ? C.warn
                   : C.accent
                 : isTanod
-                ? C.warnGlow || "rgba(245, 158, 11, 0.12)"
-                : C.accentGlow || "rgba(79, 142, 247, 0.12)",
+                  ? C.warnGlow || "rgba(245, 158, 11, 0.12)"
+                  : C.accentGlow || "rgba(79, 142, 247, 0.12)",
             },
           ]}
         >
@@ -703,8 +701,8 @@ const StatusFilterCard = ({
                 color: isPendingActive
                   ? "#FFFFFF"
                   : isTanod
-                  ? C.warn
-                  : C.accent,
+                    ? C.warn
+                    : C.accent,
               },
             ]}
           >
@@ -1095,323 +1093,323 @@ const ReportBottomSheet = ({
 
   return (
     <View style={sheet.snackbarHost} pointerEvents="box-none">
-        <Animated.View
-          accessibilityViewIsModal={false}
-          accessibilityLabel="Selected mosquito risk report"
-          style={[
-            sheet.card,
-            {
-              backgroundColor: C.surface,
-              borderColor: C.border,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <View>
-            {/* Grab Handle */}
-            <View style={[sheet.handle, { backgroundColor: C.border }]} />
+      <Animated.View
+        accessibilityViewIsModal={false}
+        accessibilityLabel="Selected mosquito risk report"
+        style={[
+          sheet.card,
+          {
+            backgroundColor: C.surface,
+            borderColor: C.border,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        <View>
+          {/* Grab Handle */}
+          <View style={[sheet.handle, { backgroundColor: C.border }]} />
 
-            {/* Header: Badges & Close Button */}
-            <View style={sheet.header}>
-              <View style={sheet.badgeGroup}>
-                {/* Risk Level Badge */}
-                <View
-                  style={[
-                    sheet.badge,
-                    {
-                      backgroundColor: badgeGlow,
-                      borderColor: badgeColor + "40",
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      sheet.badgeDot,
-                      {
-                        backgroundColor: badgeColor,
-                        shadowColor: badgeColor,
-                      },
-                    ]}
-                  />
-                  <Text style={[sheet.badgeText, { color: badgeColor }]}>
-                    {report.status || "ACTIVE THREAT"}
-                  </Text>
-                </View>
-
-                {/* Verification Badge */}
-                <View
-                  style={[
-                    sheet.verifiedBadge,
-                    {
-                      backgroundColor: report.verified
-                        ? C.safeGlow
-                        : C.accentGlow,
-                      borderColor:
-                        (report.verified ? C.safe : C.accent) + "40",
-                    },
-                  ]}
-                >
-                  <ShieldCheck
-                    color={report.verified ? C.safe : C.accent}
-                    size={11}
-                    strokeWidth={2.5}
-                  />
-                  <Text
-                    style={[
-                      sheet.verifiedBadgeText,
-                      { color: report.verified ? C.safe : C.accent },
-                    ]}
-                  >
-                    {report.verified ? "VERIFIED" : "COMMUNITY"}
-                  </Text>
-                </View>
-
-                {/* Distance Badge */}
-                {distanceText && (
-                  <View
-                    style={[
-                      sheet.distanceBadge,
-                      {
-                        backgroundColor: C.surfaceRaised,
-                        borderColor: C.border,
-                      },
-                    ]}
-                  >
-                    <Navigation color={C.accent} size={10} strokeWidth={2.5} />
-                    <Text
-                      style={[sheet.distanceBadgeText, { color: C.textSub }]}
-                    >
-                      {distanceText}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <TouchableOpacity
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Close selected report"
+          {/* Header: Badges & Close Button */}
+          <View style={sheet.header}>
+            <View style={sheet.badgeGroup}>
+              {/* Risk Level Badge */}
+              <View
                 style={[
-                  sheet.closeBtn,
-                  { backgroundColor: C.surfaceRaised, borderColor: C.border },
-                ]}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <X color={C.textSub} size={15} strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Main Content Area: Evidence Photo Thumbnail + Title & Submitter */}
-            <View style={sheet.mainRow}>
-              {/* Evidence Photo Preview */}
-              <TouchableOpacity
-                onPress={onViewFullReport}
-                activeOpacity={0.85}
-                style={[
-                  sheet.thumbWrapper,
+                  sheet.badge,
                   {
-                    backgroundColor: C.surfaceRaised,
-                    borderColor: C.border,
+                    backgroundColor: badgeGlow,
+                    borderColor: badgeColor + "40",
                   },
                 ]}
               >
-                {imageUri ? (
-                  <Image
-                    source={{ uri: imageUri }}
-                    style={sheet.thumbImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={sheet.thumbPlaceholder}>
-                    <AlertTriangle color={badgeColor} size={22} />
-                  </View>
-                )}
                 <View
                   style={[
-                    sheet.thumbBadge,
+                    sheet.badgeDot,
                     {
-                      backgroundColor: C.surface + "D9",
+                      backgroundColor: badgeColor,
+                      shadowColor: badgeColor,
+                    },
+                  ]}
+                />
+                <Text style={[sheet.badgeText, { color: badgeColor }]}>
+                  {report.status || "ACTIVE THREAT"}
+                </Text>
+              </View>
+
+              {/* Verification Badge */}
+              <View
+                style={[
+                  sheet.verifiedBadge,
+                  {
+                    backgroundColor: report.verified
+                      ? C.safeGlow
+                      : C.accentGlow,
+                    borderColor:
+                      (report.verified ? C.safe : C.accent) + "40",
+                  },
+                ]}
+              >
+                <ShieldCheck
+                  color={report.verified ? C.safe : C.accent}
+                  size={11}
+                  strokeWidth={2.5}
+                />
+                <Text
+                  style={[
+                    sheet.verifiedBadgeText,
+                    { color: report.verified ? C.safe : C.accent },
+                  ]}
+                >
+                  {report.verified ? "VERIFIED" : "COMMUNITY"}
+                </Text>
+              </View>
+
+              {/* Distance Badge */}
+              {distanceText && (
+                <View
+                  style={[
+                    sheet.distanceBadge,
+                    {
+                      backgroundColor: C.surfaceRaised,
+                      borderColor: C.border,
                     },
                   ]}
                 >
-                  <Text style={[sheet.thumbBadgeText, { color: C.accent }]}>
-                    {report.processedImage ? "EVIDENCE" : "PHOTO"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Location Name, Submitter, Timestamp */}
-              <View style={sheet.mainInfo}>
-                <Text
-                  style={[sheet.locationTitle, { color: C.text }]}
-                  numberOfLines={2}
-                >
-                  {report.locationName || "Reported Vector Site"}
-                </Text>
-
-                <View style={sheet.reporterRow}>
-                  <User color={C.textDim} size={11} strokeWidth={2} />
+                  <Navigation color={C.accent} size={10} strokeWidth={2.5} />
                   <Text
-                    style={[sheet.reporterText, { color: C.textSub }]}
-                    numberOfLines={1}
+                    style={[sheet.distanceBadgeText, { color: C.textSub }]}
                   >
-                    By {report.userName || "Community Scout"}
+                    {distanceText}
                   </Text>
                 </View>
-
-                <View style={sheet.metaRow}>
-                  <Clock color={C.textDim} size={11} strokeWidth={2} />
-                  <Text style={[sheet.metaText, { color: C.textDim }]}>
-                    {formatTimeAgo(report._creationTime)}
-                  </Text>
-                  <View
-                    style={[sheet.metaDot, { backgroundColor: C.border }]}
-                  />
-                  <MapPin color={C.textDim} size={11} strokeWidth={2} />
-                  <Text style={[sheet.metaText, { color: C.textDim }]}>
-                    {report.lat?.toFixed(4)}, {report.lng?.toFixed(4)}
-                  </Text>
-                </View>
-              </View>
+              )}
             </View>
 
-            {/* Quick Surveillance Metrics Strip */}
-            <View
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close selected report"
               style={[
-                sheet.metricsRow,
+                sheet.closeBtn,
+                { backgroundColor: C.surfaceRaised, borderColor: C.border },
+              ]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X color={C.textSub} size={15} strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Main Content Area: Evidence Photo Thumbnail + Title & Submitter */}
+          <View style={sheet.mainRow}>
+            {/* Evidence Photo Preview */}
+            <TouchableOpacity
+              onPress={onViewFullReport}
+              activeOpacity={0.85}
+              style={[
+                sheet.thumbWrapper,
                 {
                   backgroundColor: C.surfaceRaised,
                   borderColor: C.border,
                 },
               ]}
             >
-              <View style={sheet.metricBox}>
-                <View style={sheet.metricIconWrap}>
-                  <Shield color={badgeColor} size={12} strokeWidth={2.5} />
-                  <Text style={[sheet.metricValue, { color: badgeColor }]}>
-                    {isCritical ? "URGENT" : "ROUTINE"}
-                  </Text>
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={sheet.thumbImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={sheet.thumbPlaceholder}>
+                  <AlertTriangle color={badgeColor} size={22} />
                 </View>
-                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  Priority
+              )}
+              <View
+                style={[
+                  sheet.thumbBadge,
+                  {
+                    backgroundColor: C.surface + "D9",
+                  },
+                ]}
+              >
+                <Text style={[sheet.thumbBadgeText, { color: C.accent }]}>
+                  {report.processedImage ? "EVIDENCE" : "PHOTO"}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Location Name, Submitter, Timestamp */}
+            <View style={sheet.mainInfo}>
+              <Text
+                style={[sheet.locationTitle, { color: C.text }]}
+                numberOfLines={2}
+              >
+                {report.locationName || "Reported Vector Site"}
+              </Text>
+
+              <View style={sheet.reporterRow}>
+                <User color={C.textDim} size={11} strokeWidth={2} />
+                <Text
+                  style={[sheet.reporterText, { color: C.textSub }]}
+                  numberOfLines={1}
+                >
+                  By {report.userName || "Community Scout"}
                 </Text>
               </View>
 
-              <View
-                style={[sheet.metricDivider, { backgroundColor: C.border }]}
-              />
-
-              <View style={sheet.metricBox}>
-                <View style={sheet.metricIconWrap}>
-                  <Navigation color={C.accent} size={12} strokeWidth={2.5} />
-                  <Text style={[sheet.metricValue, { color: C.accent }]}>
-                    150m
-                  </Text>
-                </View>
-                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  Threat radius
+              <View style={sheet.metaRow}>
+                <Clock color={C.textDim} size={11} strokeWidth={2} />
+                <Text style={[sheet.metaText, { color: C.textDim }]}>
+                  {formatTimeAgo(report._creationTime)}
                 </Text>
-              </View>
-
-              <View
-                style={[sheet.metricDivider, { backgroundColor: C.border }]}
-              />
-
-              <View style={sheet.metricBox}>
-                <View style={sheet.metricIconWrap}>
-                  {isResolved ? (
-                    <CheckCircle2 color={C.safe} size={12} strokeWidth={2.5} />
-                  ) : (
-                    <Flame color={badgeColor} size={12} strokeWidth={2.5} />
-                  )}
-                  <Text
-                    style={[
-                      sheet.metricValue,
-                      { color: isResolved ? C.safe : badgeColor },
-                    ]}
-                  >
-                    {isResolved
-                      ? "TREATED"
-                      : isCritical
-                        ? "HIGH RISK"
-                        : "MONITOR"}
-                  </Text>
-                </View>
-                <Text style={[sheet.metricLabel, { color: C.textSub }]}>
-                  Status
+                <View
+                  style={[sheet.metaDot, { backgroundColor: C.border }]}
+                />
+                <MapPin color={C.textDim} size={11} strokeWidth={2} />
+                <Text style={[sheet.metaText, { color: C.textDim }]}>
+                  {report.lat?.toFixed(4)}, {report.lng?.toFixed(4)}
                 </Text>
               </View>
             </View>
+          </View>
 
-            {/* Field Notes & Description Callout */}
-            {report.reasoning ? (
-              <View
+          {/* Quick Surveillance Metrics Strip */}
+          <View
+            style={[
+              sheet.metricsRow,
+              {
+                backgroundColor: C.surfaceRaised,
+                borderColor: C.border,
+              },
+            ]}
+          >
+            <View style={sheet.metricBox}>
+              <View style={sheet.metricIconWrap}>
+                <Shield color={badgeColor} size={12} strokeWidth={2.5} />
+                <Text style={[sheet.metricValue, { color: badgeColor }]}>
+                  {isCritical ? "URGENT" : "ROUTINE"}
+                </Text>
+              </View>
+              <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                Priority
+              </Text>
+            </View>
+
+            <View
+              style={[sheet.metricDivider, { backgroundColor: C.border }]}
+            />
+
+            <View style={sheet.metricBox}>
+              <View style={sheet.metricIconWrap}>
+                <Navigation color={C.accent} size={12} strokeWidth={2.5} />
+                <Text style={[sheet.metricValue, { color: C.accent }]}>
+                  150m
+                </Text>
+              </View>
+              <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                Threat radius
+              </Text>
+            </View>
+
+            <View
+              style={[sheet.metricDivider, { backgroundColor: C.border }]}
+            />
+
+            <View style={sheet.metricBox}>
+              <View style={sheet.metricIconWrap}>
+                {isResolved ? (
+                  <CheckCircle2 color={C.safe} size={12} strokeWidth={2.5} />
+                ) : (
+                  <Flame color={badgeColor} size={12} strokeWidth={2.5} />
+                )}
+                <Text
+                  style={[
+                    sheet.metricValue,
+                    { color: isResolved ? C.safe : badgeColor },
+                  ]}
+                >
+                  {isResolved
+                    ? "TREATED"
+                    : isCritical
+                      ? "HIGH RISK"
+                      : "MONITOR"}
+                </Text>
+              </View>
+              <Text style={[sheet.metricLabel, { color: C.textSub }]}>
+                Status
+              </Text>
+            </View>
+          </View>
+
+          {/* Field Notes & Description Callout */}
+          {report.reasoning ? (
+            <View
+              style={[
+                sheet.aiCallout,
+                {
+                  backgroundColor: C.surfaceRaised,
+                  borderColor: C.border,
+                },
+              ]}
+            >
+              <View style={sheet.aiCalloutHeader}>
+                <MapPin color={C.accent} size={11} strokeWidth={2.5} />
+                <Text style={[sheet.aiCalloutTitle, { color: C.accent }]}>
+                  Field notes & observations
+                </Text>
+              </View>
+              <Text
+                style={[sheet.aiCalloutText, { color: C.textSub }]}
+                numberOfLines={2}
+              >
+                {report.reasoning}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Action Buttons */}
+          <View style={sheet.actions}>
+            {/* Primary View Report Button */}
+            <TouchableOpacity
+              style={[
+                sheet.actionBtn,
+                sheet.actionBtnPrimary,
+                {
+                  backgroundColor: isCritical ? C.danger : C.accent,
+                  shadowColor: isCritical ? C.danger : C.accent,
+                },
+              ]}
+              onPress={onViewFullReport}
+              activeOpacity={0.8}
+            >
+              <Shield color="#FFFFFF" size={14} strokeWidth={2.5} />
+              <Text style={sheet.actionBtnPrimaryText}>
+                {isTanod
+                  ? "INSPECT & ACTION REPORT"
+                  : "VIEW REPORT DETAILS"}
+              </Text>
+              <ArrowRight color="#FFFFFF" size={14} strokeWidth={2.5} />
+            </TouchableOpacity>
+
+            {/* Fly/Focus Map Location Button */}
+            {report.lat && report.lng && onFocusLocation && (
+              <TouchableOpacity
                 style={[
-                  sheet.aiCallout,
+                  sheet.actionBtnFocus,
                   {
                     backgroundColor: C.surfaceRaised,
                     borderColor: C.border,
                   },
                 ]}
+                onPress={() => onFocusLocation(report.lat!, report.lng!)}
+                activeOpacity={0.75}
               >
-                <View style={sheet.aiCalloutHeader}>
-                  <MapPin color={C.accent} size={11} strokeWidth={2.5} />
-                  <Text style={[sheet.aiCalloutTitle, { color: C.accent }]}>
-                    Field notes & observations
-                  </Text>
-                </View>
-                <Text
-                  style={[sheet.aiCalloutText, { color: C.textSub }]}
-                  numberOfLines={2}
-                >
-                  {report.reasoning}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Action Buttons */}
-            <View style={sheet.actions}>
-              {/* Primary View Report Button */}
-              <TouchableOpacity
-                style={[
-                  sheet.actionBtn,
-                  sheet.actionBtnPrimary,
-                  {
-                    backgroundColor: isCritical ? C.danger : C.accent,
-                    shadowColor: isCritical ? C.danger : C.accent,
-                  },
-                ]}
-                onPress={onViewFullReport}
-                activeOpacity={0.8}
-              >
-                <Shield color="#FFFFFF" size={14} strokeWidth={2.5} />
-                <Text style={sheet.actionBtnPrimaryText}>
-                  {isTanod
-                    ? "INSPECT & ACTION REPORT"
-                    : "VIEW REPORT DETAILS"}
-                </Text>
-                <ArrowRight color="#FFFFFF" size={14} strokeWidth={2.5} />
+                <Navigation color={C.accent} size={15} strokeWidth={2.5} />
               </TouchableOpacity>
-
-              {/* Fly/Focus Map Location Button */}
-              {report.lat && report.lng && onFocusLocation && (
-                <TouchableOpacity
-                  style={[
-                    sheet.actionBtnFocus,
-                    {
-                      backgroundColor: C.surfaceRaised,
-                      borderColor: C.border,
-                    },
-                  ]}
-                  onPress={() => onFocusLocation(report.lat!, report.lng!)}
-                  activeOpacity={0.75}
-                >
-                  <Navigation color={C.accent} size={15} strokeWidth={2.5} />
-                </TouchableOpacity>
-              )}
-            </View>
+            )}
           </View>
-        </Animated.View>
+        </View>
+      </Animated.View>
     </View>
   );
 };
@@ -1747,7 +1745,7 @@ export default function MapComponent({
   }, [mapReady, fetchNativeGpsLocation]);
 
   const assignedReportIds = useMemo(() => {
-    return new Set(tanodAssignments?.map((a) => a.reportId as string) ?? []);
+    return new Set(tanodAssignments?.map((a: any) => a.reportId as string) ?? []);
   }, [tanodAssignments]);
 
   // Calculate filtered hotspots with radial offset for stacked/overlapping reports
@@ -1805,14 +1803,14 @@ export default function MapComponent({
 
     // Group items by rounded coordinates (approx 15-20 meters)
     const coordGroups: Record<string, Report[]> = {};
-    baseList.forEach((r) => {
+    baseList.forEach((r: Report) => {
       const key = `${r.lat!.toFixed(4)}_${r.lng!.toFixed(4)}`;
       if (!coordGroups[key]) coordGroups[key] = [];
       coordGroups[key].push(r);
     });
 
     // Apply radial offsets for stacked reports so they fan out visibly
-    return baseList.map((r) => {
+    return baseList.map((r: Report) => {
       const key = `${r.lat!.toFixed(4)}_${r.lng!.toFixed(4)}`;
       const group = coordGroups[key];
       if (group && group.length > 1) {

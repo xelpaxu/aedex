@@ -25,7 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
@@ -460,7 +460,7 @@ export default function ReportsScreen() {
   }
 
   const communityReports = allReports ?? [];
-  const criticalReports = myReports.filter((r) => r.status === "CRITICAL");
+  const criticalReports = myReports.filter((r: any) => r.status === "CRITICAL");
 
   return (
     <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
@@ -578,7 +578,7 @@ export default function ReportsScreen() {
                 <Text style={styles.emptyText}>No community reports yet.</Text>
               </View>
             ) : (
-              communityReports.map((item) => (
+              communityReports.map((item: any) => (
                 <HighlightCard
                   key={item._id}
                   item={item}
@@ -602,9 +602,9 @@ export default function ReportsScreen() {
           {/* Stats card */}
           <ReportStatsCard
             total={myReports.length}
-            resolved={myReports.filter((r) => r.status === "Resolved").length}
-            active={myReports.filter((r) => r.status === "CRITICAL").length}
-            pending={myReports.filter((r) => r.status === "LOW RISK").length}
+            resolved={myReports.filter((r: any) => r.status === "Resolved").length}
+            active={myReports.filter((r: any) => r.status === "CRITICAL").length}
+            pending={myReports.filter((r: any) => r.status === "LOW RISK").length}
           />
 
           {/* Urgent notices */}
@@ -612,7 +612,7 @@ export default function ReportsScreen() {
             <>
               <SectionLabel C={C}>Urgent notices</SectionLabel>
               <View style={styles.card}>
-                {criticalReports.map((r, i) => (
+                {criticalReports.map((r: any, i: number) => (
                   <UrgentRow
                     key={r._id}
                     item={r}
@@ -633,7 +633,7 @@ export default function ReportsScreen() {
                 <Text style={styles.emptyText}>No reports submitted yet.</Text>
               </View>
             ) : (
-              myReports.map((item, i) => (
+              myReports.map((item: any, i: number) => (
                 <HistoryRow
                   key={item._id}
                   item={item}

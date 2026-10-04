@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { ArrowRight, CheckCircle2, Clock3, Globe2, MapPinned, ShieldCheck, Siren } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 type Assignment = { _id: string; reportId?: string; reportStatus?: string; status?: string; locationName?: string; address?: string; assignedAt?: string | number; _creationTime?: number };
 const resolved = (item: Assignment) => [item.reportStatus, item.status].some((s) => s === "Resolved" || s === "Completed");

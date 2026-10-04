@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 
 const STORAGE_KEY_HELPFUL = "@aedex_helpful_reactions_v1";

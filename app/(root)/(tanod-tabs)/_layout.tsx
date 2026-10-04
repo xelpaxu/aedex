@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "@/context/ThemeContext";
 
 // ─── Custom centre tab button for Tanod Dashboard ────────────────────────────

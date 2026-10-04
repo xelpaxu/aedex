@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { CheckCircle2, ChevronRight, Clock3, ListFilter, MapPin, Search, ShieldAlert, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 type Filter = "ALL" | "CRITICAL" | "PENDING" | "RESOLVED";
 type ReportItem = { _id: string; status?: string; locationName?: string; address?: string; reasoning?: string; notes?: string; imageUri?: string; reportImage?: string; _creationTime?: number };

@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function Index() {

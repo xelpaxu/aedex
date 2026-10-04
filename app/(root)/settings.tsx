@@ -31,7 +31,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function SettingsScreen() {

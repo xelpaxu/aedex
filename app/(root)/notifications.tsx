@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 
 const typeIcon = (type: string, C: ThemeColors) => {
@@ -73,7 +73,7 @@ export default function NotificationsScreen() {
     await markAllAsRead();
   };
 
-  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+  const unreadCount = notifications?.filter((n: any) => !n.read).length ?? 0;
   const styles = useMemo(() => createStyles(C), [C]);
 
   return (

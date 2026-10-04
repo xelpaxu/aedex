@@ -17,7 +17,7 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { useWarmUpBrowser } from "../../hooks/useWarmUpBrowser";
 

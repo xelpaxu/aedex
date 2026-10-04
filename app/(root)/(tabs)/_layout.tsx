@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemeColors, useTheme } from "@/context/ThemeContext";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 // ─── Custom tab bar button (centre capture tab for citizen) ────────────────────
 const CaptureTabIcon = ({ focused }: { focused: boolean }) => {
