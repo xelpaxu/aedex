@@ -1,3 +1,4 @@
+import { api } from "@/convex/_generated/api";
 import { useAuth, useOAuth } from "@clerk/clerk-expo";
 import { useMutation } from "convex/react";
 import * as Linking from "expo-linking";
@@ -17,7 +18,6 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { useWarmUpBrowser } from "../../hooks/useWarmUpBrowser";
 
@@ -299,7 +299,7 @@ export default function LoginScreen() {
           <Text style={styles.eyebrow}>AEDEX surveillance</Text>
           <Text style={styles.heroTitle}>Sign in to{"\n"}your account</Text>
           <Text style={styles.heroSub}>
-            Report mosquito breeding sites and follow updates in your barangay.
+            Report mosquito breeding sites and follow updates in your barangay!
           </Text>
         </View>
 
