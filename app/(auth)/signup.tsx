@@ -1,17 +1,37 @@
-import { useAuth, useOAuth } from "@clerk/clerk-expo";
+import { useAuth, useOAuth, useSignUp } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  Mail,
+  RotateCw,
+  Shield,
+  ShieldCheck,
+  Sparkles,
+  User as UserIcon,
+  X,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -56,211 +76,215 @@ function FacebookLogo({ size = 20 }: { size?: number }) {
   );
 }
 
-type SocialBtnProps = {
-  onPress: () => void;
-  label: string;
-  sublabel: string;
-  icon: React.ReactNode;
-  surfaceColor?: string;
-  borderColor?: string;
-  accentColor?: string;
-  C: ThemeColors;
-};
-
-function SocialBtn({
-  onPress,
-  label,
-  sublabel,
-  icon,
-  surfaceColor,
-  borderColor,
-  accentColor,
-  C,
-}: SocialBtnProps) {
-  const bg = surfaceColor ?? C.surface;
-  const border = borderColor ?? C.border;
-  const textCol = accentColor ?? C.text;
-
-  return (
-    <TouchableOpacity
-      style={[btnStyles.socialBtn, { backgroundColor: bg, borderColor: border }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          btnStyles.socialBtnIcon,
-          { backgroundColor: C.surfaceRaised, borderColor: border },
-        ]}
-      >
-        {icon}
-      </View>
-      <View style={btnStyles.socialBtnLabels}>
-        <Text style={[btnStyles.socialBtnLabel, { color: textCol }]}>
-          {label}
-        </Text>
-        <Text style={[btnStyles.socialBtnSublabel, { color: C.textSub }]}>
-          {sublabel}
-        </Text>
-      </View>
-      <Text style={[btnStyles.socialBtnChevron, { color: C.textDim }]}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
-function StepDot({ active, C }: { active?: boolean; C: ThemeColors }) {
-  return (
-    <View
-      style={[
-        btnStyles.stepDot,
-        { backgroundColor: C.border },
-        active && {
-          backgroundColor: C.accent,
-          shadowColor: "#000000",
-          shadowOpacity: 0.8,
-          shadowRadius: 6,
-          elevation: 4,
-        },
-      ]}
-    />
-  );
-}
-
-const btnStyles = StyleSheet.create({
-  stepDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  socialBtnIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  socialBtnLabels: { flex: 1, gap: 2 },
-  socialBtnLabel: { fontSize: 14, fontWeight: "700" },
-  socialBtnSublabel: { fontSize: 11, fontWeight: "500" },
-  socialBtnChevron: { fontSize: 20, marginRight: 2 },
-});
-
 export default function SignupScreen() {
   useWarmUpBrowser();
   const router = useRouter();
   const { colors: C, isDark } = useTheme();
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
+  const { signUp, setActive, isLoaded: isSignUpLoaded } = useSignUp();
 
-  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: facebookAuth } = useOAuth({
-    strategy: "oauth_facebook",
-  });
-
+  // Selected Role: Citizen vs Tanod
+  const [selectedRole, setSelectedRole] = useState<"citizen" | "tanod">("citizen");
   const isTanodRegistration = useRef(false);
+
+  // Form Fields
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Status & Error state
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // OTP Verification Modal state (for email code confirmation)
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  // Social OAuth hooks
+  const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow: facebookAuth } = useOAuth({ strategy: "oauth_facebook" });
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && !isProcessing) {
-      if (isTanodRegistration.current) {
-        isTanodRegistration.current = false;
+    if (isAuthLoaded && isSignedIn && !isProcessing) {
+      router.replace({
+        pathname: "/(auth)/complete-profile",
+        params: { role: isTanodRegistration.current ? "tanod" : selectedRole },
+      });
+    }
+  }, [isAuthLoaded, isSignedIn, isProcessing, router, selectedRole]);
+
+  const parseClerkError = (err: any): string => {
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      return (
+        err.errors[0]?.longMessage ||
+        err.errors[0]?.message ||
+        "Registration failed. Please check your information."
+      );
+    }
+    if (err?.message) return err.message;
+    return "An error occurred during account creation. Please try again.";
+  };
+
+  // ── Handle Email / Password Sign Up ──
+  const handleEmailSignUp = async () => {
+    if (!isSignUpLoaded) return;
+    setErrorMessage(null);
+
+    const trimmedEmail = email.trim();
+    const trimmedName = fullName.trim();
+
+    if (!trimmedName) {
+      setErrorMessage("Please enter your full name.");
+      return;
+    }
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage("Please enter a password.");
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    setIsProcessing(true);
+    isTanodRegistration.current = selectedRole === "tanod";
+
+    try {
+      const nameParts = trimmedName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      await signUp.create({
+        emailAddress: trimmedEmail,
+        password: password,
+        firstName: firstName,
+        lastName: lastName,
+      });
+
+      // Prepare email verification if required
+      if (signUp.status === "complete") {
+        await setActive({ session: signUp.createdSessionId });
         router.replace({
           pathname: "/(auth)/complete-profile",
-          params: { role: "tanod" },
+          params: { role: selectedRole },
         });
       } else {
+        // Send email verification code
+        await signUp.prepareEmailAddressVerification({
+          strategy: "email_code",
+        });
+        setVerificationError(null);
+        setVerificationCode("");
+        setVerificationModalVisible(true);
+      }
+    } catch (err: any) {
+      console.error("Sign-up error:", err);
+      setErrorMessage(parseClerkError(err));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Submit OTP Verification Code ──
+  const handleVerifyEmail = async () => {
+    if (!isSignUpLoaded) return;
+    const trimmedCode = verificationCode.trim();
+    if (!trimmedCode) {
+      setVerificationError("Please enter the verification code sent to your email.");
+      return;
+    }
+
+    setVerificationLoading(true);
+    setVerificationError(null);
+
+    try {
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code: trimmedCode,
+      });
+
+      if (completeSignUp.status === "complete") {
+        await setActive({ session: completeSignUp.createdSessionId });
+        setVerificationModalVisible(false);
         router.replace({
           pathname: "/(auth)/complete-profile",
-          params: { role: "citizen" },
+          params: { role: selectedRole },
         });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
-
-  const onSelectAuth = useCallback(
-    async (strategy: "google" | "facebook") => {
-      if (isProcessing) return;
-
-      setIsProcessing(true);
-      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
-
-      try {
-        const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
-        });
-
-        if (createdSessionId && setActive) {
-          await setActive({ session: createdSessionId });
-          router.replace({
-            pathname: "/(auth)/complete-profile",
-            params: { role: "citizen" },
-          } as any);
-        }
-      } catch (err) {
-        console.error("OAuth Error:", err);
-        Alert.alert("Sign Up Error", "Failed to sign up. Please try again.");
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [googleAuth, facebookAuth, router, isProcessing],
-  );
-
-  const handleTanodRegister = useCallback(
-    async (strategy: "google" | "facebook") => {
-      if (isProcessing) return;
-
-      setIsProcessing(true);
-      isTanodRegistration.current = true;
-      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
-
-      try {
-        const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
-        });
-
-        if (createdSessionId && setActive) {
-          await setActive({ session: createdSessionId });
-          router.replace({
-            pathname: "/(auth)/complete-profile",
-            params: { role: "tanod" },
-          } as any);
-        }
-      } catch (err) {
-        console.error("OAuth Error:", err);
-        Alert.alert(
-          "Registration Error",
-          "Failed to register as Tanod. Please try again.",
+      } else {
+        setVerificationError(
+          "Verification status incomplete. Please check your verification code.",
         );
+      }
+    } catch (err: any) {
+      console.error("Verification error:", err);
+      setVerificationError(parseClerkError(err));
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  // ── Resend OTP Code ──
+  const handleResendCode = async () => {
+    if (!isSignUpLoaded) return;
+    try {
+      setVerificationLoading(true);
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
+      });
+      Alert.alert("Code Resent", "A new verification code has been sent to your email.");
+    } catch (err: any) {
+      setVerificationError(parseClerkError(err));
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  // ── Handle Social Registration (Google / Facebook) ──
+  const onSelectSocialAuth = useCallback(
+    async (strategy: "google" | "facebook") => {
+      if (isProcessing) return;
+      setErrorMessage(null);
+      setIsProcessing(true);
+      isTanodRegistration.current = selectedRole === "tanod";
+
+      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
+
+      try {
+        const { createdSessionId, setActive: setOAuthActive } = await selectedAuth({
+          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
+        });
+
+        if (createdSessionId && setOAuthActive) {
+          await setOAuthActive({ session: createdSessionId });
+          router.replace({
+            pathname: "/(auth)/complete-profile",
+            params: { role: selectedRole },
+          } as any);
+        }
+      } catch (err: any) {
+        console.error("OAuth Error:", err);
+        setErrorMessage(parseClerkError(err));
       } finally {
         setIsProcessing(false);
       }
     },
-    [googleAuth, facebookAuth, router, isProcessing],
+    [googleAuth, facebookAuth, router, isProcessing, selectedRole],
   );
 
-  const styles = useMemo(() => createStyles(C), [C]);
-
-  if (!isLoaded || isProcessing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>
-          {isProcessing ? "AUTHENTICATING..." : "LOADING..."}
-        </Text>
-      </View>
-    );
-  }
+  const styles = useMemo(() => createStyles(C, isDark), [C, isDark]);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -269,232 +293,786 @@ export default function SignupScreen() {
         backgroundColor={C.bg}
       />
 
-      <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
-        {/* ── Top Bar ── */}
-        <View style={styles.topBar}>
-          <View style={styles.stepGroup}>
-            <StepDot active C={C} />
-            <StepDot C={C} />
-            <Text style={styles.stepLabel}>STEP 1 OF 2</Text>
-          </View>
-        </View>
-
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          <View style={styles.logoWrap}>
-            <Image
-              source={require("../../assets/logo/aedex.png")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Top Bar & Step Counter ── */}
+          <View style={styles.topBar}>
+            <View style={styles.stepBadge}>
+              <View style={styles.stepDotActive} />
+              <View style={styles.stepDotInactive} />
+              <Text style={styles.stepBadgeText}>STEP 1 OF 2 • ACCOUNT SETUP</Text>
+            </View>
           </View>
 
-          <Text style={styles.heroTitle}>Create your account</Text>
-          <Text style={styles.heroSub}>
-            Create your account to start reporting and monitoring mosquito
-            breeding grounds in your local community.
-          </Text>
-        </View>
+          {/* ── Brand Header ── */}
+          <View style={styles.header}>
+            <View style={styles.brandingRow}>
+              <View style={styles.logoWrap}>
+                <Image
+                  source={require("../../assets/logo/aedex.png")}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.titleWrap}>
+                <Text style={styles.heroTitle}>Create Account</Text>
+                <Text style={styles.heroSub}>
+                  Join your community in early detection and reporting of mosquito breeding sites.
+                </Text>
+              </View>
+            </View>
+          </View>
 
-        {/* ── Auth Buttons ── */}
-        <View style={styles.cardSection}>
-          <SocialBtn
-            onPress={() => onSelectAuth("google")}
-            label="Sign up with Google"
-            sublabel="Use your Google account"
-            icon={<GoogleLogo size={20} />}
-            C={C}
-          />
+          {/* ── Account Role Selection Cards ── */}
+          <View style={styles.roleSection}>
+            <Text style={styles.roleSectionLabel}>CHOOSE YOUR ACCOUNT TYPE</Text>
+            <View style={styles.roleCardsRow}>
+              {/* Citizen Card */}
+              <TouchableOpacity
+                style={[
+                  styles.roleCard,
+                  selectedRole === "citizen" && styles.roleCardActiveCitizen,
+                ]}
+                onPress={() => setSelectedRole("citizen")}
+                activeOpacity={0.7}
+              >
+                <View style={styles.roleCardTop}>
+                  <View
+                    style={[
+                      styles.roleIconCircle,
+                      selectedRole === "citizen" && {
+                        backgroundColor: C.accentGlow,
+                        borderColor: C.accent,
+                      },
+                    ]}
+                  >
+                    <UserIcon
+                      size={18}
+                      color={selectedRole === "citizen" ? C.accent : C.textSub}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      selectedRole === "citizen" && {
+                        borderColor: C.accent,
+                        backgroundColor: C.accent,
+                      },
+                    ]}
+                  >
+                    {selectedRole === "citizen" && (
+                      <CheckCircle2 size={12} color="#FFFFFF" />
+                    )}
+                  </View>
+                </View>
+                <Text
+                  style={[
+                    styles.roleCardTitle,
+                    selectedRole === "citizen" && { color: C.text },
+                  ]}
+                >
+                  Citizen Resident
+                </Text>
+                <Text style={styles.roleCardDesc}>
+                  Report breeding hazards, track community heatmaps & receive safety tips.
+                </Text>
+              </TouchableOpacity>
 
-          <SocialBtn
-            onPress={() => onSelectAuth("facebook")}
-            label="Sign up with Facebook"
-            sublabel="Connect your Facebook identity"
-            icon={<FacebookLogo size={20} />}
-            accentColor={C.text}
-            C={C}
-          />
+              {/* Barangay Tanod Card */}
+              <TouchableOpacity
+                style={[
+                  styles.roleCard,
+                  selectedRole === "tanod" && styles.roleCardActiveTanod,
+                ]}
+                onPress={() => setSelectedRole("tanod")}
+                activeOpacity={0.7}
+              >
+                <View style={styles.roleCardTop}>
+                  <View
+                    style={[
+                      styles.roleIconCircle,
+                      selectedRole === "tanod" && {
+                        backgroundColor: C.warnGlow,
+                        borderColor: C.warn,
+                      },
+                    ]}
+                  >
+                    <ShieldCheck
+                      size={18}
+                      color={selectedRole === "tanod" ? C.warn : C.textSub}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      selectedRole === "tanod" && {
+                        borderColor: C.warn,
+                        backgroundColor: C.warn,
+                      },
+                    ]}
+                  >
+                    {selectedRole === "tanod" && (
+                      <CheckCircle2 size={12} color="#FFFFFF" />
+                    )}
+                  </View>
+                </View>
+                <Text
+                  style={[
+                    styles.roleCardTitle,
+                    selectedRole === "tanod" && { color: C.warn },
+                  ]}
+                >
+                  Barangay Tanod
+                </Text>
+                <Text style={styles.roleCardDesc}>
+                  Field response team • verify incident reports and coordinate barangay actions.
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-          <Text style={styles.terms}>
-            By continuing, you agree to the AEDEX Terms of Service and Privacy
-            Policy regarding vector surveillance data.
-          </Text>
-        </View>
+          {/* ── Error Banner ── */}
+          {errorMessage && (
+            <View style={styles.errorBanner}>
+              <AlertCircle size={18} color={C.danger} />
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          )}
 
-        {/* ── Tanod Registration ── */}
-        <View style={styles.tanodSection}>
-          <View style={styles.tanodHeader}>
-            <Text style={styles.tanodTitle}>Register as Barangay Tanod</Text>
-            <Text style={styles.tanodSub}>
-              Are you a barangay officer? Register here to get incident triage
-              tools and action tasks.
+          {/* ── Email & Password Registration Form ── */}
+          <View style={styles.formCard}>
+            {/* Full Name */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>FULL NAME</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "fullName" && styles.inputWrapFocused,
+                ]}
+              >
+                <UserIcon
+                  size={18}
+                  color={focusedField === "fullName" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Maria Clara Santos"
+                  placeholderTextColor={C.textDim}
+                  value={fullName}
+                  onChangeText={(val) => {
+                    setFullName(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("fullName")}
+                  onBlur={() => setFocusedField(null)}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  editable={!isProcessing}
+                />
+              </View>
+            </View>
+
+            {/* Email Address */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "email" && styles.inputWrapFocused,
+                ]}
+              >
+                <Mail
+                  size={18}
+                  color={focusedField === "email" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="maria@example.com"
+                  placeholderTextColor={C.textDim}
+                  value={email}
+                  onChangeText={(val) => {
+                    setEmail(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  editable={!isProcessing}
+                />
+              </View>
+            </View>
+
+            {/* Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>PASSWORD (MIN. 8 CHARS)</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "password" && styles.inputWrapFocused,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "password" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Create a strong password"
+                  placeholderTextColor={C.textDim}
+                  value={password}
+                  onChangeText={(val) => {
+                    setPassword(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  editable={!isProcessing}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color={C.textDim} />
+                  ) : (
+                    <Eye size={18} color={C.textDim} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Confirm Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "confirmPassword" && styles.inputWrapFocused,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "confirmPassword" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor={C.textDim}
+                  value={confirmPassword}
+                  onChangeText={(val) => {
+                    setConfirmPassword(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("confirmPassword")}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  editable={!isProcessing}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} color={C.textDim} />
+                  ) : (
+                    <Eye size={18} color={C.textDim} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Terms notice */}
+            <Text style={styles.termsNotice}>
+              By creating an account, you agree to AEDEX community surveillance guidelines and barangay data protection protocols.
             </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.tanodBtn}
-            onPress={() => handleTanodRegister("google")}
-            activeOpacity={0.7}
-            disabled={isProcessing}
-          >
-            <View
+
+            {/* Primary Sign Up Button */}
+            <TouchableOpacity
               style={[
-                styles.socialBtnIcon,
-                { backgroundColor: C.surfaceRaised, borderColor: C.border },
+                styles.primaryBtn,
+                selectedRole === "tanod" && { backgroundColor: C.warn },
+                isProcessing && styles.btnDisabled,
               ]}
+              onPress={handleEmailSignUp}
+              activeOpacity={0.8}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <View style={styles.btnRow}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>CREATING ACCOUNT...</Text>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <Text style={styles.primaryBtnText}>
+                    Continue as {selectedRole === "tanod" ? "Barangay Tanod" : "Citizen"}
+                  </Text>
+                  <ArrowRight size={18} color="#FFFFFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Social Sign-Up Divider ── */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR SIGN UP WITH</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* ── Social Buttons ── */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => onSelectSocialAuth("google")}
+              activeOpacity={0.7}
+              disabled={isProcessing}
             >
               <GoogleLogo size={20} />
-            </View>
-            <View style={styles.socialBtnLabels}>
-              <Text style={[styles.socialBtnLabel, { color: C.text }]}>
-                Register as Tanod with Google
-              </Text>
-              <Text style={[styles.socialBtnSublabel, { color: C.textSub }]}>
-                Create officer account
-              </Text>
-            </View>
-            <Text style={[styles.socialBtnChevron, { color: C.textDim }]}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Footer ── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <Link href="/(auth)/login" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign In</Text>
+              <Text style={styles.socialBtnText}>Google</Text>
             </TouchableOpacity>
-          </Link>
+
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => onSelectSocialAuth("facebook")}
+              activeOpacity={0.7}
+              disabled={isProcessing}
+            >
+              <FacebookLogo size={20} />
+              <Text style={styles.socialBtnText}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Footer Link ── */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <Link href="/(auth)/login" asChild>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* ── Email Verification OTP Modal ── */}
+      <Modal
+        visible={verificationModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVerificationModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <Mail size={22} color={C.accent} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setVerificationModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={20} color={C.textDim} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalTitle}>Verify Your Email</Text>
+            <Text style={styles.modalSubtitle}>
+              We sent a verification code to{"\n"}
+              <Text style={{ color: C.text, fontWeight: "700" }}>{email.trim()}</Text>.
+              Please enter it below to finish creating your account.
+            </Text>
+
+            {verificationError && (
+              <View style={styles.modalErrorBanner}>
+                <AlertCircle size={16} color={C.danger} />
+                <Text style={styles.modalErrorText}>{verificationError}</Text>
+              </View>
+            )}
+
+            <View style={{ gap: 14, marginTop: 14 }}>
+              <View style={[styles.inputWrap, { height: 52 }]}>
+                <KeyRound size={20} color={C.accent} />
+                <TextInput
+                  style={[styles.textInput, { fontSize: 18, letterSpacing: 3, fontWeight: "700" }]}
+                  placeholder="123456"
+                  placeholderTextColor={C.textDim}
+                  value={verificationCode}
+                  onChangeText={(val) => {
+                    setVerificationCode(val);
+                    if (verificationError) setVerificationError(null);
+                  }}
+                  keyboardType="number-pad"
+                  autoFocus
+                  editable={!verificationLoading}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryBtn, verificationLoading && styles.btnDisabled]}
+                onPress={handleVerifyEmail}
+                activeOpacity={0.8}
+                disabled={verificationLoading}
+              >
+                {verificationLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <View style={styles.btnRow}>
+                    <Text style={styles.primaryBtnText}>Verify & Proceed</Text>
+                    <ArrowRight size={18} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.resendBtn}
+                onPress={handleResendCode}
+                disabled={verificationLoading}
+              >
+                <RotateCw size={14} color={C.accent} />
+                <Text style={[styles.resendText, { color: C.accent }]}>
+                  Didn&apos;t get the code? Resend
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const createStyles = (C: ThemeColors) =>
+const createStyles = (C: ThemeColors, isDark: boolean) =>
   StyleSheet.create({
-    stepDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    socialBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      padding: 14,
-      borderRadius: 14,
-      borderWidth: 1,
-    },
-    socialBtnIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 10,
-      borderWidth: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    socialBtnLabels: { flex: 1, gap: 2 },
-    socialBtnLabel: { fontSize: 14, fontWeight: "700" },
-    socialBtnSublabel: { fontSize: 11, fontWeight: "500" },
-    socialBtnChevron: { fontSize: 20, marginRight: 2 },
     root: {
       flex: 1,
       backgroundColor: C.bg,
     },
-    loadingContainer: {
-      flex: 1,
-      backgroundColor: C.bg,
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 14,
-    },
-    loadingText: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.textSub,
-    },
-    screen: {
+    scrollContent: {
       flexGrow: 1,
-      paddingTop: 24,
-      paddingHorizontal: 24,
-      paddingBottom: 24,
+      paddingHorizontal: 22,
+      paddingTop: 14,
+      paddingBottom: 36,
     },
 
-    // ── Top Bar
+    // ── Top Bar & Step Badge
     topBar: {
-      paddingTop: 12,
-      paddingBottom: 4,
+      marginBottom: 12,
     },
-    stepGroup: {
+    stepBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
-    },
-    stepLabel: {
-      fontSize: 11,
-      fontWeight: "700",
-      color: C.textDim,
-      letterSpacing: 0.3,
-      marginLeft: 6,
-    },
-
-    // ── Hero
-    hero: { flex: 1, justifyContent: "center", paddingBottom: 8 },
-
-    logoWrap: {
-      width: 72,
-      height: 72,
-      backgroundColor: C.surface,
+      alignSelf: "flex-start",
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      backgroundColor: C.surfaceRaised,
+      borderColor: C.border,
       borderWidth: 1,
-      borderColor: C.borderBright,
       borderRadius: 20,
+    },
+    stepDotActive: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: C.accent,
+    },
+    stepDotInactive: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: C.borderBright,
+    },
+    stepBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      color: C.textSub,
+      marginLeft: 2,
+    },
+
+    // ── Header
+    header: {
+      marginBottom: 18,
+    },
+    brandingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+    },
+    logoWrap: {
+      width: 58,
+      height: 58,
+      backgroundColor: C.surface,
+      borderColor: C.borderBright,
+      borderWidth: 1,
+      borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 16,
-      padding: 10,
+      padding: 8,
       shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0,
-      shadowRadius: 12,
-      elevation: 0,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: 10,
+      elevation: 3,
     },
     logoImage: {
       width: "100%",
       height: "100%",
     },
-
+    titleWrap: {
+      flex: 1,
+    },
     heroTitle: {
-      fontSize: 32,
-      fontWeight: "700",
+      fontSize: 26,
+      fontWeight: "800",
       color: C.text,
-      lineHeight: 38,
-      letterSpacing: -0.5,
-      marginBottom: 10,
+      letterSpacing: -0.6,
+      lineHeight: 32,
+      marginBottom: 3,
     },
     heroSub: {
-      fontSize: 13,
+      fontSize: 12,
       color: C.textSub,
-      lineHeight: 20,
-      fontWeight: "400",
-      maxWidth: 300,
-      marginBottom: 16,
+      lineHeight: 17,
     },
 
-    // ── Card Section
-    cardSection: { gap: 10, marginTop: 20 },
-
-    // ── Terms
-    terms: {
+    // ── Role Section
+    roleSection: {
+      marginBottom: 18,
+      gap: 8,
+    },
+    roleSectionLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.8,
+    },
+    roleCardsRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    roleCard: {
+      flex: 1,
+      backgroundColor: C.surface,
+      borderColor: C.border,
+      borderWidth: 1.5,
+      borderRadius: 16,
+      padding: 12,
+      gap: 6,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.2 : 0.04,
+      shadowRadius: 6,
+      elevation: 1,
+    },
+    roleCardActiveCitizen: {
+      borderColor: C.accent,
+      backgroundColor: C.accentGlow,
+    },
+    roleCardActiveTanod: {
+      borderColor: C.warn,
+      backgroundColor: C.warnGlow,
+    },
+    roleCardTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 4,
+    },
+    roleIconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: C.surfaceRaised,
+      borderColor: C.border,
+      borderWidth: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioCircle: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      borderWidth: 1.5,
+      borderColor: C.borderBright,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    roleCardTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: C.textSub,
+    },
+    roleCardDesc: {
       fontSize: 11,
       color: C.textDim,
-      textAlign: "center",
+      lineHeight: 15,
+    },
+
+    // ── Error Banner
+    errorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: C.dangerGlow,
+      borderColor: C.danger + "40",
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
+    },
+    errorBannerText: {
+      fontSize: 12,
+      color: C.danger,
+      flex: 1,
+      lineHeight: 17,
+      fontWeight: "500",
+    },
+
+    // ── Form Card
+    formCard: {
+      backgroundColor: C.surface,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 20,
+      padding: 18,
+      gap: 14,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDark ? 0.35 : 0.05,
+      shadowRadius: 12,
+      elevation: 2,
+    },
+    inputGroup: {
+      gap: 6,
+    },
+    inputLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.6,
+    },
+    inputWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surfaceRaised,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      height: 48,
+      gap: 10,
+    },
+    inputWrapFocused: {
+      borderColor: C.accent,
+      backgroundColor: C.surfaceElevated,
+    },
+    textInput: {
+      flex: 1,
+      color: C.text,
+      fontSize: 14,
+      fontWeight: "500",
+      paddingVertical: 0,
+    },
+    termsNotice: {
+      fontSize: 11,
+      color: C.textDim,
       lineHeight: 16,
-      marginTop: 14,
-      paddingHorizontal: 8,
+      textAlign: "center",
+      paddingHorizontal: 4,
+      marginVertical: 2,
+    },
+
+    // Primary Button
+    primaryBtn: {
+      backgroundColor: C.accent,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      shadowColor: C.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    primaryBtnText: {
+      color: "#FFFFFF",
+      fontSize: 14,
+      fontWeight: "700",
+      letterSpacing: 0.3,
+    },
+    btnRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    btnDisabled: {
+      opacity: 0.65,
+    },
+
+    // ── Divider
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginVertical: 18,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.border,
+    },
+    dividerText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.8,
+    },
+
+    // ── Social Row
+    socialRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    socialBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      backgroundColor: C.surface,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 12,
+    },
+    socialBtnText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: C.text,
     },
 
     // ── Footer
@@ -502,40 +1080,97 @@ const createStyles = (C: ThemeColors) =>
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      marginTop: 16,
+      marginTop: 22,
     },
-    footerText: { fontSize: 12, color: C.textSub },
-    footerLink: { fontSize: 12, fontWeight: "700", color: C.accent },
-
-    // ── Tanod Section
-    tanodSection: {
-      marginTop: 16,
-      gap: 10,
-    },
-    tanodHeader: {
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    tanodTitle: {
-      fontSize: 16,
-      fontWeight: "700",
-      color: C.text,
-      marginBottom: 4,
-    },
-    tanodSub: {
-      fontSize: 12,
+    footerText: {
+      fontSize: 13,
       color: C.textSub,
-      textAlign: "center",
-      lineHeight: 18,
+      fontWeight: "400",
     },
-    tanodBtn: {
+    footerLink: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: C.accent,
+    },
+
+    // ── Verification Modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.75)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    modalCard: {
+      width: "100%",
+      backgroundColor: C.surface,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: C.borderBright,
+      padding: 22,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    modalIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: C.accentGlow,
+      borderWidth: 1,
+      borderColor: C.accent + "40",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalCloseBtn: {
+      padding: 6,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: C.text,
+      marginBottom: 6,
+    },
+    modalSubtitle: {
+      fontSize: 13,
+      color: C.textSub,
+      lineHeight: 19,
+      marginBottom: 6,
+    },
+    modalErrorBanner: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      padding: 14,
-      borderRadius: 14,
+      gap: 8,
+      backgroundColor: C.dangerGlow,
+      borderColor: C.danger + "40",
       borderWidth: 1,
-      borderColor: C.warn + "40",
-      backgroundColor: C.warnGlow,
+      borderRadius: 10,
+      padding: 10,
+      marginTop: 6,
+    },
+    modalErrorText: {
+      fontSize: 12,
+      color: C.danger,
+      flex: 1,
+      lineHeight: 16,
+    },
+    resendBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 8,
+    },
+    resendText: {
+      fontSize: 12,
+      fontWeight: "600",
     },
   });

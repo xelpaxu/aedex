@@ -1,21 +1,39 @@
 import { api } from "@/convex/_generated/api";
-import { useAuth, useOAuth } from "@clerk/clerk-expo";
+import { useAuth, useOAuth, useSignIn } from "@clerk/clerk-expo";
 import { useMutation } from "convex/react";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Lock,
+  Mail,
+  RotateCw,
+  Shield,
+  ShieldCheck,
+  User as UserIcon,
+  X,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
@@ -58,225 +76,224 @@ function FacebookLogo({ size = 20 }: { size?: number }) {
   );
 }
 
-type SocialBtnProps = {
-  onPress: () => void;
-  label: string;
-  sublabel: string;
-  icon: React.ReactNode;
-  surfaceColor?: string;
-  borderColor?: string;
-  accentColor?: string;
-  C: ThemeColors;
-};
-
-function SocialBtn({
-  onPress,
-  label,
-  sublabel,
-  icon,
-  surfaceColor,
-  borderColor,
-  accentColor,
-  C,
-}: SocialBtnProps) {
-  const bg = surfaceColor ?? C.surface;
-  const border = borderColor ?? C.border;
-  const textCol = accentColor ?? C.text;
-
-  return (
-    <TouchableOpacity
-      style={[btnStyles.socialBtn, { backgroundColor: bg, borderColor: border }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          btnStyles.socialBtnIcon,
-          { backgroundColor: C.surfaceRaised, borderColor: border },
-        ]}
-      >
-        {icon}
-      </View>
-      <View style={btnStyles.socialBtnLabels}>
-        <Text style={[btnStyles.socialBtnLabel, { color: textCol }]}>
-          {label}
-        </Text>
-        <Text style={[btnStyles.socialBtnSublabel, { color: C.textSub }]}>
-          {sublabel}
-        </Text>
-      </View>
-      <Text style={[btnStyles.socialBtnChevron, { color: C.textDim }]}>›</Text>
-    </TouchableOpacity>
-  );
-}
-
-const btnStyles = StyleSheet.create({
-  socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  socialBtnIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  socialBtnLabels: {
-    flex: 1,
-    gap: 2,
-  },
-  socialBtnLabel: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  socialBtnSublabel: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  socialBtnChevron: {
-    fontSize: 20,
-    marginRight: 2,
-  },
-});
-
 export default function LoginScreen() {
   useWarmUpBrowser();
   const router = useRouter();
   const { colors: C, isDark } = useTheme();
-  const { isSignedIn, isLoaded, userId } = useAuth();
+  const { isSignedIn, isLoaded: isAuthLoaded, userId } = useAuth();
+  const { signIn, setActive, isLoaded: isSignInLoaded } = useSignIn();
+
+  // Role toggle: citizen vs tanod
+  const [role, setRole] = useState<"citizen" | "tanod">("citizen");
+
+  // Email & Password state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Status & Error state
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Forgot Password Modal state
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotStep, setForgotStep] = useState<"request" | "reset">("request");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const createOrUpdateUser = useMutation(api.users.loginWithFirebase);
 
   const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: facebookAuth } = useOAuth({
-    strategy: "oauth_facebook",
-  });
+  const { startOAuthFlow: facebookAuth } = useOAuth({ strategy: "oauth_facebook" });
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && !isProcessing) {
+    if (isAuthLoaded && isSignedIn && !isProcessing) {
       router.replace("/(root)");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn]);
+  }, [isAuthLoaded, isSignedIn, isProcessing, router]);
 
-  const onSelectAuth = useCallback(
+  // Extract human-readable error from Clerk response
+  const parseClerkError = (err: any): string => {
+    if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+      return (
+        err.errors[0]?.longMessage ||
+        err.errors[0]?.message ||
+        "Authentication failed. Please verify your credentials."
+      );
+    }
+    if (err?.message) return err.message;
+    return "An error occurred during authentication. Please try again.";
+  };
+
+  // ── Handle Email / Password Login ──
+  const handleEmailLogin = async () => {
+    if (!isSignInLoaded) return;
+    setErrorMessage(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrorMessage("Please enter your email address.");
+      return;
+    }
+    if (!password) {
+      setErrorMessage("Please enter your password.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const signInAttempt = await signIn.create({
+        identifier: trimmedEmail,
+        password: password,
+      });
+
+      if (signInAttempt.status === "complete") {
+        await setActive({ session: signInAttempt.createdSessionId });
+
+        try {
+          await createOrUpdateUser({
+            uid: userId || (signInAttempt as any)?.createdUserId || "user",
+            email: trimmedEmail,
+            username: trimmedEmail.split("@")[0] || "user",
+            displayName: trimmedEmail.split("@")[0] || "User",
+            role: role,
+          });
+        } catch (convexError) {
+          console.warn("Convex user sync warning:", convexError);
+        }
+
+        router.replace("/(root)");
+      } else {
+        console.warn("Sign-in incomplete status:", signInAttempt.status);
+        setErrorMessage("Additional verification is required for this account.");
+      }
+    } catch (err: any) {
+      console.error("Sign-in error:", err);
+      setErrorMessage(parseClerkError(err));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Handle Social Login (Google / Facebook) ──
+  const onSelectSocialAuth = useCallback(
     async (strategy: "google" | "facebook") => {
       if (isProcessing) return;
-
+      setErrorMessage(null);
       setIsProcessing(true);
+
       const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
 
       try {
-        const { createdSessionId, setActive } = await selectedAuth({
+        const { createdSessionId, setActive: setOAuthActive } = await selectedAuth({
           redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
         });
 
-        if (createdSessionId && setActive) {
-          await setActive({ session: createdSessionId });
+        if (createdSessionId && setOAuthActive) {
+          await setOAuthActive({ session: createdSessionId });
 
           try {
             await createOrUpdateUser({
               uid: userId || "unknown",
               email: "",
-              username: "citizen_user",
-              displayName: "Citizen User",
-              role: "citizen",
+              username: role === "tanod" ? "tanod_user" : "citizen_user",
+              displayName: role === "tanod" ? "Tanod Officer" : "Citizen User",
+              role: role,
             });
           } catch (convexError) {
-            console.error("Failed to create user in Convex:", convexError);
+            console.error("Convex user sync error:", convexError);
           }
 
-          router.replace("/(root)");
+          if (role === "tanod") {
+            router.replace({
+              pathname: "/(auth)/complete-profile",
+              params: { role: "tanod" },
+            } as any);
+          } else {
+            router.replace("/(root)");
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("OAuth Error:", err);
-        Alert.alert("Login Error", "Failed to sign in. Please try again.");
+        setErrorMessage(parseClerkError(err));
       } finally {
         setIsProcessing(false);
       }
     },
-    [
-      googleAuth,
-      facebookAuth,
-      router,
-      createOrUpdateUser,
-      isProcessing,
-      userId,
-    ],
+    [googleAuth, facebookAuth, router, createOrUpdateUser, isProcessing, role, userId],
   );
 
-  const handleTanodRegister = useCallback(
-    async (strategy: "google" | "facebook") => {
-      if (isProcessing) return;
+  // ── Forgot Password Handlers ──
+  const handleOpenForgot = () => {
+    setForgotEmail(email.trim());
+    setForgotCode("");
+    setForgotNewPassword("");
+    setForgotStep("request");
+    setForgotError(null);
+    setForgotModalVisible(true);
+  };
 
-      setIsProcessing(true);
-      const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
+  const handleRequestResetCode = async () => {
+    if (!isSignInLoaded) return;
+    const trimmed = forgotEmail.trim();
+    if (!trimmed) {
+      setForgotError("Please enter your registered email address.");
+      return;
+    }
+    setForgotLoading(true);
+    setForgotError(null);
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: trimmed,
+      });
+      setForgotStep("reset");
+    } catch (err: any) {
+      setForgotError(parseClerkError(err));
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
-      try {
-        const { createdSessionId, setActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
-        });
+  const handleResetPassword = async () => {
+    if (!isSignInLoaded) return;
+    if (!forgotCode.trim()) {
+      setForgotError("Please enter the verification code.");
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      setForgotError("New password must be at least 8 characters.");
+      return;
+    }
+    setForgotLoading(true);
+    setForgotError(null);
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: "reset_password_email_code",
+        code: forgotCode.trim(),
+        password: forgotNewPassword,
+      });
 
-        if (createdSessionId && setActive) {
-          await setActive({ session: createdSessionId });
-
-          try {
-            await createOrUpdateUser({
-              uid: userId || "unknown",
-              email: "",
-              username: "tanod_user",
-              displayName: "Tanod User",
-              role: "tanod",
-            });
-          } catch (convexError) {
-            console.error("Failed to create Tanod in Convex:", convexError);
-          }
-
-          router.replace({
-            pathname: "/(auth)/complete-profile",
-            params: { role: "tanod" },
-          } as any);
-        }
-      } catch (err) {
-        console.error("OAuth Error:", err);
-        Alert.alert(
-          "Registration Error",
-          "Failed to register as Tanod. Please try again.",
-        );
-      } finally {
-        setIsProcessing(false);
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        setForgotModalVisible(false);
+        router.replace("/(root)");
+      } else {
+        setForgotError("Password reset incomplete. Please check your credentials.");
       }
-    },
-    [
-      googleAuth,
-      facebookAuth,
-      router,
-      createOrUpdateUser,
-      isProcessing,
-      userId,
-    ],
-  );
+    } catch (err: any) {
+      setForgotError(parseClerkError(err));
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
-  const styles = useMemo(() => createStyles(C), [C]);
-
-  if (!isLoaded || isProcessing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>
-          {isProcessing ? "AUTHENTICATING..." : "LOADING..."}
-        </Text>
-      </View>
-    );
-  }
+  const styles = useMemo(() => createStyles(C, isDark), [C, isDark]);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -285,215 +302,683 @@ export default function LoginScreen() {
         backgroundColor={C.bg}
       />
 
-      <ScrollView contentContainerStyle={styles.screen} showsVerticalScrollIndicator={false}>
-        {/* ── Hero ── */}
-        <View style={styles.hero}>
-          <View style={styles.logoWrap}>
-            <Image
-              source={require("../../assets/logo/aedex.png")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Brand Header ── */}
+          <View style={styles.header}>
+            <View style={styles.badgeRow}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.badgeText}>AEDEX SURVEILLANCE & TRIAGE</Text>
+            </View>
+
+            <View style={styles.brandingRow}>
+              <View style={styles.logoWrap}>
+                <Image
+                  source={require("../../assets/logo/aedex.png")}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.titleWrap}>
+                <Text style={styles.heroTitle}>Welcome Back</Text>
+                <Text style={styles.heroSub}>
+                  Sign in to monitor dengue vectors, risk heatmaps, and barangay response actions.
+                </Text>
+              </View>
+            </View>
           </View>
 
-          <Text style={styles.eyebrow}>AEDEX surveillance</Text>
-          <Text style={styles.heroTitle}>Sign in to{"\n"}your account</Text>
-          <Text style={styles.heroSub}>
-            Report mosquito breeding sites and follow updates in your barangay!
-          </Text>
-        </View>
+          {/* ── Role Selector Pill ── */}
+          <View style={styles.roleContainer}>
+            <Text style={styles.roleLabel}>SIGN IN AS</Text>
+            <View style={styles.roleTabs}>
+              <TouchableOpacity
+                style={[
+                  styles.roleTab,
+                  role === "citizen" && styles.roleTabActiveCitizen,
+                ]}
+                onPress={() => setRole("citizen")}
+                activeOpacity={0.7}
+              >
+                <UserIcon
+                  size={15}
+                  color={role === "citizen" ? C.accent : C.textSub}
+                />
+                <Text
+                  style={[
+                    styles.roleTabText,
+                    role === "citizen" && { color: C.text, fontWeight: "700" },
+                  ]}
+                >
+                  Citizen Resident
+                </Text>
+              </TouchableOpacity>
 
-        {/* ── Auth Buttons ── */}
-        <View style={styles.cardSection}>
-          <SocialBtn
-            onPress={() => onSelectAuth("google")}
-            label="Continue with Google"
-            sublabel="Sign in using your Google account"
-            icon={<GoogleLogo size={20} />}
-            C={C}
-          />
+              <TouchableOpacity
+                style={[
+                  styles.roleTab,
+                  role === "tanod" && styles.roleTabActiveTanod,
+                ]}
+                onPress={() => setRole("tanod")}
+                activeOpacity={0.7}
+              >
+                <ShieldCheck
+                  size={15}
+                  color={role === "tanod" ? C.warn : C.textSub}
+                />
+                <Text
+                  style={[
+                    styles.roleTabText,
+                    role === "tanod" && { color: C.warn, fontWeight: "700" },
+                  ]}
+                >
+                  Barangay Tanod
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-          <SocialBtn
-            onPress={() => onSelectAuth("facebook")}
-            label="Continue with Facebook"
-            sublabel="Sign in using your Facebook account"
-            icon={<FacebookLogo size={20} />}
-            accentColor={C.text}
-            C={C}
-          />
+            {role === "tanod" && (
+              <View style={styles.tanodNotice}>
+                <Shield size={14} color={C.warn} />
+                <Text style={styles.tanodNoticeText}>
+                  Field Officer mode: triage breeding sites and dispatch inspection reports.
+                </Text>
+              </View>
+            )}
+          </View>
 
+          {/* ── Error Banner ── */}
+          {errorMessage && (
+            <View style={styles.errorBanner}>
+              <AlertCircle size={18} color={C.danger} />
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          {/* ── Email & Password Form ── */}
+          <View style={styles.formCard}>
+            {/* Email Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "email" && styles.inputWrapFocused,
+                ]}
+              >
+                <Mail
+                  size={18}
+                  color={focusedField === "email" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="juan@example.com"
+                  placeholderTextColor={C.textDim}
+                  value={email}
+                  onChangeText={(val) => {
+                    setEmail(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("email")}
+                  onBlur={() => setFocusedField(null)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  editable={!isProcessing}
+                />
+                {email.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setEmail("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <X size={16} color={C.textDim} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Password Field */}
+            <View style={styles.inputGroup}>
+              <View style={styles.passwordLabelRow}>
+                <Text style={styles.inputLabel}>PASSWORD</Text>
+                <TouchableOpacity onPress={handleOpenForgot} activeOpacity={0.7}>
+                  <Text style={styles.forgotLink}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+              <View
+                style={[
+                  styles.inputWrap,
+                  focusedField === "password" && styles.inputWrapFocused,
+                ]}
+              >
+                <Lock
+                  size={18}
+                  color={focusedField === "password" ? C.accent : C.textDim}
+                />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter your password"
+                  placeholderTextColor={C.textDim}
+                  value={password}
+                  onChangeText={(val) => {
+                    setPassword(val);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  onFocus={() => setFocusedField("password")}
+                  onBlur={() => setFocusedField(null)}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="password"
+                  editable={!isProcessing}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color={C.textDim} />
+                  ) : (
+                    <Eye size={18} color={C.textDim} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Remember Me Option */}
+            <TouchableOpacity
+              style={styles.rememberRow}
+              onPress={() => setRememberMe(!rememberMe)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  rememberMe && { backgroundColor: C.accent, borderColor: C.accent },
+                ]}
+              >
+                {rememberMe && <CheckCircle2 size={13} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.rememberText}>Keep me signed in on this device</Text>
+            </TouchableOpacity>
+
+            {/* Primary Sign In Button */}
+            <TouchableOpacity
+              style={[
+                styles.primaryBtn,
+                role === "tanod" && { backgroundColor: C.warn },
+                isProcessing && styles.btnDisabled,
+              ]}
+              onPress={handleEmailLogin}
+              activeOpacity={0.8}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <View style={styles.btnRow}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.primaryBtnText}>AUTHENTICATING...</Text>
+                </View>
+              ) : (
+                <View style={styles.btnRow}>
+                  <Text style={styles.primaryBtnText}>
+                    Sign In as {role === "tanod" ? "Tanod Officer" : "Citizen"}
+                  </Text>
+                  <ArrowRight size={18} color="#FFFFFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Social Auth Divider ── */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
+            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
             <View style={styles.dividerLine} />
           </View>
-        </View>
 
-        {/* ── Tanod Registration ── */}
-        <View style={styles.tanodSection}>
-          <View style={styles.tanodHeader}>
-            <Text style={styles.tanodTitle}>Register as Tanod</Text>
-            <Text style={styles.tanodSub}>
-              Join as a field officer and help resolve reports in your barangay
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.tanodBtn}
-            onPress={() => handleTanodRegister("google")}
-            activeOpacity={0.7}
-            disabled={isProcessing}
-          >
-            <View
-              style={[
-                styles.socialBtnIcon,
-                { backgroundColor: C.surfaceRaised, borderColor: C.border },
-              ]}
+          {/* ── Social Buttons ── */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => onSelectSocialAuth("google")}
+              activeOpacity={0.7}
+              disabled={isProcessing}
             >
               <GoogleLogo size={20} />
-            </View>
-            <View style={styles.socialBtnLabels}>
-              <Text style={[styles.socialBtnLabel, { color: C.text }]}>
-                Register as Tanod with Google
-              </Text>
-              <Text style={[styles.socialBtnSublabel, { color: C.textSub }]}>
-                Join the field response team
-              </Text>
-            </View>
-            <Text style={[styles.socialBtnChevron, { color: C.textDim }]}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Footer ── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Sign Up</Text>
+              <Text style={styles.socialBtnText}>Google</Text>
             </TouchableOpacity>
-          </Link>
+
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => onSelectSocialAuth("facebook")}
+              activeOpacity={0.7}
+              disabled={isProcessing}
+            >
+              <FacebookLogo size={20} />
+              <Text style={styles.socialBtnText}>Facebook</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Footer Link ── */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+            <Link href="/(auth)/signup" asChild>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.footerLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* ── Forgot Password Modal ── */}
+      <Modal
+        visible={forgotModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setForgotModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <KeyRound size={22} color={C.accent} />
+              </View>
+              <TouchableOpacity
+                onPress={() => setForgotModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={20} color={C.textDim} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalTitle}>
+              {forgotStep === "request" ? "Reset Your Password" : "Enter Verification Code"}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {forgotStep === "request"
+                ? "Enter your registered email address and we'll send you a password recovery code."
+                : `We sent a reset code to ${forgotEmail}. Enter it below along with your new password.`}
+            </Text>
+
+            {forgotError && (
+              <View style={styles.modalErrorBanner}>
+                <AlertCircle size={16} color={C.danger} />
+                <Text style={styles.modalErrorText}>{forgotError}</Text>
+              </View>
+            )}
+
+            {forgotStep === "request" ? (
+              <View style={{ gap: 14, marginTop: 12 }}>
+                <View style={styles.inputWrap}>
+                  <Mail size={18} color={C.textDim} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter your registered email"
+                    placeholderTextColor={C.textDim}
+                    value={forgotEmail}
+                    onChangeText={setForgotEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    editable={!forgotLoading}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryBtn, forgotLoading && styles.btnDisabled]}
+                  onPress={handleRequestResetCode}
+                  activeOpacity={0.8}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Send Reset Code</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: 14, marginTop: 12 }}>
+                <View style={styles.inputWrap}>
+                  <KeyRound size={18} color={C.textDim} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="6-digit reset code"
+                    placeholderTextColor={C.textDim}
+                    value={forgotCode}
+                    onChangeText={setForgotCode}
+                    keyboardType="number-pad"
+                    editable={!forgotLoading}
+                  />
+                </View>
+
+                <View style={styles.inputWrap}>
+                  <Lock size={18} color={C.textDim} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter new password (min. 8 chars)"
+                    placeholderTextColor={C.textDim}
+                    value={forgotNewPassword}
+                    onChangeText={setForgotNewPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    editable={!forgotLoading}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryBtn, forgotLoading && styles.btnDisabled]}
+                  onPress={handleResetPassword}
+                  activeOpacity={0.8}
+                  disabled={forgotLoading}
+                >
+                  {forgotLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Reset Password & Sign In</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.resendBtn}
+                  onPress={() => setForgotStep("request")}
+                  disabled={forgotLoading}
+                >
+                  <RotateCw size={14} color={C.accent} />
+                  <Text style={[styles.resendText, { color: C.accent }]}>
+                    Change email or resend code
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
-      </ScrollView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const createStyles = (C: ThemeColors) =>
+const createStyles = (C: ThemeColors, isDark: boolean) =>
   StyleSheet.create({
-    socialBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      padding: 14,
-      borderRadius: 14,
-      borderWidth: 1,
-    },
-    socialBtnIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 10,
-      borderWidth: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    socialBtnLabels: {
-      flex: 1,
-      gap: 2,
-    },
-    socialBtnLabel: {
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    socialBtnSublabel: {
-      fontSize: 11,
-      fontWeight: "500",
-    },
-    socialBtnChevron: {
-      fontSize: 20,
-      marginRight: 2,
-    },
     root: {
       flex: 1,
       backgroundColor: C.bg,
     },
-    loadingContainer: {
-      flex: 1,
-      backgroundColor: C.bg,
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 14,
-    },
-    loadingText: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.textSub,
-    },
-    screen: {
+    scrollContent: {
       flexGrow: 1,
-      paddingTop: 24,
-      paddingHorizontal: 24,
-      paddingBottom: 24,
+      paddingHorizontal: 22,
+      paddingTop: 16,
+      paddingBottom: 36,
     },
 
-    // ── Hero
-    hero: {
-      flex: 1,
-      justifyContent: "center",
-      paddingBottom: 8,
+    // ── Header
+    header: {
+      marginBottom: 20,
+    },
+    badgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      alignSelf: "flex-start",
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      backgroundColor: C.accentGlow,
+      borderColor: C.accent + "33",
+      borderWidth: 1,
+      borderRadius: 20,
+      marginBottom: 14,
+    },
+    pulseDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: C.safe,
+    },
+    badgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      color: C.accent,
+    },
+    brandingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
     },
     logoWrap: {
-      width: 72,
-      height: 72,
+      width: 58,
+      height: 58,
       backgroundColor: C.surface,
-      borderWidth: 1,
       borderColor: C.borderBright,
-      borderRadius: 20,
+      borderWidth: 1,
+      borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 20,
-      padding: 10,
+      padding: 8,
       shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0,
-      shadowRadius: 12,
-      elevation: 0,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: 10,
+      elevation: 3,
     },
     logoImage: {
       width: "100%",
       height: "100%",
     },
-
-    eyebrow: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.accent,
-      textTransform: "none",
-      marginBottom: 8,
+    titleWrap: {
+      flex: 1,
     },
     heroTitle: {
-      fontSize: 32,
-      fontWeight: "700",
+      fontSize: 26,
+      fontWeight: "800",
       color: C.text,
-      lineHeight: 38,
-      letterSpacing: -0.5,
-      marginBottom: 12,
+      letterSpacing: -0.6,
+      lineHeight: 32,
+      marginBottom: 3,
     },
     heroSub: {
-      fontSize: 13,
+      fontSize: 12,
       color: C.textSub,
-      lineHeight: 21,
-      fontWeight: "400",
-      maxWidth: 300,
+      lineHeight: 17,
     },
 
-    // ── Card Section
-    cardSection: {
+    // ── Role Selector
+    roleContainer: {
+      marginBottom: 18,
+      gap: 8,
+    },
+    roleLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.8,
+    },
+    roleTabs: {
+      flexDirection: "row",
+      backgroundColor: C.surface,
+      borderRadius: 14,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: C.border,
+      gap: 6,
+    },
+    roleTab: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    roleTabActiveCitizen: {
+      backgroundColor: C.surfaceRaised,
+      borderColor: C.accent + "50",
+      borderWidth: 1,
+    },
+    roleTabActiveTanod: {
+      backgroundColor: C.warnGlow,
+      borderColor: C.warn + "60",
+      borderWidth: 1,
+    },
+    roleTabText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: C.textSub,
+    },
+    tanodNotice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: C.warnGlow,
+      borderColor: C.warn + "30",
+      borderWidth: 1,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    tanodNoticeText: {
+      fontSize: 11,
+      color: C.warn,
+      flex: 1,
+      lineHeight: 16,
+      fontWeight: "500",
+    },
+
+    // ── Error Banner
+    errorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
       gap: 10,
-      marginTop: 24,
+      backgroundColor: C.dangerGlow,
+      borderColor: C.danger + "40",
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 16,
+    },
+    errorBannerText: {
+      fontSize: 12,
+      color: C.danger,
+      flex: 1,
+      lineHeight: 17,
+      fontWeight: "500",
+    },
+
+    // ── Form Card
+    formCard: {
+      backgroundColor: C.surface,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 20,
+      padding: 18,
+      gap: 16,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDark ? 0.35 : 0.05,
+      shadowRadius: 12,
+      elevation: 2,
+    },
+    inputGroup: {
+      gap: 6,
+    },
+    inputLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.textDim,
+      letterSpacing: 0.6,
+    },
+    passwordLabelRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    forgotLink: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: C.accent,
+    },
+    inputWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: C.surfaceRaised,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      height: 48,
+      gap: 10,
+    },
+    inputWrapFocused: {
+      borderColor: C.accent,
+      backgroundColor: C.surfaceElevated,
+    },
+    textInput: {
+      flex: 1,
+      color: C.text,
+      fontSize: 14,
+      fontWeight: "500",
+      paddingVertical: 0,
+    },
+
+    // Remember Row
+    rememberRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+    },
+    checkbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 5,
+      borderWidth: 1.5,
+      borderColor: C.textDim,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rememberText: {
+      fontSize: 12,
+      color: C.textSub,
+      fontWeight: "500",
+    },
+
+    // Primary Button
+    primaryBtn: {
+      backgroundColor: C.accent,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+      shadowColor: C.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    primaryBtnText: {
+      color: "#FFFFFF",
+      fontSize: 14,
+      fontWeight: "700",
+      letterSpacing: 0.3,
+    },
+    btnRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    btnDisabled: {
+      opacity: 0.65,
     },
 
     // ── Divider
@@ -501,7 +986,7 @@ const createStyles = (C: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      marginVertical: 4,
+      marginVertical: 18,
     },
     dividerLine: {
       flex: 1,
@@ -509,10 +994,33 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.border,
     },
     dividerText: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "700",
       color: C.textDim,
-      letterSpacing: 0.3,
+      letterSpacing: 0.8,
+    },
+
+    // ── Social Row
+    socialRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    socialBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      backgroundColor: C.surface,
+      borderColor: C.border,
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 12,
+    },
+    socialBtnText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: C.text,
     },
 
     // ── Footer
@@ -523,45 +1031,94 @@ const createStyles = (C: ThemeColors) =>
       marginTop: 24,
     },
     footerText: {
-      fontSize: 12,
+      fontSize: 13,
       color: C.textSub,
       fontWeight: "400",
     },
     footerLink: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
       color: C.accent,
     },
 
-    // ── Tanod Section
-    tanodSection: {
-      marginTop: 16,
-      gap: 10,
-    },
-    tanodHeader: {
+    // ── Forgot Password Modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.72)",
+      justifyContent: "center",
       alignItems: "center",
-      marginBottom: 8,
+      padding: 20,
     },
-    tanodTitle: {
-      fontSize: 16,
-      fontWeight: "700",
+    modalCard: {
+      width: "100%",
+      backgroundColor: C.surface,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: C.borderBright,
+      padding: 22,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    modalIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: C.accentGlow,
+      borderWidth: 1,
+      borderColor: C.accent + "40",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalCloseBtn: {
+      padding: 6,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "800",
       color: C.text,
-      marginBottom: 4,
+      marginBottom: 6,
     },
-    tanodSub: {
+    modalSubtitle: {
       fontSize: 12,
       color: C.textSub,
-      textAlign: "center",
       lineHeight: 18,
+      marginBottom: 6,
     },
-    tanodBtn: {
+    modalErrorBanner: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      padding: 14,
-      borderRadius: 14,
+      gap: 8,
+      backgroundColor: C.dangerGlow,
+      borderColor: C.danger + "40",
       borderWidth: 1,
-      borderColor: C.warn + "40",
-      backgroundColor: C.warnGlow,
+      borderRadius: 10,
+      padding: 10,
+      marginTop: 6,
+    },
+    modalErrorText: {
+      fontSize: 12,
+      color: C.danger,
+      flex: 1,
+      lineHeight: 16,
+    },
+    resendBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 8,
+    },
+    resendText: {
+      fontSize: 12,
+      fontWeight: "600",
     },
   });
