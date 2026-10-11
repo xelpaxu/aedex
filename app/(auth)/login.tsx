@@ -99,11 +99,6 @@ export default function LoginScreen() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
 
-  // Email verification modal (for unverified accounts or factor requirements)
-  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
-  const [verifyCode, setVerifyCode] = useState("");
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const createOrUpdateUser = useMutation(api.users.loginWithFirebase);
 
@@ -186,14 +181,9 @@ export default function LoginScreen() {
 
       // Handle needs_second_factor (MFA / 2FA)
       if (signInAttempt.status === "needs_second_factor") {
-        const secondFactors = signInAttempt.supportedSecondFactors || [];
-        const emailSecond = secondFactors.find((f: any) => f.strategy === "email_code");
-        if (emailSecond) {
-          await signIn.prepareSecondFactor({ strategy: "email_code" });
-          setVerifyModalVisible(true);
-          setIsProcessing(false);
-          return;
-        }
+        setErrorMessage("Two-factor authentication is required for this account.");
+        setIsProcessing(false);
+        return;
       }
 
 
@@ -229,75 +219,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!isSignInLoaded) return;
-    if (!verifyCode.trim()) {
-      setVerifyError("Please enter the 6-digit verification code.");
-      return;
-    }
-    setVerifyLoading(true);
-    setVerifyError(null);
-    try {
-      let result;
-      if (signIn.status === "needs_second_factor") {
-        result = await signIn.attemptSecondFactor({
-          strategy: "email_code",
-          code: verifyCode.trim(),
-        });
-      } else {
-        result = await signIn.attemptFirstFactor({
-          strategy: "email_code",
-          code: verifyCode.trim(),
-        });
-      }
-
-      if (result.status === "complete" || result.createdSessionId) {
-        if (result.createdSessionId) {
-          await setActive({ session: result.createdSessionId });
-        }
-        setVerifyModalVisible(false);
-        router.replace("/(root)");
-      } else if (result.status === "needs_first_factor") {
-        // Email is now verified, finalize with password
-        const passwordResult = await signIn.attemptFirstFactor({
-          strategy: "password",
-          password: password,
-        });
-        if (passwordResult.status === "complete" || passwordResult.createdSessionId) {
-          if (passwordResult.createdSessionId) {
-            await setActive({ session: passwordResult.createdSessionId });
-          }
-          setVerifyModalVisible(false);
-          router.replace("/(root)");
-        }
-      }
-    } catch (err: any) {
-      setVerifyError(parseClerkError(err));
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
-
-  const handleResendVerifyCode = async () => {
-    if (!isSignInLoaded) return;
-    setVerifyLoading(true);
-    setVerifyError(null);
-    try {
-      const emailFactor = (signIn.supportedFirstFactors || []).find(
-        (f: any) => f.strategy === "email_code"
-      );
-      if (emailFactor) {
-        await signIn.prepareFirstFactor({
-          strategy: "email_code",
-          emailAddressId: (emailFactor as any)?.emailAddressId,
-        });
-      }
-    } catch (err: any) {
-      setVerifyError(parseClerkError(err));
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
 
   const onSelectSocialAuth = useCallback(
     async (strategy: "google" | "facebook") => {
@@ -750,81 +671,6 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Email Verification Modal ── */}
-      <Modal
-        visible={verifyModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVerifyModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Verify your email</Text>
-              <TouchableOpacity
-                onPress={() => setVerifyModalVisible(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <X size={18} color={C.textSub} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>
-              A 6-digit verification code was sent to {email}. Enter it below to complete sign-in.
-            </Text>
-
-            {verifyError && (
-              <View style={styles.errorBox}>
-                <AlertCircle size={14} color={C.danger} />
-                <Text style={styles.errorText}>{verifyError}</Text>
-              </View>
-            )}
-
-            <View style={{ gap: 14, marginTop: 6 }}>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={[styles.input, { letterSpacing: 4, textAlign: "center", fontWeight: "700" }]}
-                  placeholder="123456"
-                  placeholderTextColor={C.textDim}
-                  value={verifyCode}
-                  onChangeText={(t) => {
-                    setVerifyCode(t);
-                    if (verifyError) setVerifyError(null);
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  editable={!verifyLoading}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.primaryBtn, verifyLoading && { opacity: 0.7 }]}
-                onPress={handleVerifyCode}
-                activeOpacity={0.85}
-                disabled={verifyLoading}
-              >
-                {verifyLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Verify & Sign In</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleResendVerifyCode}
-                activeOpacity={0.7}
-                style={{ alignItems: "center", marginTop: 4 }}
-                disabled={verifyLoading}
-              >
-                <Text style={{ fontSize: 13, color: C.accent, fontWeight: "500" }}>
-                  Resend code
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
