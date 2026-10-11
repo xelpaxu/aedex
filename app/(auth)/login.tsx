@@ -164,34 +164,27 @@ export default function LoginScreen() {
 
         const hasPassword = factors.some((f: any) => f.strategy === "password");
 
-        if (hasPassword) {
+        try {
           signInAttempt = await signIn.attemptFirstFactor({
             strategy: "password",
             password: password,
           });
-        } else {
-          // Check if an email verification factor is required
+        } catch (pwErr: any) {
+          console.warn("[LOGIN] Password attempt failed:", pwErr);
           const emailFactor = factors.find((f: any) => f.strategy === "email_code");
-          if (emailFactor) {
-            console.log("[LOGIN] Email code factor required (unverified). Preparing factor...");
-            await signIn.prepareFirstFactor({
-              strategy: "email_code",
-              emailAddressId: (emailFactor as any)?.emailAddressId,
-            });
-            setVerifyModalVisible(true);
-            setIsProcessing(false);
-            return;
+          if (!hasPassword && emailFactor) {
+            setErrorMessage(
+              "Password sign-in is disabled in your Clerk Dashboard. Go to Clerk Dashboard > Email, Phone, Username > check 'Password' under Sign-in options (First Factor)."
+            );
+          } else {
+            setErrorMessage(parseClerkError(pwErr));
           }
-
-          setErrorMessage(
-            "Account requires verification or password setup. In Clerk Dashboard > Users > click this user > set password and mark email verified."
-          );
           setIsProcessing(false);
           return;
         }
       }
 
-      // Handle needs_second_factor
+      // Handle needs_second_factor (MFA / 2FA)
       if (signInAttempt.status === "needs_second_factor") {
         const secondFactors = signInAttempt.supportedSecondFactors || [];
         const emailSecond = secondFactors.find((f: any) => f.strategy === "email_code");
@@ -202,6 +195,7 @@ export default function LoginScreen() {
           return;
         }
       }
+
 
       if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
         if (signInAttempt.createdSessionId) {
