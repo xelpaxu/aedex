@@ -1,5 +1,7 @@
+import { Audio } from "expo-av";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowRight } from "lucide-react-native";
+import { ArrowRight, Volume2, VolumeX } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -128,7 +130,63 @@ function MosquitoGlyph({ wing }: { wing: Animated.Value }) {
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const [isExiting, setIsExiting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const letters = useMemo(() => APP_NAME.split(""), []);
+
+  // Mosquito sound effects: buzzing swarm -> defense ring zap -> brand chime
+  useEffect(() => {
+    let isMounted = true;
+
+    async function playSplashAudio() {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+        });
+
+        const { sound } = await Audio.Sound.createAsync(
+          require("../assets/sounds/splash_mosquito.wav"),
+          { shouldPlay: true, volume: 0.85, isMuted: false }
+        );
+
+        if (!isMounted) {
+          await sound.unloadAsync().catch(() => {});
+          return;
+        }
+
+        soundRef.current = sound;
+      } catch (err) {
+        console.warn("Could not load/play splash sound:", err);
+      }
+    }
+
+    playSplashAudio();
+
+    // Haptic zap feedback when mosquitoes are eliminated at ~4.15s
+    const hapticZapTimer = setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    }, 4150);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(hapticZapTimer);
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  const toggleMute = async () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (soundRef.current) {
+      await soundRef.current.setIsMutedAsync(nextMuted).catch(() => {});
+    }
+  };
 
   // Logo
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -174,6 +232,10 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const handleEnterApp = () => {
     if (isExiting) return;
     setIsExiting(true);
+
+    if (soundRef.current) {
+      soundRef.current.stopAsync().catch(() => {});
+    }
 
     Animated.parallel([
       Animated.timing(exitOpacity, {
@@ -495,6 +557,20 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
       ]}
     >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* Discrete Audio Mute/Unmute Control */}
+      <TouchableOpacity
+        style={styles.muteBtn}
+        onPress={toggleMute}
+        activeOpacity={0.7}
+        hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+      >
+        {isMuted ? (
+          <VolumeX size={17} color="rgba(255, 255, 255, 0.45)" />
+        ) : (
+          <Volume2 size={17} color="rgba(255, 255, 255, 0.75)" />
+        )}
+      </TouchableOpacity>
 
       <LinearGradient
         colors={["#111827", "#0B0E14", "#08090C"]}
@@ -890,5 +966,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#FFFFFF",
     letterSpacing: 1.5,
+  },
+  muteBtn: {
+    position: "absolute",
+    top: 54,
+    right: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 99,
   },
 });
