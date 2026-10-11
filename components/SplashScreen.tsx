@@ -141,14 +141,16 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     async function playSplashAudio() {
       try {
         await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
           staysActiveInBackground: false,
-          shouldDuckAndroid: true,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
         });
 
         const { sound } = await Audio.Sound.createAsync(
           require("../assets/sounds/splash_mosquito.wav"),
-          { shouldPlay: true, volume: 0.85, isMuted: false }
+          { shouldPlay: true, volume: 1.0, isMuted: false }
         );
 
         if (!isMounted) {
@@ -157,8 +159,10 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         }
 
         soundRef.current = sound;
+        await sound.setVolumeAsync(1.0);
+        await sound.playAsync().catch(() => {});
       } catch (err) {
-        console.warn("Could not load/play splash sound:", err);
+        console.warn("[AUDIO] Could not load/play splash sound:", err);
       }
     }
 
