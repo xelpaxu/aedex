@@ -580,12 +580,13 @@ export default function ResultsScreen() {
       ? normalizeImageUri(report.processedImage)
       : normalizeImageUri(report.imageUri);
 
-  const dateStr = new Date(report._creationTime).toLocaleDateString("en-US", {
+  const effectiveTime = report.timestamp || report._creationTime;
+  const dateStr = new Date(effectiveTime).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
-  const timeStr = new Date(report._creationTime).toLocaleTimeString("en-US", {
+  const timeStr = new Date(effectiveTime).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });

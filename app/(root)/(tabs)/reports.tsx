@@ -1,4 +1,5 @@
 import ReportStatsCard from "@/components/features/reports/ReportStatCard";
+import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import {
@@ -25,7 +26,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
@@ -150,7 +150,7 @@ const HighlightCard = ({
             </Text>
           </View>
           <View style={hc.timePill}>
-            <Text style={hc.timeText}>{formatTime(item._creationTime)}</Text>
+            <Text style={hc.timeText}>{formatTime(item.timestamp || item._creationTime)}</Text>
           </View>
         </View>
 
@@ -273,7 +273,7 @@ const HistoryRow = ({
           {item.locationName}
         </Text>
         <Text style={[hr.date, { color: C.textSub }]}>
-          {new Date(item._creationTime).toLocaleDateString("en-US", {
+          {new Date(item.timestamp || item._creationTime).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",

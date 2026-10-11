@@ -379,7 +379,9 @@ export default function CommunityFeedScreen() {
   const communityReports = useMemo(() => {
     if (!allReports) return [];
     return [...allReports].sort(
-      (a: any, b: any) => (b._creationTime || 0) - (a._creationTime || 0),
+      (a: any, b: any) =>
+        (b.timestamp || b._creationTime || 0) -
+        (a.timestamp || a._creationTime || 0),
     );
   }, [allReports]);
 
@@ -435,13 +437,12 @@ export default function CommunityFeedScreen() {
           }
           ListEmptyComponent={<EmptyState C={C} />}
           renderItem={({ item }) => {
-            const date = new Date(item._creationTime).toLocaleDateString(
-              "en-US",
-              {
-                month: "short",
-                day: "numeric",
-              },
-            );
+            const date = new Date(
+              item.timestamp || item._creationTime,
+            ).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
 
             const imageUri = normalizeImageUri(
               item.processedImage || item.imageUri || (item as any).image,
