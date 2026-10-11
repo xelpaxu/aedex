@@ -95,7 +95,11 @@ const HighlightCard = ({
     ]).start(onPress);
   };
 
-  const isCritical = item.status === "CRITICAL";
+  const isCritical =
+    item.status === "CRITICAL" ||
+    item.riskLevel === "CRITICAL" ||
+    item.status === "HIGH RISK" ||
+    item.riskLevel === "HIGH RISK";
 
   return (
     <Animated.View
@@ -142,7 +146,7 @@ const HighlightCard = ({
                 { color: isCritical ? C.danger : C.warn },
               ]}
             >
-              {item.status}
+              {item.riskLevel || item.status}
             </Text>
           </View>
           <View style={hc.timePill}>

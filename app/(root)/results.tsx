@@ -746,7 +746,7 @@ export default function ResultsScreen() {
             <View style={styles.statDivider} />
             <StatBlock
               label="HOTSPOT"
-              value={report.status || "ACTIVE"}
+              value={report.riskLevel || report.status || "ACTIVE"}
               color={statusColor}
               C={C}
             />
