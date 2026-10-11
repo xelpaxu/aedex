@@ -111,6 +111,7 @@ export default function LoginScreen() {
   }, [isAuthLoaded, isSignedIn, isProcessing, router]);
 
   const parseClerkError = (err: any): string => {
+    console.log("[LOGIN ERROR]", err);
     if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
       return (
         err.errors[0]?.longMessage ||
@@ -138,16 +139,32 @@ export default function LoginScreen() {
 
     setIsProcessing(true);
     try {
+      console.log("[LOGIN] Initiating sign-in for:", trimmedEmail);
       let signInAttempt = await signIn.create({
         identifier: trimmedEmail,
         password: password,
       });
 
+      console.log("[LOGIN] Sign-in status:", signInAttempt.status);
+
       if (signInAttempt.status === "needs_first_factor") {
-        signInAttempt = await signIn.attemptFirstFactor({
-          strategy: "password",
-          password: password,
-        });
+        const factors = signInAttempt.supportedFirstFactors || [];
+        console.log("[LOGIN] First factors available:", factors);
+
+        const hasPassword = factors.some((f: any) => f.strategy === "password");
+
+        if (hasPassword) {
+          signInAttempt = await signIn.attemptFirstFactor({
+            strategy: "password",
+            password: password,
+          });
+        } else {
+          setErrorMessage(
+            "No password has been set for this account in Clerk. In your Clerk Dashboard > Users > click this user > click 'Add password', or use Forgot Password."
+          );
+          setIsProcessing(false);
+          return;
+        }
       }
 
       if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
@@ -169,7 +186,7 @@ export default function LoginScreen() {
 
         router.replace("/(root)");
       } else {
-        setErrorMessage("Invalid email or password. Please verify your credentials.");
+        setErrorMessage("Unable to sign in. Please verify your email and password.");
       }
     } catch (err: any) {
       setErrorMessage(parseClerkError(err));
