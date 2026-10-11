@@ -747,7 +747,7 @@ export default function ResultsScreen() {
             <View style={styles.statDivider} />
             <StatBlock
               label="VALIDATION"
-              value={verified ? "VERIFIED" : "COMMUNITY"}
+              value={verified ? "VERIFIED" : "PENDING"}
               color={verified ? C.safe : C.warn}
               C={C}
             />
@@ -826,7 +826,7 @@ export default function ResultsScreen() {
                       { color: verified ? C.safe : C.warn },
                     ]}
                   >
-                    {verified ? "Yes (Tanod Confirmed)" : "Awaiting Verification"}
+                    {verified ? "Yes (Verified by Health Office)" : "Pending (Awaiting Web App Validation)"}
                   </Text>
                 </Row>
               </View>
@@ -1016,11 +1016,11 @@ export default function ResultsScreen() {
               C={C}
             />
             <TimelineItem
-              title="Tanod Field Verification"
+              title="Health Unit Validation"
               date={
                 verified
-                  ? "Confirmed by Barangay Health Tanod Unit"
-                  : "Dispatched to Local Tanod Officers"
+                  ? "Validated and Confirmed by Web Health Unit"
+                  : "Awaiting Verification from Web App"
               }
               completed={verified}
               active={!verified && !isResolved}

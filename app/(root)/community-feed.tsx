@@ -465,7 +465,7 @@ export default function CommunityFeedScreen() {
                   location={locationDisplay}
                   timestamp={date}
                   status={
-                    item.status || (item.verified ? "CRITICAL" : "LOW RISK")
+                    item.status || "PENDING"
                   }
                   userAvatar={`https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=1a2240&color=4F8EF7&bold=true`}
                   isFullWidth
