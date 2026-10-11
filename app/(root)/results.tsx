@@ -1,3 +1,5 @@
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -26,8 +28,6 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -848,7 +848,7 @@ export default function ResultsScreen() {
               <View style={styles.aiIconBg}>
                 <Shield color={C.accent} size={13} strokeWidth={2.5} />
               </View>
-              <Text style={styles.aiTitle}>Officer Assessment Notes</Text>
+              <Text style={styles.aiTitle}>AI Assessment Notes</Text>
             </Row>
             <Text style={styles.aiBody}>{aiMessage}</Text>
           </View>
