@@ -1,4 +1,4 @@
-import { useAuth, useOAuth, useSignUp } from "@clerk/clerk-expo";
+import { useAuth, useOAuth, useSignIn, useSignUp } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Link, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -10,15 +10,12 @@ import {
   Mail,
   Shield,
   User,
-  X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -75,6 +72,7 @@ export default function SignupScreen() {
   const { colors: C, isDark } = useTheme();
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { signUp, setActive, isLoaded: isSignUpLoaded } = useSignUp();
+  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
 
   const [selectedRole, setSelectedRole] = useState<"citizen" | "tanod">("citizen");
   const isTanodRegistration = useRef(false);
@@ -93,12 +91,6 @@ export default function SignupScreen() {
   // Status & Errors
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // OTP Verification Modal
-  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationLoading, setVerificationLoading] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
 
   // Social OAuth
   const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
@@ -161,79 +153,63 @@ export default function SignupScreen() {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      await signUp.create({
+      const createdUser = await signUp.create({
         emailAddress: trimmedEmail,
         password: password,
         firstName: firstName,
         lastName: lastName,
       });
 
-      if (signUp.status === "complete") {
-        await setActive({ session: signUp.createdSessionId });
+      if (createdUser.status === "complete" || createdUser.createdSessionId) {
+        if (createdUser.createdSessionId) {
+          await setActive({ session: createdUser.createdSessionId });
+        }
         router.replace({
           pathname: "/(auth)/complete-profile",
           params: { role: selectedRole },
         });
-      } else {
-        await signUp.prepareEmailAddressVerification({
-          strategy: "email_code",
-        });
-        setVerificationError(null);
-        setVerificationCode("");
-        setVerificationModalVisible(true);
+        return;
       }
+
+      // Immediately establish session without requiring verification code
+      if (isSignInLoaded) {
+        try {
+          let signInAttempt = await signIn.create({
+            identifier: trimmedEmail,
+            password: password,
+          });
+
+          if (signInAttempt.status === "needs_first_factor") {
+            signInAttempt = await signIn.attemptFirstFactor({
+              strategy: "password",
+              password: password,
+            });
+          }
+
+          if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
+            if (signInAttempt.createdSessionId) {
+              await setActive({ session: signInAttempt.createdSessionId });
+            }
+            router.replace({
+              pathname: "/(auth)/complete-profile",
+              params: { role: selectedRole },
+            });
+            return;
+          }
+        } catch (signInErr) {
+          console.warn("Direct sign-in attempt warning:", signInErr);
+        }
+      }
+
+      // Proceed directly to complete profile
+      router.replace({
+        pathname: "/(auth)/complete-profile",
+        params: { role: selectedRole },
+      });
     } catch (err: any) {
       setErrorMessage(parseClerkError(err));
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleVerifyEmail = async () => {
-    if (!isSignUpLoaded) return;
-    const trimmedCode = verificationCode.trim();
-    if (!trimmedCode) {
-      setVerificationError("Please enter the code sent to your email.");
-      return;
-    }
-
-    setVerificationLoading(true);
-    setVerificationError(null);
-
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: trimmedCode,
-      });
-
-      if (completeSignUp.status === "complete") {
-        await setActive({ session: completeSignUp.createdSessionId });
-        setVerificationModalVisible(false);
-        router.replace({
-          pathname: "/(auth)/complete-profile",
-          params: { role: selectedRole },
-        });
-      } else {
-        setVerificationError("Verification incomplete. Please check the code.");
-      }
-    } catch (err: any) {
-      setVerificationError(parseClerkError(err));
-    } finally {
-      setVerificationLoading(false);
-    }
-  };
-
-  const handleResendCode = async () => {
-    if (!isSignUpLoaded) return;
-    try {
-      setVerificationLoading(true);
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      });
-      Alert.alert("Code Sent", "A new code has been sent to your email.");
-    } catch (err: any) {
-      setVerificationError(parseClerkError(err));
-    } finally {
-      setVerificationLoading(false);
     }
   };
 
@@ -259,6 +235,7 @@ export default function SignupScreen() {
           } as any);
         }
       } catch (err: any) {
+        console.error("OAuth Error:", err);
         setErrorMessage(parseClerkError(err));
       } finally {
         setIsProcessing(false);
@@ -559,81 +536,6 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* ── Verification OTP Sheet ── */}
-      <Modal
-        visible={verificationModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVerificationModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Verify your email</Text>
-              <TouchableOpacity
-                onPress={() => setVerificationModalVisible(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <X size={18} color={C.textSub} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>
-              We sent a verification code to{" "}
-              <Text style={{ color: C.text, fontWeight: "600" }}>{email.trim()}</Text>.
-            </Text>
-
-            {verificationError && (
-              <View style={styles.errorBox}>
-                <AlertCircle size={14} color={C.danger} />
-                <Text style={styles.errorText}>{verificationError}</Text>
-              </View>
-            )}
-
-            <View style={{ gap: 14, marginTop: 6 }}>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={[styles.input, { letterSpacing: 4, textAlign: "center", fontSize: 18, fontWeight: "700" }]}
-                  placeholder="123456"
-                  placeholderTextColor={C.textDim}
-                  value={verificationCode}
-                  onChangeText={(val) => {
-                    setVerificationCode(val);
-                    if (verificationError) setVerificationError(null);
-                  }}
-                  keyboardType="number-pad"
-                  autoFocus
-                  editable={!verificationLoading}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.primaryBtn, verificationLoading && { opacity: 0.7 }]}
-                onPress={handleVerifyEmail}
-                activeOpacity={0.85}
-                disabled={verificationLoading}
-              >
-                {verificationLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Verify & Proceed</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{ alignItems: "center", paddingVertical: 6 }}
-                onPress={handleResendCode}
-                disabled={verificationLoading}
-              >
-                <Text style={{ fontSize: 13, color: C.accent, fontWeight: "500" }}>
-                  Didn&apos;t get the code? Resend
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -860,40 +762,5 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       fontSize: 14,
       fontWeight: "600",
       color: C.accent,
-    },
-
-    // ── Modal
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.6)",
-      justifyContent: "center",
-      padding: 20,
-    },
-    modalSheet: {
-      backgroundColor: C.surface,
-      borderRadius: 20,
-      padding: 22,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.35,
-      shadowRadius: 16,
-      elevation: 6,
-    },
-    modalHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 6,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: C.text,
-    },
-    modalSub: {
-      fontSize: 13,
-      color: C.textSub,
-      lineHeight: 18,
-      marginBottom: 14,
     },
   });

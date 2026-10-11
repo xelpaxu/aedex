@@ -138,13 +138,22 @@ export default function LoginScreen() {
 
     setIsProcessing(true);
     try {
-      const signInAttempt = await signIn.create({
+      let signInAttempt = await signIn.create({
         identifier: trimmedEmail,
         password: password,
       });
 
-      if (signInAttempt.status === "complete") {
-        await setActive({ session: signInAttempt.createdSessionId });
+      if (signInAttempt.status === "needs_first_factor") {
+        signInAttempt = await signIn.attemptFirstFactor({
+          strategy: "password",
+          password: password,
+        });
+      }
+
+      if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
+        if (signInAttempt.createdSessionId) {
+          await setActive({ session: signInAttempt.createdSessionId });
+        }
 
         try {
           await createOrUpdateUser({
@@ -160,7 +169,7 @@ export default function LoginScreen() {
 
         router.replace("/(root)");
       } else {
-        setErrorMessage("Verification required for this account.");
+        setErrorMessage("Invalid email or password. Please verify your credentials.");
       }
     } catch (err: any) {
       setErrorMessage(parseClerkError(err));
