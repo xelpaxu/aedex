@@ -292,6 +292,8 @@ export default function SignupScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
+            <Text style={styles.appTitle}>AEDEX</Text>
+            <Text style={styles.appSubtitle}>VECTOR SURVEILLANCE & TRIAGE</Text>
             <Text style={styles.title}>Create your account</Text>
             <Text style={styles.subtitle}>
               Join your community dengue surveillance network
@@ -652,24 +654,45 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
 
     // ── Header
     header: {
-      marginBottom: 24,
+      alignItems: "center",
+      marginBottom: 26,
     },
     logo: {
-      width: 44,
-      height: 44,
-      marginBottom: 16,
+      width: 80,
+      height: 80,
+      marginBottom: 12,
+    },
+    appTitle: {
+      fontSize: 26,
+      fontWeight: "800",
+      letterSpacing: 2.5,
+      color: C.text,
+      textAlign: "center",
+    },
+    appSubtitle: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.5,
+      color: C.accent,
+      textTransform: "uppercase",
+      marginTop: 2,
+      marginBottom: 14,
+      textAlign: "center",
     },
     title: {
-      fontSize: 26,
+      fontSize: 19,
       fontWeight: "700",
       color: C.text,
-      letterSpacing: -0.4,
-      marginBottom: 6,
+      letterSpacing: -0.3,
+      marginBottom: 4,
+      textAlign: "center",
     },
     subtitle: {
-      fontSize: 14,
+      fontSize: 13,
       color: C.textSub,
-      lineHeight: 20,
+      lineHeight: 18,
+      textAlign: "center",
+      maxWidth: 280,
     },
 
     // ── Clean Segmented Role Switcher
