@@ -252,7 +252,7 @@ export default function CaptureScreen() {
     if (status !== "granted") return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 1,
+      quality: 0.5,
     });
     if (!result.canceled) handleSelection(result.assets[0].uri);
   };
@@ -260,7 +260,7 @@ export default function CaptureScreen() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") return;
-    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.5 });
     if (!result.canceled) handleSelection(result.assets[0].uri);
   };
 

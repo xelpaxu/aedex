@@ -1,3 +1,4 @@
+import { api } from "@/convex/_generated/api";
 import { useAction, useConvexAuth } from "convex/react";
 import { BlurView } from "expo-blur";
 import * as FileSystem from "expo-file-system/legacy";
@@ -27,7 +28,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 interface Metadata {
@@ -124,12 +124,14 @@ export default function CapturePreview({
         locationName: metadata?.location || "Unknown",
       });
       router.push({ pathname: "/results", params: { reportId } });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Analysis Error:", err);
-      Alert.alert(
-        "Upload Failed",
-        "Could not process the image. Please try again.",
-      );
+      const errorMsg =
+        err?.message ||
+        err?.data?.message ||
+        (typeof err === "string" ? err : null) ||
+        "Could not process the image. Please try again.";
+      Alert.alert("Upload Failed", String(errorMsg));
     } finally {
       setAnalyzing(false);
     }
