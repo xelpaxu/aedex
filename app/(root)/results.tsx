@@ -510,7 +510,10 @@ export default function ResultsScreen() {
   const previewHtml = useMemo(() => {
     if (!report || !hasLocation) return "";
     const isCriticalForPreview =
-      report.status === "CRITICAL" || report.status === "HIGH RISK";
+      report.status === "CRITICAL" ||
+      report.status === "HIGH RISK" ||
+      report.riskLevel === "CRITICAL" ||
+      report.riskLevel === "HIGH RISK";
     return buildPreviewMapHtml(
       report.lat,
       report.lng,
@@ -590,7 +593,10 @@ export default function ResultsScreen() {
   const isResolved =
     report.status === "Resolved" || report.status === "Completed";
   const isCritical =
-    report.status === "CRITICAL" || report.status === "HIGH RISK";
+    report.status === "CRITICAL" ||
+    report.status === "HIGH RISK" ||
+    report.riskLevel === "CRITICAL" ||
+    report.riskLevel === "HIGH RISK";
 
   const statusColor = isResolved ? C.safe : isCritical ? C.danger : C.warn;
   const statusGlow = isResolved
