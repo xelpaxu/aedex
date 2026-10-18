@@ -2,34 +2,27 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import {
-  AlertTriangle,
   ArrowLeft,
-  Bell,
   CheckCircle2,
   ChevronRight,
-  Database,
   Globe,
   Info,
-  LocateFixed,
   LogOut,
-  Map,
   Moon,
   Shield,
-  Smartphone,
   Sun,
-  User
+  User,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React from "react";
 import {
   Alert,
   Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "../../context/ThemeContext";
@@ -42,16 +35,6 @@ export default function SettingsScreen() {
   const { theme, colors, setTheme, toggleTheme } = useTheme();
 
   const isTanod = currentUser?.role === "tanod";
-
-  // Notification Toggles
-  const [outbreakAlerts, setOutbreakAlerts] = useState(true);
-  const [teamDispatchAlerts, setTeamDispatchAlerts] = useState(true);
-  const [radiusProximityAlerts, setRadiusProximityAlerts] = useState(true);
-
-  // Map & GPS Toggles
-  const [highAccuracyGps, setHighAccuracyGps] = useState(true);
-  const [autoRecenterMap, setAutoRecenterMap] = useState(true);
-  const [defaultSatellite, setDefaultSatellite] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -72,14 +55,6 @@ export default function SettingsScreen() {
           },
         },
       ]
-    );
-  };
-
-  const handleClearCache = () => {
-    Alert.alert(
-      "Cache Cleared",
-      "Local map tiles and offline report data have been successfully cleared.",
-      [{ text: "OK" }]
     );
   };
 
@@ -147,25 +122,25 @@ export default function SettingsScreen() {
                   uri:
                     user?.imageUrl ||
                     `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      user?.fullName || "User",
+                      currentUser?.fullName || user?.fullName || "User",
                     )}&background=1a2240&color=4F8EF7&bold=true&size=120`,
                 }}
-                style={[styles.avatar, { borderColor: colors.accent }]}
+                style={[styles.avatar, { borderColor: isTanod ? colors.warn : colors.accent }]}
               />
               <View
                 style={[
                   styles.roleBadgeDot,
-                  { backgroundColor: isTanod ? colors.accent : colors.safe },
+                  { backgroundColor: isTanod ? colors.warn : colors.safe },
                 ]}
               />
             </View>
 
             <View style={{ flex: 1 }}>
               <Text style={[styles.userName, { color: colors.text }]}>
-                {user?.fullName || user?.username || "AEDEX User"}
+                {currentUser?.fullName || user?.fullName || user?.username || "AEDEX User"}
               </Text>
               <Text style={[styles.userEmail, { color: colors.textSub }]}>
-                {user?.primaryEmailAddress?.emailAddress}
+                {currentUser?.email || user?.primaryEmailAddress?.emailAddress}
               </Text>
 
               <View style={styles.badgeRow}>
@@ -193,26 +168,44 @@ export default function SettingsScreen() {
                     styles.pillBadge,
                     {
                       backgroundColor: isTanod
-                        ? colors.accentGlow
+                        ? colors.warnGlow
                         : colors.safeGlow,
                       borderColor:
-                        (isTanod ? colors.accent : colors.safe) + "40",
+                        (isTanod ? colors.warn : colors.safe) + "40",
                     },
                   ]}
                 >
                   <Shield
-                    color={isTanod ? colors.accent : colors.safe}
+                    color={isTanod ? colors.warn : colors.safe}
                     size={11}
                   />
                   <Text
                     style={[
                       styles.pillBadgeText,
-                      { color: isTanod ? colors.accent : colors.safe },
+                      { color: isTanod ? colors.warn : colors.safe },
                     ]}
                   >
-                    {isTanod ? "TANOD OFFICER" : "CITIZEN"}
+                    {isTanod ? "TANOD OFFICER" : "RESIDENT"}
                   </Text>
                 </View>
+
+                {isTanod && currentUser?.teamName && (
+                  <View
+                    style={[
+                      styles.pillBadge,
+                      {
+                        backgroundColor: colors.surfaceRaised,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.pillBadgeText, { color: colors.textSub }]}
+                    >
+                      {currentUser.teamName}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -280,7 +273,7 @@ export default function SettingsScreen() {
                 Tactical Dark
               </Text>
               <Text style={[styles.themeOptionSub, { color: colors.textSub }]}>
-                OLED High contrast dark mode
+                OLED high contrast dark mode
               </Text>
             </TouchableOpacity>
 
@@ -321,10 +314,10 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* ── NOTIFICATIONS & ALERTS ────────────────────────── */}
+        {/* ── SYSTEM & APP INFO ─────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.textSub }]}>
-            NOTIFICATIONS & FIELD ALERTS
+            SYSTEM & APP INFO
           </Text>
         </View>
 
@@ -334,192 +327,6 @@ export default function SettingsScreen() {
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <View style={styles.settingRow}>
-            <View style={styles.settingIconBg}>
-              <AlertTriangle color={colors.danger} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Dengue Outbreak Alerts
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Emergency warnings for high-density breeding zones
-              </Text>
-            </View>
-            <Switch
-              value={outbreakAlerts}
-              onValueChange={setOutbreakAlerts}
-              trackColor={{ false: colors.border, true: colors.accent + "80" }}
-              thumbColor={outbreakAlerts ? colors.accent : colors.textSub}
-            />
-          </View>
-
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
-
-          {isTanod && (
-            <>
-              <View style={styles.settingRow}>
-                <View style={styles.settingIconBg}>
-                  <Bell color={colors.accent} size={16} />
-                </View>
-                <View style={styles.settingTextContainer}>
-                  <Text style={[styles.settingLabel, { color: colors.text }]}>
-                    Team Dispatch Notifications
-                  </Text>
-                  <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                    Immediate alerts when new incidents are assigned
-                  </Text>
-                </View>
-                <Switch
-                  value={teamDispatchAlerts}
-                  onValueChange={setTeamDispatchAlerts}
-                  trackColor={{
-                    false: colors.border,
-                    true: colors.accent + "80",
-                  }}
-                  thumbColor={teamDispatchAlerts ? colors.accent : colors.textSub}
-                />
-              </View>
-
-              <View
-                style={[styles.rowDivider, { backgroundColor: colors.border }]}
-              />
-            </>
-          )}
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingIconBg}>
-              <Smartphone color={colors.warn} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Proximity Sound & Haptics
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Vibrate when approaching active risk hotspots
-              </Text>
-            </View>
-            <Switch
-              value={radiusProximityAlerts}
-              onValueChange={setRadiusProximityAlerts}
-              trackColor={{ false: colors.border, true: colors.accent + "80" }}
-              thumbColor={radiusProximityAlerts ? colors.accent : colors.textSub}
-            />
-          </View>
-        </View>
-
-        {/* ── TACTICAL MAP PREFERENCES ─────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textSub }]}>
-            TACTICAL MAP & GPS PREFERENCES
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.cardGroup,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.settingRow}>
-            <View style={styles.settingIconBg}>
-              <LocateFixed color={colors.safe} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                High Precision Native GPS
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Uses device hardware GPS for precise positioning
-              </Text>
-            </View>
-            <Switch
-              value={highAccuracyGps}
-              onValueChange={setHighAccuracyGps}
-              trackColor={{ false: colors.border, true: colors.safe + "80" }}
-              thumbColor={highAccuracyGps ? colors.safe : colors.textSub}
-            />
-          </View>
-
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingIconBg}>
-              <Map color={colors.accent} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Auto-Recenter Map
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Lock map focus to phone location on opening
-              </Text>
-            </View>
-            <Switch
-              value={autoRecenterMap}
-              onValueChange={setAutoRecenterMap}
-              trackColor={{ false: colors.border, true: colors.accent + "80" }}
-              thumbColor={autoRecenterMap ? colors.accent : colors.textSub}
-            />
-          </View>
-
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingIconBg}>
-              <Globe color={colors.gold} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Default Satellite Layer
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Start maps with Esri Satellite imagery
-              </Text>
-            </View>
-            <Switch
-              value={defaultSatellite}
-              onValueChange={setDefaultSatellite}
-              trackColor={{ false: colors.border, true: colors.accent + "80" }}
-              thumbColor={defaultSatellite ? colors.accent : colors.textSub}
-            />
-          </View>
-        </View>
-
-        {/* ── SYSTEM & DATA STORAGE ────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textSub }]}>
-            SYSTEM & STORAGE
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.cardGroup,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={handleClearCache}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingIconBg}>
-              <Database color={colors.textSub} size={16} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Clear Cache & Map Tiles
-              </Text>
-              <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                Frees up local storage used for map caching
-              </Text>
-            </View>
-            <ChevronRight color={colors.textSub} size={16} />
-          </TouchableOpacity>
-
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
-
           <View style={styles.settingRow}>
             <View style={styles.settingIconBg}>
               <Info color={colors.accent} size={16} />
@@ -529,7 +336,7 @@ export default function SettingsScreen() {
                 App Build Version
               </Text>
               <Text style={[styles.settingSub, { color: colors.textSub }]}>
-                AEDEX Tactical v1.2.4 (Build 2026)
+                AEDEX Tactical Surveillance v1.0.0
               </Text>
             </View>
             <View
@@ -539,7 +346,25 @@ export default function SettingsScreen() {
               ]}
             >
               <Text style={[styles.versionTagText, { color: colors.accent }]}>
-                Stable
+                Production
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingIconBg}>
+              <Shield color={isTanod ? colors.warn : colors.accent} size={16} />
+            </View>
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Authentication Status
+              </Text>
+              <Text style={[styles.settingSub, { color: colors.textSub }]}>
+                {isTanod
+                  ? `Verified Tanod Officer (${currentUser?.tanodStatus || "Active"})`
+                  : "Community Citizen Account"}
               </Text>
             </View>
           </View>
@@ -654,6 +479,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: 8,
+    flexWrap: "wrap",
   },
   pillBadge: {
     flexDirection: "row",

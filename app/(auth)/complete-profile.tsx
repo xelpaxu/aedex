@@ -59,8 +59,7 @@ export default function CompleteProfileScreen() {
   const currentUser = useQuery(api.users.getMe);
   const updateProfile = useMutation(api.users.updateProfile);
 
-  const isTanod =
-    params.role === "tanod" || currentUser?.role === "tanod";
+  const isTanod = currentUser?.role === "tanod";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -174,8 +173,7 @@ export default function CompleteProfileScreen() {
     if (!firstName.trim()) e.firstName = "First name is required";
     if (!lastName.trim()) e.lastName = "Last name is required";
     if (!phone.trim()) e.phone = "Phone number is required";
-    if (!barangay) e.barangay = "Please select your barangay";
-    if (isTanod && !teamId) e.teamId = "Please select your assigned team";
+    if (!isTanod && !barangay) e.barangay = "Please select your barangay";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -188,9 +186,7 @@ export default function CompleteProfileScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
-        barangay: barangay!,
-        role: isTanod ? "tanod" : "citizen",
-        teamId: teamId ?? undefined,
+        barangay: (isTanod ? currentUser?.barangay : barangay) || barangay || "Calumpang",
       });
 
       // Also update Clerk user full name if available
@@ -429,151 +425,119 @@ export default function CompleteProfileScreen() {
               )}
             </View>
 
-            {/* Barangay Picker */}
-            <View style={styles.field}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Select barangay</Text>
-                <Text style={styles.fieldHint}>Surveillance Zone</Text>
-              </View>
-
-              <View style={styles.optionGrid}>
-                {BARANGAYS.map((b) => {
-                  const selected = barangay === b.name;
-                  return (
-                    <TouchableOpacity
-                      key={b.name}
-                      style={[
-                        styles.optionCard,
-                        selected && styles.optionCardSelected,
-                      ]}
-                      onPress={() => {
-                        setBarangay(b.name);
-                        if (errors.barangay)
-                          setErrors((p) => ({ ...p, barangay: "" }));
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.optionLeft}>
-                        <View
-                          style={[
-                            styles.checkbox,
-                            selected && styles.checkboxSelected,
-                          ]}
-                        >
-                          {selected && (
-                            <CheckCircle2
-                              color={C.accent}
-                              size={14}
-                              strokeWidth={3}
-                            />
-                          )}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[
-                              styles.optionTitle,
-                              selected && styles.optionTitleSelected,
-                            ]}
-                          >
-                            Barangay {b.name}
-                          </Text>
-                          <Text style={styles.optionDesc}>{b.desc}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {errors.barangay && (
-                <Text style={styles.errorText}>{errors.barangay}</Text>
-              )}
-            </View>
-
-            {/* Tanod Team Selection */}
-            {isTanod && barangay && (
+            {/* If Tanod: Official Deployment Info (Read-only, managed by LGU) */}
+            {isTanod ? (
               <View style={styles.field}>
                 <View style={styles.labelRow}>
-                  <Text style={styles.label}>Assigned response team</Text>
-                  <Text style={styles.fieldHint}>Teams in {barangay}</Text>
+                  <Text style={styles.label}>Official Tanod Deployment</Text>
+                  <Text style={[styles.fieldHint, { color: C.warn }]}>Verified by LGU</Text>
                 </View>
 
-                {teams === undefined ? (
-                  <View style={styles.loadingBox}>
-                    <ActivityIndicator size="small" color={C.warn} />
-                    <Text style={styles.loadingBoxText}>
-                      Fetching teams for {barangay}...
-                    </Text>
+                <View
+                  style={{
+                    backgroundColor: C.surface,
+                    borderRadius: 14,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: C.warn + "40",
+                    gap: 12,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Shield color={C.warn} size={20} strokeWidth={2.2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, color: C.textSub, fontWeight: "600", textTransform: "uppercase" }}>
+                        Assigned Response Team
+                      </Text>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginTop: 1 }}>
+                        {currentUser?.teamName || "Assigned Response Unit"}
+                      </Text>
+                    </View>
                   </View>
-                ) : teams.length === 0 ? (
-                  <View style={styles.emptyTeams}>
-                    <Shield color={C.warn} size={22} strokeWidth={2} />
-                    <Text style={styles.emptyTeamsTitle}>
-                      No Active Teams Found
-                    </Text>
-                    <Text style={styles.emptyTeamsSub}>
-                      No Tanod response units pre-configured for {barangay}.
-                      Contact system administrator.
-                    </Text>
+
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: C.border,
+                      opacity: 0.6,
+                    }}
+                  />
+
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <MapPin color={C.accent} size={20} strokeWidth={2.2} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, color: C.textSub, fontWeight: "600", textTransform: "uppercase" }}>
+                        Operational Jurisdiction
+                      </Text>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginTop: 1 }}>
+                        Barangay {currentUser?.barangay || "Assigned Area"}
+                      </Text>
+                    </View>
                   </View>
-                ) : (
-                  <View style={styles.optionGrid}>
-                    {teams.map((team: any) => {
-                      const selected = teamId === team._id;
-                      return (
-                        <TouchableOpacity
-                          key={team._id}
-                          style={[
-                            styles.optionCard,
-                            selected && styles.optionCardTanodSelected,
-                          ]}
-                          onPress={() => {
-                            setTeamId(team._id);
-                            if (errors.teamId)
-                              setErrors((p) => ({ ...p, teamId: "" }));
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.optionLeft}>
-                            <View
+                </View>
+
+                <Text style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>
+                  Team assignments and jurisdiction are managed directly by your LGU Administrator.
+                </Text>
+              </View>
+            ) : (
+              /* Citizen: Barangay Selection */
+              <View style={styles.field}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Select barangay</Text>
+                  <Text style={styles.fieldHint}>Surveillance Zone</Text>
+                </View>
+
+                <View style={styles.optionGrid}>
+                  {BARANGAYS.map((b) => {
+                    const selected = barangay === b.name;
+                    return (
+                      <TouchableOpacity
+                        key={b.name}
+                        style={[
+                          styles.optionCard,
+                          selected && styles.optionCardSelected,
+                        ]}
+                        onPress={() => {
+                          setBarangay(b.name);
+                          if (errors.barangay)
+                            setErrors((p) => ({ ...p, barangay: "" }));
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.optionLeft}>
+                          <View
+                            style={[
+                              styles.checkbox,
+                              selected && styles.checkboxSelected,
+                            ]}
+                          >
+                            {selected && (
+                              <CheckCircle2
+                                color={C.accent}
+                                size={14}
+                                strokeWidth={3}
+                              />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text
                               style={[
-                                styles.checkbox,
-                                selected && styles.checkboxTanodSelected,
+                                styles.optionTitle,
+                                selected && styles.optionTitleSelected,
                               ]}
                             >
-                              {selected && (
-                                <ShieldCheck
-                                  color={C.warn}
-                                  size={14}
-                                  strokeWidth={3}
-                                />
-                              )}
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text
-                                style={[
-                                  styles.optionTitle,
-                                  selected && { color: C.warn },
-                                ]}
-                              >
-                                {team.name}
-                              </Text>
-                              <Text style={styles.optionDesc}>
-                                {team.memberNames?.length ?? 0} Active Members
-                                {team.leaderId ? " • Leader Assigned" : ""}
-                              </Text>
-                            </View>
+                              Barangay {b.name}
+                            </Text>
+                            <Text style={styles.optionDesc}>{b.desc}</Text>
                           </View>
-                          <Users
-                            color={selected ? C.warn : C.textDim}
-                            size={16}
-                          />
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-                {errors.teamId && (
-                  <Text style={styles.errorText}>{errors.teamId}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {errors.barangay && (
+                  <Text style={styles.errorText}>{errors.barangay}</Text>
                 )}
               </View>
             )}

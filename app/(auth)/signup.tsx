@@ -74,9 +74,6 @@ export default function SignupScreen() {
   const { signUp, setActive, isLoaded: isSignUpLoaded } = useSignUp();
   const { signIn, isLoaded: isSignInLoaded } = useSignIn();
 
-  const [selectedRole, setSelectedRole] = useState<"citizen" | "tanod">("citizen");
-  const isTanodRegistration = useRef(false);
-
   // Form states
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -98,12 +95,9 @@ export default function SignupScreen() {
 
   useEffect(() => {
     if (isAuthLoaded && isSignedIn && !isProcessing) {
-      router.replace({
-        pathname: "/(auth)/complete-profile",
-        params: { role: isTanodRegistration.current ? "tanod" : selectedRole },
-      });
+      router.replace("/(auth)/complete-profile");
     }
-  }, [isAuthLoaded, isSignedIn, isProcessing, router, selectedRole]);
+  }, [isAuthLoaded, isSignedIn, isProcessing, router]);
 
   const parseClerkError = (err: any): string => {
     if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
@@ -146,7 +140,6 @@ export default function SignupScreen() {
     }
 
     setIsProcessing(true);
-    isTanodRegistration.current = selectedRole === "tanod";
 
     try {
       const nameParts = trimmedName.split(" ");
@@ -164,10 +157,7 @@ export default function SignupScreen() {
         if (createdUser.createdSessionId) {
           await setActive({ session: createdUser.createdSessionId });
         }
-        router.replace({
-          pathname: "/(auth)/complete-profile",
-          params: { role: selectedRole },
-        });
+        router.replace("/(auth)/complete-profile");
         return;
       }
 
@@ -190,10 +180,7 @@ export default function SignupScreen() {
             if (signInAttempt.createdSessionId) {
               await setActive({ session: signInAttempt.createdSessionId });
             }
-            router.replace({
-              pathname: "/(auth)/complete-profile",
-              params: { role: selectedRole },
-            });
+            router.replace("/(auth)/complete-profile");
             return;
           }
         } catch (signInErr) {
@@ -202,10 +189,7 @@ export default function SignupScreen() {
       }
 
       // Proceed directly to complete profile
-      router.replace({
-        pathname: "/(auth)/complete-profile",
-        params: { role: selectedRole },
-      });
+      router.replace("/(auth)/complete-profile");
     } catch (err: any) {
       setErrorMessage(parseClerkError(err));
     } finally {
@@ -218,7 +202,6 @@ export default function SignupScreen() {
       if (isProcessing) return;
       setErrorMessage(null);
       setIsProcessing(true);
-      isTanodRegistration.current = selectedRole === "tanod";
 
       const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
 
@@ -229,10 +212,7 @@ export default function SignupScreen() {
 
         if (createdSessionId && setOAuthActive) {
           await setOAuthActive({ session: createdSessionId });
-          router.replace({
-            pathname: "/(auth)/complete-profile",
-            params: { role: selectedRole },
-          } as any);
+          router.replace("/(auth)/complete-profile");
         }
       } catch (err: any) {
         console.error("OAuth Error:", err);
@@ -241,7 +221,7 @@ export default function SignupScreen() {
         setIsProcessing(false);
       }
     },
-    [googleAuth, facebookAuth, router, isProcessing, selectedRole],
+    [googleAuth, facebookAuth, router, isProcessing],
   );
 
   const styles = useMemo(() => createStyles(C, isDark), [C, isDark]);
@@ -277,52 +257,6 @@ export default function SignupScreen() {
             </Text>
           </View>
 
-          {/* ── Segmented Role Switcher ── */}
-          <View style={styles.segmentContainer}>
-            <TouchableOpacity
-              style={[
-                styles.segmentBtn,
-                selectedRole === "citizen" && styles.segmentBtnActive,
-              ]}
-              onPress={() => setSelectedRole("citizen")}
-              activeOpacity={0.8}
-            >
-              <User
-                size={15}
-                color={selectedRole === "citizen" ? C.text : C.textSub}
-              />
-              <Text
-                style={[
-                  styles.segmentText,
-                  selectedRole === "citizen" && styles.segmentTextActive,
-                ]}
-              >
-                Resident
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.segmentBtn,
-                selectedRole === "tanod" && styles.segmentBtnActiveTanod,
-              ]}
-              onPress={() => setSelectedRole("tanod")}
-              activeOpacity={0.8}
-            >
-              <Shield
-                size={15}
-                color={selectedRole === "tanod" ? C.warn : C.textSub}
-              />
-              <Text
-                style={[
-                  styles.segmentText,
-                  selectedRole === "tanod" && { color: C.warn, fontWeight: "600" },
-                ]}
-              >
-                Tanod Officer
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* ── Error Notice ── */}
           {errorMessage && (
@@ -478,7 +412,6 @@ export default function SignupScreen() {
             <TouchableOpacity
               style={[
                 styles.primaryBtn,
-                selectedRole === "tanod" && { backgroundColor: C.warn },
                 isProcessing && { opacity: 0.7 },
               ]}
               onPress={handleEmailSignUp}

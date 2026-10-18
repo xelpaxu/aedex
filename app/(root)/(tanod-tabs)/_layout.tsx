@@ -110,6 +110,33 @@ export default function TanodTabLayout() {
     [C, insets.top, insets.bottom],
   );
 
+  // Security Guard: Prevent non-tanod or suspended users from accessing officer tabs
+  React.useEffect(() => {
+    if (currentUser !== undefined) {
+      if (
+        !currentUser ||
+        currentUser.role !== "tanod" ||
+        currentUser.tanodStatus === "suspended" ||
+        currentUser.tanodStatus === "revoked"
+      ) {
+        router.replace("/(root)/(tabs)/map");
+      }
+    }
+  }, [currentUser, router]);
+
+  if (currentUser === undefined) {
+    return null;
+  }
+
+  if (
+    !currentUser ||
+    currentUser.role !== "tanod" ||
+    currentUser.tanodStatus === "suspended" ||
+    currentUser.tanodStatus === "revoked"
+  ) {
+    return null;
+  }
+
   return (
     <Tabs
       initialRouteName="dashboard"

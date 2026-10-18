@@ -77,9 +77,6 @@ export default function LoginScreen() {
   const { isSignedIn, isLoaded: isAuthLoaded, userId } = useAuth();
   const { signIn, setActive, isLoaded: isSignInLoaded } = useSignIn();
 
-  // Role toggle
-  const [role, setRole] = useState<"citizen" | "tanod">("citizen");
-
   // Input states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -198,7 +195,6 @@ export default function LoginScreen() {
             email: trimmedEmail,
             username: trimmedEmail.split("@")[0] || "user",
             displayName: trimmedEmail.split("@")[0] || "User",
-            role: role,
           });
         } catch (convexError) {
           console.warn("Convex user sync warning:", convexError);
@@ -240,22 +236,14 @@ export default function LoginScreen() {
             await createOrUpdateUser({
               uid: userId || "unknown",
               email: "",
-              username: role === "tanod" ? "tanod_user" : "citizen_user",
-              displayName: role === "tanod" ? "Tanod Officer" : "Citizen User",
-              role: role,
+              username: "user",
+              displayName: "User",
             });
           } catch (convexError) {
             console.error("Convex user sync error:", convexError);
           }
 
-          if (role === "tanod") {
-            router.replace({
-              pathname: "/(auth)/complete-profile",
-              params: { role: "tanod" },
-            } as any);
-          } else {
-            router.replace("/(root)");
-          }
+          router.replace("/(root)");
         }
       } catch (err: any) {
         setErrorMessage(parseClerkError(err));
@@ -263,7 +251,7 @@ export default function LoginScreen() {
         setIsProcessing(false);
       }
     },
-    [googleAuth, facebookAuth, router, createOrUpdateUser, isProcessing, role, userId],
+    [googleAuth, facebookAuth, router, createOrUpdateUser, isProcessing, userId],
   );
 
   const handleOpenForgot = () => {
@@ -363,52 +351,6 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* ── Minimal Segmented Role Switcher ── */}
-          <View style={styles.segmentContainer}>
-            <TouchableOpacity
-              style={[
-                styles.segmentBtn,
-                role === "citizen" && styles.segmentBtnActive,
-              ]}
-              onPress={() => setRole("citizen")}
-              activeOpacity={0.8}
-            >
-              <User
-                size={15}
-                color={role === "citizen" ? C.text : C.textSub}
-              />
-              <Text
-                style={[
-                  styles.segmentText,
-                  role === "citizen" && styles.segmentTextActive,
-                ]}
-              >
-                Resident
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.segmentBtn,
-                role === "tanod" && styles.segmentBtnActiveTanod,
-              ]}
-              onPress={() => setRole("tanod")}
-              activeOpacity={0.8}
-            >
-              <Shield
-                size={15}
-                color={role === "tanod" ? C.warn : C.textSub}
-              />
-              <Text
-                style={[
-                  styles.segmentText,
-                  role === "tanod" && { color: C.warn, fontWeight: "600" },
-                ]}
-              >
-                Tanod Officer
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* ── Error Notice ── */}
           {errorMessage && (
@@ -508,7 +450,6 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={[
                 styles.primaryBtn,
-                role === "tanod" && { backgroundColor: C.warn },
                 isProcessing && { opacity: 0.7 },
               ]}
               onPress={handleEmailLogin}
