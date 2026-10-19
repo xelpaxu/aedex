@@ -1,3 +1,7 @@
+import MapControls from "./MapControls";
+import { PIN_DATA_URIS } from "./pinAssets";
+import { useProfile } from "@/context/AccessContext";
+import { hasTanodAccess } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
 import { Doc } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
@@ -8,23 +12,13 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
-  Compass,
-  Eye,
-  EyeOff,
   Flame,
-  Globe,
-  Layers,
   LocateFixed,
-  Map,
   MapPin,
-  Maximize2,
-  Minimize2,
   Navigation,
-  Satellite,
   Shield,
   ShieldCheck,
   User,
-  Users,
   X
 } from "lucide-react-native";
 import React, {
@@ -39,14 +33,11 @@ import {
   Animated,
   Easing,
   Image,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
@@ -78,8 +69,6 @@ interface RiskZone {
   radius: number;
   isCritical: boolean;
 }
-
-import { PIN_DATA_URIS } from "./pinAssets";
 
 type TanodFilter = "ALL" | "ASSIGNED" | "CRITICAL" | "PENDING" | "RESOLVED";
 type CommunityFilter = "ALL" | "CRITICAL" | "NEARBY" | "RESOLVED";
@@ -368,574 +357,6 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
 }
 
 // ─── Top Mode Toggle Switch ───────────────────────────────────────────────────
-const ModeToggleBar = ({
-  mode,
-  setMode,
-  C,
-}: {
-  mode: MapMode;
-  setMode: (m: MapMode) => void;
-  C: ThemeColors;
-}) => (
-  <View
-    style={[
-      modeStyles.container,
-      { backgroundColor: C.surface, borderColor: C.border },
-    ]}
-  >
-    <TouchableOpacity
-      onPress={() => setMode("vector")}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel="Vector map mode"
-      accessibilityState={{ selected: mode === "vector" }}
-      style={[
-        modeStyles.pill,
-        mode === "vector" && [
-          modeStyles.pillActive,
-          { backgroundColor: C.accent },
-        ],
-      ]}
-    >
-      <Map
-        size={13}
-        color={mode === "vector" ? "#FFFFFF" : C.textSub}
-        strokeWidth={2.5}
-      />
-      <Text
-        style={[
-          modeStyles.pillText,
-          { color: mode === "vector" ? "#FFFFFF" : C.textSub },
-        ]}
-      >
-        Vector
-      </Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      onPress={() => setMode("satellite")}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel="Satellite map mode"
-      accessibilityState={{ selected: mode === "satellite" }}
-      style={[
-        modeStyles.pill,
-        mode === "satellite" && [
-          modeStyles.pillActive,
-          { backgroundColor: C.accent },
-        ],
-      ]}
-    >
-      <Satellite
-        size={13}
-        color={mode === "satellite" ? "#FFFFFF" : C.textSub}
-        strokeWidth={2.5}
-      />
-      <Text
-        style={[
-          modeStyles.pillText,
-          { color: mode === "satellite" ? "#FFFFFF" : C.textSub },
-        ]}
-      >
-        Satellite
-      </Text>
-    </TouchableOpacity>
-  </View>
-);
-
-const modeStyles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 3,
-    borderRadius: 14,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-    gap: 2,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-    borderRadius: 11,
-  },
-  pillActive: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-});
-
-// ─── Role / Ops Badge ─────────────────────────────────────────────────────────
-const RoleBadge = ({
-  isTanod,
-  C,
-}: {
-  isTanod: boolean;
-  C: ThemeColors;
-}) => (
-  <View
-    style={[
-      roleBadgeStyles.container,
-      { backgroundColor: C.surface, borderColor: C.border },
-    ]}
-  >
-    <View
-      style={[
-        roleBadgeStyles.dot,
-        { backgroundColor: isTanod ? C.accent : C.safe },
-      ]}
-    />
-    {isTanod ? (
-      <Shield size={13} color={C.accent} strokeWidth={2.5} />
-    ) : (
-      <Globe size={13} color={C.safe} strokeWidth={2.5} />
-    )}
-    <Text
-      style={[
-        roleBadgeStyles.text,
-        { color: isTanod ? C.accent : C.safe },
-      ]}
-    >
-      {isTanod ? "TANOD OPS" : "COMMUNITY"}
-    </Text>
-  </View>
-);
-
-const roleBadgeStyles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  text: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-});
-
-// ─── Compact Status Stat Filter Card ──────────────────────────────────────────
-const StatusFilterCard = ({
-  counts,
-  tanodFilter,
-  setTanodFilter,
-  communityFilter,
-  setCommunityFilter,
-  isTanod,
-  C,
-}: {
-  counts: {
-    critical: number;
-    pending: number;
-    resolved: number;
-    nearby?: number;
-  };
-  tanodFilter: TanodFilter;
-  setTanodFilter: (f: TanodFilter) => void;
-  communityFilter: CommunityFilter;
-  setCommunityFilter: (f: CommunityFilter) => void;
-  isTanod: boolean;
-  C: ThemeColors;
-}) => {
-  const isUrgentActive = isTanod
-    ? tanodFilter === "CRITICAL"
-    : communityFilter === "CRITICAL";
-
-  const isPendingActive = isTanod
-    ? tanodFilter === "PENDING"
-    : communityFilter === "NEARBY";
-
-  const isResolvedActive = isTanod
-    ? tanodFilter === "RESOLVED"
-    : communityFilter === "RESOLVED";
-
-  return (
-    <View
-      style={[
-        statusCardStyles.card,
-        { backgroundColor: C.surface, borderColor: C.border },
-      ]}
-    >
-      {/* Urgent Segment */}
-      <TouchableOpacity
-        style={[
-          statusCardStyles.segment,
-          isUrgentActive && [
-            statusCardStyles.segmentActive,
-            { borderBottomColor: C.danger },
-          ],
-        ]}
-        onPress={() => {
-          if (isTanod) {
-            setTanodFilter(tanodFilter === "CRITICAL" ? "ALL" : "CRITICAL");
-          } else {
-            setCommunityFilter(
-              communityFilter === "CRITICAL" ? "ALL" : "CRITICAL",
-            );
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <Text
-          style={[
-            statusCardStyles.label,
-            { color: isUrgentActive ? C.danger : C.text },
-          ]}
-        >
-          Urgent
-        </Text>
-        <View
-          style={[
-            statusCardStyles.badge,
-            {
-              backgroundColor: isUrgentActive
-                ? C.danger
-                : C.dangerGlow || "rgba(239, 68, 68, 0.12)",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              statusCardStyles.badgeText,
-              { color: isUrgentActive ? "#FFFFFF" : C.danger },
-            ]}
-          >
-            {counts.critical}
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <View style={[statusCardStyles.divider, { backgroundColor: C.border }]} />
-
-      {/* Pending / Nearby Segment */}
-      <TouchableOpacity
-        style={[
-          statusCardStyles.segment,
-          isPendingActive && [
-            statusCardStyles.segmentActive,
-            { borderBottomColor: isTanod ? C.warn : C.accent },
-          ],
-        ]}
-        onPress={() => {
-          if (isTanod) {
-            setTanodFilter(tanodFilter === "PENDING" ? "ALL" : "PENDING");
-          } else {
-            setCommunityFilter(communityFilter === "NEARBY" ? "ALL" : "NEARBY");
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        {isTanod ? (
-          <Clock
-            size={13}
-            color={isPendingActive ? C.warn : C.warn}
-            strokeWidth={2.5}
-          />
-        ) : (
-          <Navigation
-            size={13}
-            color={isPendingActive ? C.accent : C.accent}
-            strokeWidth={2.5}
-          />
-        )}
-        <Text
-          style={[
-            statusCardStyles.label,
-            {
-              color: isPendingActive
-                ? isTanod
-                  ? C.warn
-                  : C.accent
-                : C.text,
-            },
-          ]}
-        >
-          {isTanod ? "Pending" : "Nearby"}
-        </Text>
-        <View
-          style={[
-            statusCardStyles.badge,
-            {
-              backgroundColor: isPendingActive
-                ? isTanod
-                  ? C.warn
-                  : C.accent
-                : isTanod
-                  ? C.warnGlow || "rgba(245, 158, 11, 0.12)"
-                  : C.accentGlow || "rgba(79, 142, 247, 0.12)",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              statusCardStyles.badgeText,
-              {
-                color: isPendingActive
-                  ? "#FFFFFF"
-                  : isTanod
-                    ? C.warn
-                    : C.accent,
-              },
-            ]}
-          >
-            {isTanod ? counts.pending : counts.nearby || 0}
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <View style={[statusCardStyles.divider, { backgroundColor: C.border }]} />
-
-      {/* Resolved / Treated Segment */}
-      <TouchableOpacity
-        style={[
-          statusCardStyles.segment,
-          isResolvedActive && [
-            statusCardStyles.segmentActive,
-            { borderBottomColor: C.safe },
-          ],
-        ]}
-        onPress={() => {
-          if (isTanod) {
-            setTanodFilter(tanodFilter === "RESOLVED" ? "ALL" : "RESOLVED");
-          } else {
-            setCommunityFilter(
-              communityFilter === "RESOLVED" ? "ALL" : "RESOLVED",
-            );
-          }
-        }}
-        activeOpacity={0.7}
-      >
-        <CheckCircle2 size={13} color={C.safe} strokeWidth={2.5} />
-        <Text
-          style={[
-            statusCardStyles.label,
-            { color: isResolvedActive ? C.safe : C.text },
-          ]}
-        >
-          {isTanod ? "Resolved" : "Treated"}
-        </Text>
-        <View
-          style={[
-            statusCardStyles.badge,
-            {
-              backgroundColor: isResolvedActive
-                ? C.safe
-                : C.safeGlow || "rgba(16, 185, 129, 0.12)",
-            },
-          ]}
-        >
-          <Text
-            style={[
-              statusCardStyles.badgeText,
-              { color: isResolvedActive ? "#FFFFFF" : C.safe },
-            ]}
-          >
-            {counts.resolved}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-const statusCardStyles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  segment: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 5,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-  },
-  segmentActive: {
-    borderRadius: 2,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  badge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  divider: {
-    width: 1,
-    height: 20,
-    opacity: 0.7,
-  },
-});
-
-// ─── Filter Pill Button ───────────────────────────────────────────────────────
-const FilterPill = ({
-  icon: Icon,
-  label,
-  count,
-  active,
-  onPress,
-  accentColor,
-  C,
-}: {
-  icon: React.ComponentType<any>;
-  label: string;
-  count?: number;
-  active: boolean;
-  onPress: () => void;
-  accentColor?: string;
-  C: ThemeColors;
-}) => {
-  const color = accentColor || C.accent;
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}${count !== undefined ? `, ${count} reports` : ""}`}
-      accessibilityState={{ selected: active }}
-      activeOpacity={0.75}
-      style={[
-        filterStyles.pill,
-        {
-          backgroundColor: active ? color : C.surface,
-          borderColor: active ? color : C.border,
-          shadowColor: active ? color : "transparent",
-        },
-        active && filterStyles.pillActiveShadow,
-      ]}
-    >
-      <Icon
-        size={13}
-        color={active ? "#FFFFFF" : color}
-        strokeWidth={active ? 2.5 : 2}
-      />
-      <Text
-        style={[
-          filterStyles.label,
-          { color: active ? "#FFFFFF" : C.text },
-          active && filterStyles.labelActive,
-        ]}
-      >
-        {label}
-      </Text>
-      {count !== undefined && (
-        <View
-          style={[
-            filterStyles.countBadge,
-            {
-              backgroundColor: active
-                ? "rgba(255,255,255,0.25)"
-                : C.surfaceRaised,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              filterStyles.countText,
-              { color: active ? "#FFFFFF" : C.textSub },
-            ]}
-          >
-            {count}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
-
-const filterStyles = StyleSheet.create({
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-    borderRadius: 20,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  pillActiveShadow: {
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  labelActive: {
-    color: "#FFFFFF",
-  },
-  countBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  countText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-});
-
-// ─── Floating Action Button ───────────────────────────────────────────────────
 const FloatBtn = ({
   icon: Icon,
   active,
@@ -1422,7 +843,7 @@ const sheet = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
     paddingHorizontal: 14,
-    paddingBottom: Platform.OS === "ios" ? 116 : 104,
+    paddingBottom: 20,
   },
   card: {
     width: "100%",
@@ -1671,7 +1092,6 @@ export default function MapComponent({
 }) {
   const router = useRouter();
   const { colors: C } = useTheme();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     focusLat?: string;
     focusLng?: string;
@@ -1687,7 +1107,7 @@ export default function MapComponent({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Filters for Tanod and Community
-  const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ALL");
+  const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ASSIGNED");
   const [communityFilter, setCommunityFilter] =
     useState<CommunityFilter>("ALL");
 
@@ -1701,8 +1121,9 @@ export default function MapComponent({
     lng: INITIAL_LOCATION.longitude,
   });
 
-  const isTanod = experience === "tanod";
-  const tanodAssignments = useQuery(api.assignments.getAssignmentsForTanod);
+  const profile = useProfile();
+  const isTanod = experience === "tanod" && hasTanodAccess(profile);
+  const tanodAssignments = useQuery(api.assignments.getAssignmentsForTanod, isTanod ? {} : "skip");
   const allReports = useQuery(api.reports.getAllReports);
 
   const html = useMemo(
@@ -2041,188 +1462,11 @@ export default function MapComponent({
       <Animated.View style={[styles.overlays, { opacity: fadeAnim }]}>
         {/* ── TOP CONTROL STACK ── */}
         <View style={styles.topControlContainer}>
-          {isExpanded ? (
-            /* Field Navigation Minimalist Header */
-            <View
-              style={[
-                styles.expandedHeaderCard,
-                { backgroundColor: C.surface + "F5", borderColor: C.border },
-              ]}
-            >
-              <View style={styles.expandedHeaderLeft}>
-                <View
-                  style={[
-                    styles.fieldModeBadge,
-                    {
-                      backgroundColor: C.accent + "18",
-                      borderColor: C.accent + "40",
-                    },
-                  ]}
-                >
-                  <Compass color={C.accent} size={14} strokeWidth={2.5} />
-                  <Text
-                    style={[styles.fieldModeBadgeText, { color: C.accent }]}
-                  >
-                    FIELD NAV
-                  </Text>
-                </View>
-                <ModeToggleBar mode={mode} setMode={setMode} C={C} />
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setIsExpanded(false)}
-                style={[
-                  styles.collapseBtn,
-                  { backgroundColor: C.surfaceRaised, borderColor: C.border },
-                ]}
-                accessibilityLabel="Exit fullscreen map"
-                activeOpacity={0.8}
-              >
-                <Minimize2 color={C.text} size={15} strokeWidth={2.5} />
-                <Text style={[styles.collapseBtnText, { color: C.text }]}>
-                  Exit
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              {/* Row 1: Mode Switch + Role / Ops Badge + Expand Btn */}
-              <View style={styles.topRow}>
-                <ModeToggleBar mode={mode} setMode={setMode} C={C} />
-                <View style={styles.topRowRight}>
-                  <RoleBadge isTanod={isTanod ?? false} C={C} />
-                  <TouchableOpacity
-                    onPress={() => {
-                      setIsExpanded(true);
-                      fetchNativeGpsLocation(true);
-                    }}
-                    style={[
-                      styles.expandToggleBtn,
-                      {
-                        backgroundColor: C.surface,
-                        borderColor: C.border,
-                      },
-                    ]}
-                    accessibilityLabel="Expand map for navigation"
-                    activeOpacity={0.8}
-                  >
-                    <Maximize2 color={C.accent} size={14} strokeWidth={2.5} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Row 2: Compact 3-Segment Interactive Filter Bar */}
-              <StatusFilterCard
-                counts={filterCounts}
-                tanodFilter={tanodFilter}
-                setTanodFilter={setTanodFilter}
-                communityFilter={communityFilter}
-                setCommunityFilter={setCommunityFilter}
-                isTanod={isTanod ?? false}
-                C={C}
-              />
-
-              {/* Row 3: Dynamic Horizontal Filter Pills */}
-              <View style={styles.filterRowWrapper}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filterPillScroll}
-                >
-                  {isTanod ? (
-                    // ── TANOD FILTER BUTTONS ──
-                    <>
-                      <FilterPill
-                        icon={Layers}
-                        label="All Hotspots"
-                        count={filterCounts.all}
-                        active={tanodFilter === "ALL"}
-                        onPress={() => setTanodFilter("ALL")}
-                        accentColor={C.accent}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={Users}
-                        label="My Team"
-                        count={filterCounts.assigned}
-                        active={tanodFilter === "ASSIGNED"}
-                        onPress={() => setTanodFilter("ASSIGNED")}
-                        accentColor={C.accent}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={Flame}
-                        label="Urgent"
-                        count={filterCounts.critical}
-                        active={tanodFilter === "CRITICAL"}
-                        onPress={() => setTanodFilter("CRITICAL")}
-                        accentColor={C.danger}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={Clock}
-                        label="Pending"
-                        count={filterCounts.pending}
-                        active={tanodFilter === "PENDING"}
-                        onPress={() => setTanodFilter("PENDING")}
-                        accentColor={C.warn}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={CheckCircle2}
-                        label="Resolved"
-                        count={filterCounts.resolved}
-                        active={tanodFilter === "RESOLVED"}
-                        onPress={() => setTanodFilter("RESOLVED")}
-                        accentColor={C.safe}
-                        C={C}
-                      />
-                    </>
-                  ) : (
-                    // ── CITIZEN / COMMUNITY FILTER BUTTONS ──
-                    <>
-                      <FilterPill
-                        icon={Layers}
-                        label="All Sites"
-                        count={filterCounts.all}
-                        active={communityFilter === "ALL"}
-                        onPress={() => setCommunityFilter("ALL")}
-                        accentColor={C.accent}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={Flame}
-                        label="Critical"
-                        count={filterCounts.critical}
-                        active={communityFilter === "CRITICAL"}
-                        onPress={() => setCommunityFilter("CRITICAL")}
-                        accentColor={C.danger}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={Navigation}
-                        label="Nearby"
-                        count={filterCounts.nearby}
-                        active={communityFilter === "NEARBY"}
-                        onPress={() => setCommunityFilter("NEARBY")}
-                        accentColor={C.accent}
-                        C={C}
-                      />
-                      <FilterPill
-                        icon={CheckCircle2}
-                        label="Treated"
-                        count={filterCounts.resolved}
-                        active={communityFilter === "RESOLVED"}
-                        onPress={() => setCommunityFilter("RESOLVED")}
-                        accentColor={C.safe}
-                        C={C}
-                      />
-                    </>
-                  )}
-                </ScrollView>
-              </View>
-            </>
-          )}
+          <MapControls tanod={isTanod} barangay={isTanod ? profile?.assignedBarangay : profile?.barangay}
+            filter={isTanod ? tanodFilter : communityFilter}
+            onFilter={value => isTanod ? setTanodFilter(value as TanodFilter) : setCommunityFilter(value as CommunityFilter)}
+            counts={filterCounts} mode={mode} onMode={setMode} zones={showZones} onZones={setShowZones}
+            pins={showReports} onPins={setShowReports} expanded={isExpanded} onExpand={() => setIsExpanded(value => !value)} />
         </View>
 
         {/* ── RIGHT FLOATING CONTROLS ── */}
@@ -2237,37 +1481,7 @@ export default function MapComponent({
               fetchNativeGpsLocation(true);
             }}
           />
-          <FloatBtn
-            icon={isExpanded ? Minimize2 : Maximize2}
-            accessibilityLabel={isExpanded ? "Exit fullscreen navigation" : "Expand map for field navigation"}
-            active={isExpanded}
-            color={C.accent}
-            C={C}
-            onPress={() => {
-              setIsExpanded((v) => !v);
-              if (!isExpanded) {
-                fetchNativeGpsLocation(true);
-              }
-            }}
-          />
-          <FloatBtn
-            icon={showZones ? Eye : EyeOff}
-            accessibilityLabel={showZones ? "Hide risk zones" : "Show risk zones"}
-            active={showZones}
-            color={C.danger}
-            badgeCount={showZones ? riskZones.length : undefined}
-            C={C}
-            onPress={() => setShowZones((v) => !v)}
-          />
-          <FloatBtn
-            icon={AlertTriangle}
-            accessibilityLabel={showReports ? "Hide report pins" : "Show report pins"}
-            active={showReports}
-            color={C.warn}
-            badgeCount={showReports ? verifiedHotspots.length : undefined}
-            C={C}
-            onPress={() => setShowReports((v) => !v)}
-          />
+
         </View>
 
         {/* ── BOTTOM MAP LEGEND (Hidden when report detail sheet is active or in expanded mode) ── */}
@@ -2287,16 +1501,7 @@ export default function MapComponent({
               <View style={[styles.legendDot, { backgroundColor: C.safe }]} />
               <Text style={styles.legendText}>Safe</Text>
             </View>
-            <View style={styles.legendDivider} />
-            <View style={styles.legendItem}>
-              <View
-                style={[
-                  styles.legendSwatch,
-                  { borderColor: C.danger + "90", backgroundColor: C.dangerGlow || "rgba(239, 68, 68, 0.15)" },
-                ]}
-              />
-              <Text style={styles.legendText}>Zone</Text>
-            </View>
+
           </View>
         )}
 
@@ -2352,8 +1557,8 @@ const createStyles = (C: ThemeColors) =>
     topControlContainer: {
       position: "absolute",
       top: 10,
-      left: 14,
-      right: 14,
+      left: 12,
+      right: 12,
       gap: 8,
     },
     topRow: {
@@ -2442,12 +1647,12 @@ const createStyles = (C: ThemeColors) =>
     rightPanel: {
       position: "absolute",
       right: 14,
-      bottom: 110,
-      gap: 10,
+      bottom: 20,
+      gap: 8,
     },
     legend: {
       position: "absolute",
-      bottom: 110,
+      bottom: 20,
       left: 14,
       flexDirection: "row",
       alignItems: "center",
@@ -2483,7 +1688,7 @@ const createStyles = (C: ThemeColors) =>
     statusOverlayBox: {
       position: "absolute",
       alignSelf: "center",
-      top: 130,
+      top: 142,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,

@@ -1,6 +1,6 @@
-import { useAuth, useOAuth, useSignIn, useSignUp } from "@clerk/clerk-expo";
+import { useOAuth, useSignUp } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
   AlertCircle,
@@ -8,10 +8,9 @@ import {
   EyeOff,
   Lock,
   Mail,
-  Shield,
   User,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -68,13 +67,12 @@ function FacebookLogo({ size = 18 }: { size?: number }) {
 
 export default function SignupScreen() {
   useWarmUpBrowser();
-  const router = useRouter();
   const { colors: C, isDark } = useTheme();
-  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { signUp, setActive, isLoaded: isSignUpLoaded } = useSignUp();
-  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
 
   // Form states
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,13 +89,9 @@ export default function SignupScreen() {
 
   // Social OAuth
   const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: facebookAuth } = useOAuth({ strategy: "oauth_facebook" });
-
-  useEffect(() => {
-    if (isAuthLoaded && isSignedIn && !isProcessing) {
-      router.replace("/(auth)/complete-profile");
-    }
-  }, [isAuthLoaded, isSignedIn, isProcessing, router]);
+  const { startOAuthFlow: facebookAuth } = useOAuth({
+    strategy: "oauth_facebook",
+  });
 
   const parseClerkError = (err: any): string => {
     if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
@@ -153,45 +147,39 @@ export default function SignupScreen() {
         lastName: lastName,
       });
 
-      if (createdUser.status === "complete" || createdUser.createdSessionId) {
+      if (createdUser.status === "complete" && createdUser.createdSessionId) {
         if (createdUser.createdSessionId) {
           await setActive({ session: createdUser.createdSessionId });
         }
-        router.replace("/(auth)/complete-profile");
+
         return;
       }
 
-      // Immediately establish session without requiring verification code
-      if (isSignInLoaded) {
-        try {
-          let signInAttempt = await signIn.create({
-            identifier: trimmedEmail,
-            password: password,
-          });
-
-          if (signInAttempt.status === "needs_first_factor") {
-            signInAttempt = await signIn.attemptFirstFactor({
-              strategy: "password",
-              password: password,
-            });
-          }
-
-          if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
-            if (signInAttempt.createdSessionId) {
-              await setActive({ session: signInAttempt.createdSessionId });
-            }
-            router.replace("/(auth)/complete-profile");
-            return;
-          }
-        } catch (signInErr) {
-          console.warn("Direct sign-in attempt warning:", signInErr);
-        }
-      }
-
-      // Proceed directly to complete profile
-      router.replace("/(auth)/complete-profile");
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setVerificationPending(true);
     } catch (err: any) {
       setErrorMessage(parseClerkError(err));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const verifyEmail = async () => {
+    if (!isSignUpLoaded) return;
+    setIsProcessing(true);
+    setErrorMessage(null);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode.trim(),
+      });
+      if (result.status === "complete" && result.createdSessionId)
+        await setActive({ session: result.createdSessionId });
+      else
+        setErrorMessage(
+          "Additional account information is required. Please contact support.",
+        );
+    } catch (error) {
+      setErrorMessage(parseClerkError(error));
     } finally {
       setIsProcessing(false);
     }
@@ -206,13 +194,13 @@ export default function SignupScreen() {
       const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
 
       try {
-        const { createdSessionId, setActive: setOAuthActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
-        });
+        const { createdSessionId, setActive: setOAuthActive } =
+          await selectedAuth({
+            redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
+          });
 
         if (createdSessionId && setOAuthActive) {
           await setOAuthActive({ session: createdSessionId });
-          router.replace("/(auth)/complete-profile");
         }
       } catch (err: any) {
         console.error("OAuth Error:", err);
@@ -221,10 +209,67 @@ export default function SignupScreen() {
         setIsProcessing(false);
       }
     },
-    [googleAuth, facebookAuth, router, isProcessing],
+    [googleAuth, facebookAuth, isProcessing],
   );
 
   const styles = useMemo(() => createStyles(C, isDark), [C, isDark]);
+
+  if (verificationPending)
+    return (
+      <SafeAreaView
+        style={[
+          styles.root,
+          { padding: 24, justifyContent: "center", gap: 18 },
+        ]}
+      >
+        <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>
+          Check your email
+        </Text>
+        <Text style={{ color: C.textSub }}>
+          Enter the verification code sent to {email}.
+        </Text>
+        <TextInput
+          accessibilityLabel="Email verification code"
+          value={verificationCode}
+          onChangeText={setVerificationCode}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          style={{
+            padding: 16,
+            color: C.text,
+            backgroundColor: C.surface,
+            borderRadius: 12,
+          }}
+        />
+        {!!errorMessage && (
+          <Text style={{ color: C.danger }}>{errorMessage}</Text>
+        )}
+        <TouchableOpacity
+          disabled={isProcessing}
+          onPress={verifyEmail}
+          style={{ padding: 16, backgroundColor: C.accent, borderRadius: 12 }}
+        >
+          <Text style={{ color: "white", textAlign: "center" }}>
+            {isProcessing ? "Verifying?" : "Verify & continue"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          disabled={isProcessing}
+          onPress={async () => {
+            try {
+              await signUp?.prepareEmailAddressVerification({
+                strategy: "email_code",
+              });
+              setErrorMessage(null);
+            } catch (error) {
+              setErrorMessage(parseClerkError(error));
+            }
+          }}
+        >
+          <Text style={{ color: C.accent }}>Resend code</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
 
   return (
     <SafeAreaView style={styles.root}>
@@ -253,10 +298,9 @@ export default function SignupScreen() {
             <Text style={styles.appSubtitle}>VECTOR SURVEILLANCE & TRIAGE</Text>
             <Text style={styles.title}>Create your account</Text>
             <Text style={styles.subtitle}>
-              Join your community dengue surveillance network
+              Community signup. Tanod accounts are provided by your LGU.
             </Text>
           </View>
-
 
           {/* ── Error Notice ── */}
           {errorMessage && (
@@ -410,10 +454,7 @@ export default function SignupScreen() {
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                isProcessing && { opacity: 0.7 },
-              ]}
+              style={[styles.primaryBtn, isProcessing && { opacity: 0.7 }]}
               onPress={handleEmailSignUp}
               activeOpacity={0.85}
               disabled={isProcessing}
@@ -421,9 +462,7 @@ export default function SignupScreen() {
               {isProcessing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryBtnText}>
-                  Create Account
-                </Text>
+                <Text style={styles.primaryBtnText}>Create Account</Text>
               )}
             </TouchableOpacity>
           </View>

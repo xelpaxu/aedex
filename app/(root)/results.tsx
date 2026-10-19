@@ -1,3 +1,4 @@
+import { hasTanodAccess } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
@@ -17,6 +18,7 @@ import {
 import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Image,
@@ -419,7 +421,9 @@ export default function ResultsScreen() {
   const reportId = params.reportId as string;
 
   const currentUser = useQuery(api.users.getMe);
-  const isTanod = currentUser?.role?.toLowerCase() === "tanod";
+  const isTanod = hasTanodAccess(currentUser);
+  const assignments = useQuery(api.assignments.getAssignmentsForTanod, isTanod ? {} : "skip");
+  const canResolve = isTanod && !!assignments?.some(a => a.reportId === reportId);
 
   const report = useQuery(api.reports.getReport, {
     id: reportId as Id<"reports">,
@@ -438,7 +442,7 @@ export default function ResultsScreen() {
   const [imageInspectorVisible, setImageInspectorVisible] = useState(false);
 
   const handleResolveReport = async () => {
-    if (!report?._id || !isTanod) return;
+    if (!report?._id || !canResolve) return;
     try {
       setIsResolving(true);
       await resolveReportMutation({
@@ -446,7 +450,7 @@ export default function ResultsScreen() {
         resolutionNotes: "Marked as resolved by Tanod Field Officer.",
       });
     } catch (err) {
-      console.error("Resolution failed:", err);
+      Alert.alert("Could not resolve report", err instanceof Error ? err.message : "Please try again.");
     } finally {
       setIsResolving(false);
     }
@@ -645,7 +649,7 @@ export default function ResultsScreen() {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false },
         )}
-        contentContainerStyle={{ paddingBottom: isTanod && !isResolved ? 110 : 40 }}
+        contentContainerStyle={{ paddingBottom: canResolve && !isResolved ? 110 : 40 }}
       >
         {/* ── HERO IMAGE WITH PARALLAX ── */}
         <View style={styles.heroWrapper}>
@@ -1050,7 +1054,7 @@ export default function ResultsScreen() {
       </Animated.ScrollView>
 
       {/* ── TANOD ACTION FOOTER (RESOLVE HOTSPOT) ── */}
-      {isTanod && !isResolved && (
+      {canResolve && !isResolved && (
         <View style={styles.actionFooter}>
           <TouchableOpacity
             style={styles.resolveBtn}

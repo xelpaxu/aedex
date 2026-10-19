@@ -2,7 +2,7 @@ import { ThemeColors, useTheme } from "@/context/ThemeContext";
 import { useUser } from "@clerk/clerk-expo";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { ArrowRight, CheckCircle2, Clock3, Globe2, MapPinned, ShieldCheck, Siren } from "lucide-react-native";
+import { ArrowRight, ScanLine, CheckCircle2, Clock3, Globe2, MapPinned, ShieldCheck, Siren } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { api } from "@/convex/_generated/api";
@@ -66,6 +66,7 @@ export default function TanodDashboardScreen() {
       </View>
 
       <View style={styles.actions}>
+        <Action icon={<ScanLine color={C.accent} size={22}/>} title="New report" copy="Capture a breeding site" onPress={() => router.push("/(root)/capture")} C={C}/>
         <Action icon={<MapPinned color={C.accent} size={22} />} title="Open live map" copy="See risk zones nearby" onPress={() => router.push("/(root)/(tanod-tabs)/map")} C={C} />
         <Action icon={<Globe2 color={C.safe} size={22} />} title="Community feed" copy="Review local updates" onPress={() => router.push("/community-feed")} C={C} />
       </View>

@@ -1,20 +1,9 @@
-import { api } from "@/convex/_generated/api";
-import { useAuth, useOAuth, useSignIn } from "@clerk/clerk-expo";
-import { useMutation } from "convex/react";
+import { useOAuth, useSignIn } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import {
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  Shield,
-  User,
-  X,
-} from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, Eye, EyeOff, Lock, Mail, X } from "lucide-react-native";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -72,16 +61,16 @@ function FacebookLogo({ size = 18 }: { size?: number }) {
 
 export default function LoginScreen() {
   useWarmUpBrowser();
-  const router = useRouter();
   const { colors: C, isDark } = useTheme();
-  const { isSignedIn, isLoaded: isAuthLoaded, userId } = useAuth();
   const { signIn, setActive, isLoaded: isSignInLoaded } = useSignIn();
 
   // Input states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(null);
+  const [focusedField, setFocusedField] = useState<"email" | "password" | null>(
+    null,
+  );
 
   // Status & Errors
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,17 +85,10 @@ export default function LoginScreen() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
 
-
-  const createOrUpdateUser = useMutation(api.users.loginWithFirebase);
-
   const { startOAuthFlow: googleAuth } = useOAuth({ strategy: "oauth_google" });
-  const { startOAuthFlow: facebookAuth } = useOAuth({ strategy: "oauth_facebook" });
-
-  useEffect(() => {
-    if (isAuthLoaded && isSignedIn && !isProcessing) {
-      router.replace("/(root)");
-    }
-  }, [isAuthLoaded, isSignedIn, isProcessing, router]);
+  const { startOAuthFlow: facebookAuth } = useOAuth({
+    strategy: "oauth_facebook",
+  });
 
   const parseClerkError = (err: any): string => {
     console.log("[LOGIN ERROR]", err);
@@ -163,10 +145,12 @@ export default function LoginScreen() {
           });
         } catch (pwErr: any) {
           console.warn("[LOGIN] Password attempt failed:", pwErr);
-          const emailFactor = factors.find((f: any) => f.strategy === "email_code");
+          const emailFactor = factors.find(
+            (f: any) => f.strategy === "email_code",
+          );
           if (!hasPassword && emailFactor) {
             setErrorMessage(
-              "Password sign-in is disabled in your Clerk Dashboard. Go to Clerk Dashboard > Email, Phone, Username > check 'Password' under Sign-in options (First Factor)."
+              "Password sign-in is disabled in your Clerk Dashboard. Go to Clerk Dashboard > Email, Phone, Username > check 'Password' under Sign-in options (First Factor).",
             );
           } else {
             setErrorMessage(parseClerkError(pwErr));
@@ -178,33 +162,27 @@ export default function LoginScreen() {
 
       // Handle needs_second_factor (MFA / 2FA)
       if (signInAttempt.status === "needs_second_factor") {
-        setErrorMessage("Two-factor authentication is required for this account.");
+        setErrorMessage(
+          "Two-factor authentication is required for this account.",
+        );
         setIsProcessing(false);
         return;
       }
 
-
-      if (signInAttempt.status === "complete" || signInAttempt.createdSessionId) {
+      if (
+        signInAttempt.status === "complete" &&
+        signInAttempt.createdSessionId
+      ) {
         if (signInAttempt.createdSessionId) {
           await setActive({ session: signInAttempt.createdSessionId });
         }
-
-        try {
-          await createOrUpdateUser({
-            uid: userId || (signInAttempt as any)?.createdUserId || "user",
-            email: trimmedEmail,
-            username: trimmedEmail.split("@")[0] || "user",
-            displayName: trimmedEmail.split("@")[0] || "User",
-          });
-        } catch (convexError) {
-          console.warn("Convex user sync warning:", convexError);
-        }
-
-        router.replace("/(root)");
       } else {
-        console.warn("[LOGIN] Incomplete sign-in attempt status:", signInAttempt.status);
+        console.warn(
+          "[LOGIN] Incomplete sign-in attempt status:",
+          signInAttempt.status,
+        );
         setErrorMessage(
-          `Unable to complete sign in (Status: ${signInAttempt.status}). Please check if your account is marked as verified in Clerk Dashboard > Users.`
+          `Unable to complete sign in (Status: ${signInAttempt.status}). Please check if your account is marked as verified in Clerk Dashboard > Users.`,
         );
       }
     } catch (err: any) {
@@ -215,7 +193,6 @@ export default function LoginScreen() {
     }
   };
 
-
   const onSelectSocialAuth = useCallback(
     async (strategy: "google" | "facebook") => {
       if (isProcessing) return;
@@ -225,25 +202,13 @@ export default function LoginScreen() {
       const selectedAuth = strategy === "google" ? googleAuth : facebookAuth;
 
       try {
-        const { createdSessionId, setActive: setOAuthActive } = await selectedAuth({
-          redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
-        });
+        const { createdSessionId, setActive: setOAuthActive } =
+          await selectedAuth({
+            redirectUrl: Linking.createURL("/", { scheme: "aedex" }),
+          });
 
         if (createdSessionId && setOAuthActive) {
           await setOAuthActive({ session: createdSessionId });
-
-          try {
-            await createOrUpdateUser({
-              uid: userId || "unknown",
-              email: "",
-              username: "user",
-              displayName: "User",
-            });
-          } catch (convexError) {
-            console.error("Convex user sync error:", convexError);
-          }
-
-          router.replace("/(root)");
         }
       } catch (err: any) {
         setErrorMessage(parseClerkError(err));
@@ -251,7 +216,7 @@ export default function LoginScreen() {
         setIsProcessing(false);
       }
     },
-    [googleAuth, facebookAuth, router, createOrUpdateUser, isProcessing, userId],
+    [googleAuth, facebookAuth, isProcessing],
   );
 
   const handleOpenForgot = () => {
@@ -307,7 +272,6 @@ export default function LoginScreen() {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         setForgotModalVisible(false);
-        router.replace("/(root)");
       } else {
         setForgotError("Reset incomplete. Please try again.");
       }
@@ -350,7 +314,6 @@ export default function LoginScreen() {
               Monitor dengue breeding risk and response updates
             </Text>
           </View>
-
 
           {/* ── Error Notice ── */}
           {errorMessage && (
@@ -404,7 +367,10 @@ export default function LoginScreen() {
             <View style={styles.field}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Password</Text>
-                <TouchableOpacity onPress={handleOpenForgot} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={handleOpenForgot}
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </TouchableOpacity>
               </View>
@@ -448,10 +414,7 @@ export default function LoginScreen() {
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                isProcessing && { opacity: 0.7 },
-              ]}
+              style={[styles.primaryBtn, isProcessing && { opacity: 0.7 }]}
               onPress={handleEmailLogin}
               activeOpacity={0.85}
               disabled={isProcessing}
@@ -459,9 +422,7 @@ export default function LoginScreen() {
               {isProcessing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryBtnText}>
-                  Sign In
-                </Text>
+                <Text style={styles.primaryBtnText}>Sign In</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -519,7 +480,9 @@ export default function LoginScreen() {
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {forgotStep === "request" ? "Reset password" : "Enter reset code"}
+                {forgotStep === "request"
+                  ? "Reset password"
+                  : "Enter reset code"}
               </Text>
               <TouchableOpacity
                 onPress={() => setForgotModalVisible(false)}

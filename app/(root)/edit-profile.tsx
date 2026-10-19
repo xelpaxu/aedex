@@ -1,851 +1,367 @@
+import * as ImagePicker from "expo-image-picker";
+import { useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
-import * as Haptics from "expo-haptics";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  Camera,
-  CheckCircle2,
-  MapPin,
-  Phone,
-  Save,
-  Shield,
-  ShieldCheck,
-  User as UserIcon,
-  Users,
-} from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
+  Pressable,
   ScrollView,
-  StatusBar,
-  StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
+import {
+  ArrowLeft,
+  Check,
+  MapPin,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react-native";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
-import { ThemeColors, useTheme } from "../../context/ThemeContext";
-
-const BARANGAYS = [
-  { name: "San Juan", desc: "San Juan District • Zone 1-4" },
-  { name: "Calumpang", desc: "Calumpang District • Zone 1-6" },
-  { name: "South Fundidor", desc: "South Fundidor District • Zone 1-3" },
-  { name: "San Rafael", desc: "San Rafael District • Mandurriao" },
-  { name: "Jaro", desc: "Jaro Plaza & Heritage District • Zone 1-5" },
-  { name: "Bolilao", desc: "Bolilao Commercial & Residential Area" },
-  { name: "Lapaz", desc: "La Paz Market & Coastal District" },
-] as const;
-
-export default function EditProfileScreen() {
-  const router = useRouter();
-  const { colors: C, isDark } = useTheme();
-  const { isLoaded, isSignedIn } = useAuth();
+import { useProfile } from "@/context/AccessContext";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  PILOT_BARANGAYS,
+  hasPilotBarangay,
+  hasTanodAccess,
+} from "@/constants/access";
+export default function EditProfile({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
+  const profile = useProfile();
   const { user } = useUser();
-  const currentUser = useQuery(api.users.getMe);
-  const updateProfile = useMutation(api.users.updateProfile);
-
-  const isTanod = currentUser?.role === "tanod";
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [barangay, setBarangay] = useState<string | null>(null);
-  const [teamId, setTeamId] = useState<Id<"teams"> | null>(null);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Prefill existing user info
-  useEffect(() => {
-    if (currentUser) {
-      if (currentUser.name) {
-        const parts = currentUser.name.trim().split(" ");
-        setFirstName((prev) => prev || parts[0] || user?.firstName || "");
-        setLastName(
-          (prev) => prev || parts.slice(1).join(" ") || user?.lastName || "",
-        );
-      } else if (user) {
-        setFirstName((prev) => prev || user.firstName || "");
-        setLastName((prev) => prev || user.lastName || "");
-      }
-
-      if (currentUser.phone) setPhone((prev) => prev || currentUser.phone || "");
-      if (currentUser.barangay)
-        setBarangay((prev) => prev || currentUser.barangay || null);
-      if (currentUser.teamId)
-        setTeamId((prev) => prev || (currentUser.teamId as any) || null);
-    } else if (user) {
-      setFirstName((prev) => prev || user.firstName || "");
-      setLastName((prev) => prev || user.lastName || "");
-    }
-  }, [currentUser, user]);
-
-  // Query teams for the selected barangay
+  const { signOut } = useAuth();
+  const router = useRouter();
+  const { colors: C } = useTheme();
+  const saveProfile = useMutation(api.users.updateProfile);
+  const [firstName, setFirstName] = useState(
+      profile?.firstName || user?.firstName || "",
+    ),
+    [lastName, setLastName] = useState(
+      profile?.lastName || user?.lastName || "",
+    ),
+    [phone, setPhone] = useState(profile?.phone || ""),
+    [barangay, setBarangay] = useState(
+      hasPilotBarangay(profile?.barangay) ? profile!.barangay! : "",
+    ),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const mandatory =
+    !profile?.profileComplete || !hasPilotBarangay(profile.barangay);
+  const officer = profile?.role === "tanod";
   const teams = useQuery(
     api.users.getTeamsByBarangay,
-    barangay ? { barangay } : "skip",
+    officer && profile?.assignedBarangay
+      ? { barangay: profile.assignedBarangay }
+      : "skip",
   );
-
-  // Pick and update avatar photo
-  const handlePickAvatar = async () => {
+  const accent = officer ? C.warn : C.accent;
+  const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  async function updatePhoto() {
+    setError("");
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          "Permission Required",
-          "Please grant camera roll access to update your profile photo.",
-        );
+        setError("Allow photo library access to update your picture.");
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
         base64: true,
       });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        setAvatarUri(asset.uri);
-
-        if (user && asset.base64) {
-          setUploadingImage(true);
-          try {
-            await user.setProfileImage({
-              file: `data:image/jpeg;base64,${asset.base64}`,
-            });
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          } catch (clerkErr) {
-            console.warn("Clerk avatar sync warning:", clerkErr);
-          } finally {
-            setUploadingImage(false);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Avatar pick error:", err);
-      Alert.alert("Error", "Could not select image. Please try again.");
-    }
-  };
-
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!firstName.trim()) e.firstName = "First name is required";
-    if (!lastName.trim()) e.lastName = "Last name is required";
-    if (!phone.trim()) e.phone = "Phone number is required";
-    if (!isTanod && !barangay) e.barangay = "Please select your barangay";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
-    setSaving(true);
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      await updateProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone.trim(),
-        barangay: (isTanod ? currentUser?.barangay : barangay) || barangay || "Calumpang",
+      if (result.canceled || !result.assets[0]?.base64 || !user) return;
+      setUploading(true);
+      await user.setProfileImage({
+        file: `data:${result.assets[0].mimeType || "image/jpeg"};base64,${result.assets[0].base64}`,
       });
-
-      if (user) {
-        try {
-          await user.update({
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-          });
-        } catch (clerkErr) {
-          console.warn("Clerk name sync skipped:", clerkErr);
-        }
-      }
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        "Profile Updated",
-        "Your profile information and surveillance location have been successfully saved.",
-        [
-          {
-            text: "Done",
-            onPress: () => router.back(),
-          },
-        ],
-      );
-    } catch (err) {
-      console.error("Profile save error:", err);
-      Alert.alert("Save Failed", "Could not update profile. Please try again.");
+    } catch {
+      setError("Could not update your photo. Please try again.");
     } finally {
-      setSaving(false);
+      setUploading(false);
     }
-  };
-
-  const styles = useMemo(() => createStyles(C), [C]);
-
-  const displayAvatar =
-    avatarUri ||
-    user?.imageUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      `${firstName} ${lastName}`.trim() || "User",
-    )}&background=1a2240&color=4F8EF7&bold=true&size=140`;
-
-  if (!isLoaded || currentUser === undefined) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={C.accent} />
-        <Text style={styles.loadingText}>LOADING PROFILE...</Text>
-      </View>
-    );
   }
 
+  async function save() {
+    setError("");
+    setSaved(false);
+    if (!firstName.trim() || !lastName.trim() || !hasPilotBarangay(barangay)) {
+      setError("Enter your name and choose one of the three pilot barangays.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await saveProfile({ firstName, lastName, phone, barangay });
+      setSaved(true);
+      if (!embedded || mandatory) router.replace("/(root)");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not save your profile. Please retry.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surfaceRaised,
+    borderRadius: 12,
+    padding: 14,
+    color: C.text,
+    fontSize: 15,
+  };
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar
-        barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={C.surface}
-      />
-
-      {/* ── TOP NAV BAR ── */}
-      <View style={styles.topNav}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <ArrowLeft color={C.text} size={18} strokeWidth={2.5} />
-        </TouchableOpacity>
-
-        <Text style={styles.navTitle}>Edit profile</Text>
-
-        <TouchableOpacity
-          onPress={handleSave}
-          style={styles.saveNavBtn}
-          disabled={saving}
-          activeOpacity={0.8}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={C.accent} />
-          ) : (
-            <Save color={C.accent} size={18} strokeWidth={2.5} />
-          )}
-        </TouchableOpacity>
-      </View>
-
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: C.bg }}
+      edges={embedded ? ["top"] : ["top", "bottom"]}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            gap: 12,
+            borderBottomWidth: 1,
+            borderColor: C.border,
+          }}
         >
-          {/* ── AVATAR PROFILE PHOTO PICKER ── */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarWrap}>
-              <Image source={{ uri: displayAvatar }} style={styles.avatarImg} />
-              <TouchableOpacity
-                style={styles.cameraBadge}
-                onPress={handlePickAvatar}
-                activeOpacity={0.8}
-                disabled={uploadingImage}
-              >
-                {uploadingImage ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Camera color="#FFFFFF" size={15} strokeWidth={2.5} />
-                )}
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.7}>
-              <Text style={styles.changePhotoText}>Change Profile Photo</Text>
-            </TouchableOpacity>
-
-            <View
-              style={[
-                styles.roleBadge,
-                {
-                  backgroundColor: isTanod ? C.warnGlow : C.safeGlow,
-                  borderColor: (isTanod ? C.warn : C.safe) + "40",
-                },
-              ]}
+          {!mandatory && !embedded && (
+            <Pressable
+              accessibilityLabel="Back"
+              hitSlop={12}
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/(root)")
+              }
             >
-              {isTanod ? (
-                <Shield color={C.warn} size={11} strokeWidth={2.5} />
-              ) : (
-                <CheckCircle2 color={C.safe} size={11} strokeWidth={2.5} />
-              )}
-              <Text
-                style={[
-                  styles.roleBadgeText,
-                  { color: isTanod ? C.warn : C.safe },
-                ]}
-              >
-                {isTanod ? "TANOD FIELD OFFICER" : "REGISTERED CITIZEN"}
+              <ArrowLeft color={C.text} size={22} />
+            </Pressable>
+          )}
+          <Text
+            style={{ fontWeight: "700", fontSize: 18, color: C.text, flex: 1 }}
+          >
+            Your profile
+          </Text>
+          <Text style={{ fontSize: 11, color: accent, fontWeight: "700" }}>
+            {officer ? "TANOD" : "COMMUNITY"}
+          </Text>
+        </View>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 36 }}
+        >
+          <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+            {user?.imageUrl ? (
+              <Image
+                source={{ uri: user.imageUrl }}
+                style={{ width: 60, height: 60, borderRadius: 20 }}
+              />
+            ) : (
+              <UserRound color={accent} size={40} />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 22, fontWeight: "700", color: C.text }}>
+                {mandatory
+                  ? "Let’s get you set up"
+                  : profile?.fullName || "Your account"}
+              </Text>
+              <Text style={{ fontSize: 13, color: C.textSub, marginTop: 4 }}>
+                {user?.primaryEmailAddress?.emailAddress || profile?.email}
               </Text>
             </View>
           </View>
-
-          {/* ── FORM FIELDS ── */}
-          <View style={styles.formSection}>
-            <Text style={styles.sectionHeaderTitle}>Personal details</Text>
-
-            {/* First & Last Name */}
-            <View style={styles.row}>
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>First name</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.firstName ? styles.inputContainerError : null,
-                  ]}
-                >
-                  <UserIcon color={C.textSub} size={16} strokeWidth={2} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="First Name"
-                    placeholderTextColor={C.textDim}
-                    value={firstName}
-                    onChangeText={(t) => {
-                      setFirstName(t);
-                      if (errors.firstName)
-                        setErrors((p) => ({ ...p, firstName: "" }));
-                    }}
-                    autoCapitalize="words"
-                  />
-                </View>
-                {errors.firstName && (
-                  <Text style={styles.errorText}>{errors.firstName}</Text>
-                )}
-              </View>
-
-              <View style={[styles.field, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>Last name</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    errors.lastName ? styles.inputContainerError : null,
-                  ]}
-                >
-                  <UserIcon color={C.textSub} size={16} strokeWidth={2} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Last Name"
-                    placeholderTextColor={C.textDim}
-                    value={lastName}
-                    onChangeText={(t) => {
-                      setLastName(t);
-                      if (errors.lastName)
-                        setErrors((p) => ({ ...p, lastName: "" }));
-                    }}
-                    autoCapitalize="words"
-                  />
-                </View>
-                {errors.lastName && (
-                  <Text style={styles.errorText}>{errors.lastName}</Text>
-                )}
-              </View>
-            </View>
-
-            {/* Mobile Phone */}
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Mobile phone number</Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  errors.phone ? styles.inputContainerError : null,
-                ]}
-              >
-                <Phone color={C.textSub} size={16} strokeWidth={2} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="0912 345 6789"
-                  placeholderTextColor={C.textDim}
-                  value={phone}
-                  onChangeText={(t) => {
-                    setPhone(t);
-                    if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
-                  }}
-                  keyboardType="phone-pad"
-                  maxLength={11}
-                />
-              </View>
-              {errors.phone && (
-                <Text style={styles.errorText}>{errors.phone}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* ── BARANGAY LOCATION / OFFICIAL DEPLOYMENT ── */}
-          {isTanod ? (
-            <View style={styles.formSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeaderTitle}>Official Tanod Deployment</Text>
-                <Text style={[styles.sectionHeaderSub, { color: C.warn }]}>Managed by LGU</Text>
-              </View>
-
-              <View
-                style={{
-                  backgroundColor: C.surfaceRaised,
-                  borderRadius: 14,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: C.warn + "40",
-                  gap: 12,
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Shield color={C.warn} size={20} strokeWidth={2.2} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, color: C.textSub, fontWeight: "600", textTransform: "uppercase" }}>
-                      Assigned Response Unit
-                    </Text>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginTop: 1 }}>
-                      {currentUser?.teamName || "Assigned Response Team"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ height: 1, backgroundColor: C.border, opacity: 0.6 }} />
-
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <MapPin color={C.accent} size={20} strokeWidth={2.2} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, color: C.textSub, fontWeight: "600", textTransform: "uppercase" }}>
-                      Operational Jurisdiction
-                    </Text>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginTop: 1 }}>
-                      Barangay {currentUser?.barangay || "Assigned Area"}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <Text style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
-                Officer team deployments and jurisdiction are officially managed by your LGU Administrator.
+          <Pressable disabled={uploading} onPress={updatePhoto}>
+            <Text style={{ color: accent, fontWeight: "600" }}>
+              {uploading ? "Updating photo?" : "Change profile photo"}
+            </Text>
+          </Pressable>
+          {mandatory && (
+            <View
+              style={{
+                backgroundColor: C.accentGlow,
+                padding: 16,
+                borderRadius: 14,
+              }}
+            >
+              <Text style={{ color: C.text, fontWeight: "600" }}>
+                Choose your barangay to continue
               </Text>
-            </View>
-          ) : (
-            <View style={styles.formSection}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionHeaderTitle}>Surveillance barangay</Text>
-                <Text style={styles.sectionHeaderSub}>Zone Assignment</Text>
-              </View>
-
-              <View style={styles.barangayGrid}>
-                {BARANGAYS.map((b) => {
-                  const selected = barangay === b.name;
-                  return (
-                    <TouchableOpacity
-                      key={b.name}
-                      style={[
-                        styles.barangayCard,
-                        selected && styles.barangayCardSelected,
-                      ]}
-                      onPress={() => {
-                        setBarangay(b.name);
-                        if (errors.barangay)
-                          setErrors((p) => ({ ...p, barangay: "" }));
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.barangayCardLeft}>
-                        <View
-                          style={[
-                            styles.checkbox,
-                            selected && styles.checkboxSelected,
-                          ]}
-                        >
-                          {selected && (
-                            <CheckCircle2
-                              color={C.accent}
-                              size={14}
-                              strokeWidth={3}
-                            />
-                          )}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[
-                              styles.barangayName,
-                              selected && styles.barangayNameSelected,
-                            ]}
-                          >
-                            Barangay {b.name}
-                          </Text>
-                          <Text style={styles.barangayDesc}>{b.desc}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {errors.barangay && (
-                <Text style={styles.errorText}>{errors.barangay}</Text>
-              )}
+              <Text style={{ color: C.textSub, lineHeight: 20, marginTop: 5 }}>
+                Your reports are sent to the barangay you select below. This
+                pilot covers three barangays.
+              </Text>
             </View>
           )}
-
-          {/* ── SAVE BUTTON ── */}
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <View style={styles.saveBtnContent}>
-                <Save color="#FFFFFF" size={16} strokeWidth={2.5} />
-                <Text style={styles.saveBtnText}>Save profile changes</Text>
+          {officer && (
+            <View
+              style={{
+                backgroundColor: C.surface,
+                padding: 16,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: C.border,
+                gap: 6,
+              }}
+            >
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <ShieldCheck color={accent} size={18} />
+                <Text style={{ color: C.text, fontWeight: "700" }}>
+                  Official assignment
+                </Text>
               </View>
+              <Text style={{ color: C.text }}>
+                {teams?.find((t) => t._id === profile?.teamId)?.name ||
+                  "Contact your LGU administrator"}
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 13 }}>
+                {profile?.assignedBarangay || "Unassigned"} ·{" "}
+                {profile?.tanodStatus || "Awaiting LGU review"}
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 12, lineHeight: 18 }}>
+                Your LGU manages this assignment.{" "}
+                {hasTanodAccess(profile)
+                  ? ""
+                  : "Officer tools are unavailable until your access is active."}
+              </Text>
+            </View>
+          )}
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>
+              Personal details
+            </Text>
+            {[
+              ["First name", firstName, setFirstName],
+              ["Last name", lastName, setLastName],
+              ["Phone (optional)", phone, setPhone],
+            ].map(([label, value, setter]) => (
+              <View key={String(label)} style={{ gap: 6 }}>
+                <Text style={{ fontSize: 13, color: C.textSub }}>
+                  {String(label)}
+                </Text>
+                <TextInput
+                  accessibilityLabel={String(label)}
+                  style={inputStyle}
+                  value={value as string}
+                  onChangeText={setter as (s: string) => void}
+                  editable={!busy}
+                  keyboardType={
+                    String(label).startsWith("Phone") ? "phone-pad" : "default"
+                  }
+                  autoCapitalize={
+                    String(label).startsWith("Phone") ? "none" : "words"
+                  }
+                />
+              </View>
+            ))}
+          </View>
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>
+              Reporting barangay
+            </Text>
+            <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20 }}>
+              New reports will use this barangay. Changing it won’t move your
+              previous reports.
+              {officer ? " This does not change your official team." : ""}
+            </Text>
+            {PILOT_BARANGAYS.map((b) => (
+              <Pressable
+                key={b}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: barangay === b }}
+                onPress={() => setBarangay(b)}
+                disabled={busy}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: 16,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: barangay === b ? accent : C.border,
+                  backgroundColor: barangay === b ? C.surfaceRaised : C.surface,
+                }}
+              >
+                <MapPin color={barangay === b ? accent : C.textSub} size={20} />
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 15,
+                    fontWeight: "600",
+                    color: C.text,
+                  }}
+                >
+                  Barangay {b}
+                </Text>
+                {barangay === b && <Check color={accent} size={20} />}
+              </Pressable>
+            ))}
+          </View>
+          {saved && (
+            <Text style={{ color: C.safe }}>
+              Profile saved. Future reports will use Barangay {barangay}.
+            </Text>
+          )}
+          {!!error && (
+            <Text
+              accessibilityRole="alert"
+              style={{ color: C.danger, lineHeight: 20 }}
+            >
+              {error}
+            </Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={save}
+            style={{
+              backgroundColor: accent,
+              borderRadius: 14,
+              padding: 16,
+              alignItems: "center",
+            }}
+          >
+            {busy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text
+                style={{
+                  color: officer ? "#111827" : "#fff",
+                  fontWeight: "700",
+                  fontSize: 15,
+                }}
+              >
+                {mandatory ? "Save & continue" : "Save changes"}
+              </Text>
             )}
-          </TouchableOpacity>
-
-          <Text style={styles.footerNote}>
-            AEDEX Vector Control System • Protected Profile
-          </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void signOut()}
+            style={{ alignItems: "center", padding: 10 }}
+          >
+            <Text style={{ color: C.textSub }}>Sign out</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const createStyles = (C: ThemeColors) =>
-  StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: C.bg,
-    },
-    loadingContainer: {
-      flex: 1,
-      backgroundColor: C.bg,
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 12,
-    },
-    loadingText: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.textSub,
-    },
-
-    // Nav Bar
-    topNav: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingTop: Platform.OS === "ios" ? 10 : 20,
-      paddingBottom: 14,
-      backgroundColor: C.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: C.border,
-    },
-    backBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 11,
-      backgroundColor: C.surfaceRaised,
-      borderWidth: 1,
-      borderColor: C.border,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    navTitle: {
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.text,
-    },
-    saveNavBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 11,
-      backgroundColor: C.accentGlow,
-      borderWidth: 1,
-      borderColor: C.accent + "30",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    scroll: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 40,
-    },
-
-    // Avatar Section
-    avatarSection: {
-      alignItems: "center",
-      marginBottom: 24,
-      gap: 8,
-    },
-    avatarWrap: {
-      position: "relative",
-      width: 90,
-      height: 90,
-    },
-    avatarImg: {
-      width: 90,
-      height: 90,
-      borderRadius: 28,
-      borderWidth: 2,
-      borderColor: C.accent,
-      backgroundColor: C.surfaceRaised,
-    },
-    cameraBadge: {
-      position: "absolute",
-      bottom: -4,
-      right: -4,
-      width: 30,
-      height: 30,
-      borderRadius: 10,
-      backgroundColor: C.accent,
-      borderWidth: 2,
-      borderColor: C.bg,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: "#000",
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    changePhotoText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: C.accent,
-    },
-    roleBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 8,
-      borderWidth: 1,
-      marginTop: 2,
-    },
-    roleBadgeText: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-    },
-
-    // Form Sections
-    formSection: {
-      backgroundColor: C.surface,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: C.border,
-      padding: 16,
-      marginBottom: 16,
-      gap: 14,
-    },
-    sectionHeaderTitle: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.textSub,
-    },
-    sectionHeaderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    sectionHeaderSub: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: C.textDim,
-    },
-    row: {
-      flexDirection: "row",
-      gap: 12,
-    },
-    field: {
-      gap: 6,
-    },
-    fieldLabel: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: C.textSub,
-    },
-    inputContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      backgroundColor: C.surfaceRaised,
-      borderWidth: 1,
-      borderColor: C.borderBright,
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      height: 46,
-    },
-    inputContainerError: {
-      borderColor: C.danger,
-    },
-    input: {
-      flex: 1,
-      fontSize: 13,
-      color: C.text,
-      fontWeight: "600",
-    },
-    errorText: {
-      fontSize: 11,
-      color: C.danger,
-      fontWeight: "600",
-      marginTop: 2,
-    },
-
-    // Barangay Grid
-    barangayGrid: {
-      gap: 8,
-    },
-    barangayCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: C.surfaceRaised,
-      borderWidth: 1,
-      borderColor: C.border,
-      borderRadius: 12,
-      padding: 12,
-    },
-    barangayCardSelected: {
-      borderColor: C.accent,
-      backgroundColor: C.accentGlow,
-    },
-    barangayCardTanodSelected: {
-      borderColor: C.warn,
-      backgroundColor: C.warnGlow,
-    },
-    barangayCardLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      flex: 1,
-    },
-    checkbox: {
-      width: 20,
-      height: 20,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: C.borderBright,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkboxSelected: {
-      borderColor: C.accent,
-      backgroundColor: C.surface,
-    },
-    checkboxTanodSelected: {
-      borderColor: C.warn,
-      backgroundColor: C.surface,
-    },
-    barangayName: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: C.text,
-    },
-    barangayNameSelected: {
-      color: C.accent,
-    },
-    barangayDesc: {
-      fontSize: 11,
-      color: C.textSub,
-      marginTop: 1,
-    },
-
-    // Loading & Empty for Teams
-    loadingBox: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor: C.surfaceRaised,
-      borderRadius: 12,
-      padding: 14,
-      borderWidth: 1,
-      borderColor: C.border,
-    },
-    loadingBoxText: {
-      fontSize: 11,
-      color: C.textSub,
-      fontWeight: "600",
-    },
-    emptyTeams: {
-      alignItems: "center",
-      backgroundColor: C.surfaceRaised,
-      borderRadius: 12,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: C.border,
-      gap: 4,
-    },
-    emptyTeamsTitle: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: C.warn,
-      marginTop: 4,
-    },
-    emptyTeamsSub: {
-      fontSize: 11,
-      color: C.textSub,
-      textAlign: "center",
-    },
-
-    // Save Button
-    saveBtn: {
-      backgroundColor: C.accent,
-      borderRadius: 14,
-      height: 50,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 10,
-      elevation: 6,
-      marginTop: 8,
-      marginBottom: 16,
-    },
-    saveBtnDisabled: {
-      opacity: 0.6,
-    },
-    saveBtnContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    saveBtnText: {
-      fontSize: 12,
-      fontWeight: "700",
-      letterSpacing: 0.3,
-      color: "#FFFFFF",
-    },
-    footerNote: {
-      fontSize: 11,
-      color: C.textDim,
-      textAlign: "center",
-      letterSpacing: 0.3,
-    },
-  });

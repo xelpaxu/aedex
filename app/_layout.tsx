@@ -1,3 +1,4 @@
+import { AccessProvider } from "../context/AccessContext";
 // app/_layout.tsx
 import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import {
@@ -9,9 +10,9 @@ import {
 import { Manrope_700Bold, useFonts } from "@expo-google-fonts/manrope";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StatusBar, Text, View } from "react-native";
 import SplashScreenView from "../components/SplashScreen";
 import { UpdateModal } from "../components/features/updates/UpdateModal";
@@ -45,76 +46,13 @@ function getConvexClient() {
 }
 
 function RootLayoutNav() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
-  const segments = useSegments();
-  const { theme, isDark, colors } = useTheme();
-
-  // ========== FIX: Use ref to prevent multiple redirects ==========
-  const hasRedirected = useRef(false);
-  const [isReady, setIsReady] = useState(false);
-
-  // ========== FIX: Only run navigation once ==========
-  useEffect(() => {
-    if (!isLoaded || hasRedirected.current) return;
-
-    const inAuthGroup = segments[0] === "(auth)";
-
-    // Set ready state
-    setIsReady(true);
-
-    if (!isSignedIn && !inAuthGroup) {
-      hasRedirected.current = true;
-      // Use setTimeout to prevent race conditions
-      setTimeout(() => {
-        router.replace("/(auth)/login");
-      }, 50);
-    } else if (isSignedIn && inAuthGroup) {
-      hasRedirected.current = true;
-      setTimeout(() => {
-        router.replace("/(root)");
-      }, 50);
-    }
-
-    // Reset redirect flag after navigation completes
-    const timer = setTimeout(() => {
-      hasRedirected.current = false;
-    }, 500);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, segments]);
-
-  if (!isLoaded || !isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: colors.bg,
-        }}
-      >
-        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
-        <ActivityIndicator size="large" color={colors.accent} />
-        <Text style={{ color: colors.textSub, marginTop: 12, fontSize: 12 }}>
-          Loading...
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-        }}
-      />
-    </>
-  );
+  const { isSignedIn } = useAuth();
+  const { isDark, colors } = useTheme();
+  return <><StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg}/>
+    <Stack screenOptions={{headerShown:false,contentStyle:{backgroundColor:colors.bg}}}>
+      <Stack.Protected guard={!isSignedIn}><Stack.Screen name="(auth)"/></Stack.Protected>
+      <Stack.Protected guard={!!isSignedIn}><Stack.Screen name="(root)"/></Stack.Protected>
+    </Stack></>;
 }
 
 function RootLayoutContent() {
@@ -209,7 +147,7 @@ function RootLayoutContent() {
       <ClerkLoaded>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ThemeProvider>
-            <RootLayoutNav />
+            <AccessProvider><RootLayoutNav /></AccessProvider>
           </ThemeProvider>
         </ConvexProviderWithClerk>
       </ClerkLoaded>
@@ -226,7 +164,6 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-import React from "react";
 
 class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {

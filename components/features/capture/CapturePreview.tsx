@@ -1,3 +1,5 @@
+import { useProfile } from "@/context/AccessContext";
+import { hasPilotBarangay } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
 import { useAction, useConvexAuth } from "convex/react";
 import { BlurView } from "expo-blur";
@@ -49,6 +51,7 @@ export default function CapturePreview({
   onReset,
 }: CapturePreviewProps) {
   const router = useRouter();
+  const profile = useProfile();
   const { colors: C, isDark } = useTheme();
   const [analyzing, setAnalyzing] = useState(false);
   const [description, setDescription] = useState("");
@@ -111,6 +114,7 @@ export default function CapturePreview({
       Alert.alert("Not Logged In", "Please sign in again to submit reports.");
       return;
     }
+    if (!hasPilotBarangay(profile?.barangay)) { router.push("/(root)/edit-profile"); return; }
     setAnalyzing(true);
     try {
       const base64Image = await FileSystem.readAsStringAsync(image, {
