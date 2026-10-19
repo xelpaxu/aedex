@@ -1,5 +1,4 @@
 import { useAuth } from "@clerk/clerk-expo";
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -8,16 +7,21 @@ import {
   Sun,
   Moon,
   LogOut,
+  RefreshCw,
 } from "lucide-react-native";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useProfile } from "@/context/AccessContext";
+import { useUpdate } from "@/context/UpdateProvider";
+import { getCurrentVersionName } from "@/services/update_service";
 export default function Settings() {
   const { colors: C, theme, setTheme } = useTheme();
   const profile = useProfile();
   const { signOut } = useAuth();
   const router = useRouter();
+  const { state, checkNow } = useUpdate();
+  const checking = state.phase === "checking";
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 24 }}>
@@ -102,12 +106,39 @@ export default function Settings() {
         >
           <Text style={{ color: C.text, fontWeight: "600" }}>About Aedex</Text>
           <Text style={{ color: C.textSub }}>
-            Version {Constants.expoConfig?.version || "Unknown"}
+            Version {getCurrentVersionName()}
           </Text>
           <Text style={{ color: C.textSub, fontSize: 13 }}>
             Community dengue surveillance · Pilot program
           </Text>
         </View>
+        <Pressable
+          onPress={() => void checkNow()}
+          disabled={checking}
+          style={{
+            padding: 18,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+            borderRadius: 16,
+            backgroundColor: C.surface,
+            opacity: checking ? 0.6 : 1,
+          }}
+        >
+          {checking ? (
+            <ActivityIndicator size="small" color={C.accent} />
+          ) : (
+            <RefreshCw color={C.accent} size={20} />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.text, fontWeight: "600" }}>
+              Check for updates
+            </Text>
+            <Text style={{ color: C.textSub, fontSize: 13 }}>
+              {checking ? "Checking…" : "AEDEX updates itself automatically"}
+            </Text>
+          </View>
+        </Pressable>
         <Pressable
           onPress={() => void signOut()}
           style={{

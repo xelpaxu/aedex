@@ -159,22 +159,142 @@ jobs:
           echo "✅ APK ready for release:"
           ls -lh ./aedex-release.apk
 
+      - name: 🔏 Inspect built APK
+        id: apk
+        run: |
+          # The APK is the single source of truth for what shipped: eas.json uses
+          # appVersionSource "remote", so neither app.json nor build.gradle reflects
+          # the versionCode EAS actually assigned. Everything downstream reads from
+          # here rather than from the repo.
+          BADGING="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          if [ ! -x "$BADGING" ]; then
+            BADGING=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          fi
+          if [ -z "$BADGING" ]; then
+            echo "❌ aapt2 not found under ANDROID_HOME"
+            exit 1
+          fi
+
+          BADGING_OUT=$("$BADGING" dump badging ./aedex-release.apk)
+          VERSION_CODE=$(echo "$BADGING_OUT" | grep -oP "versionCode='\K[0-9]+" | head -1)
+          VERSION_NAME=$(echo "$BADGING_OUT" | grep -oP "versionName='\K[^']+" | head -1)
+          PKG_NAME=$(echo "$BADGING_OUT" | grep -oP "^package: name='\K[^']+" | head -1)
+          SIZE_BYTES=$(stat -c%s ./aedex-release.apk)
+
+          if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
+            echo "❌ Could not read versionCode/versionName from the APK."
+            exit 1
+          fi
+
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "package_name=$PKG_NAME" >> $GITHUB_OUTPUT
+          echo "size_bytes=$SIZE_BYTES" >> $GITHUB_OUTPUT
+
+          echo "📦 $VERSION_NAME (versionCode $VERSION_CODE) · $PKG_NAME · $(( SIZE_BYTES / 1024 / 1024 )) MB"
+
       - name: 🏷️ Generate Release Tag Name
         id: tag_gen
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
           else
-            TAG_NAME="v1.0.0-build-$(date +'%Y%m%d%H%M%S')"
+            TAG_NAME="v${{ steps.apk.outputs.version_name }}-${{ steps.apk.outputs.version_code }}"
           fi
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: 🔐 Verify signing certificate is unchanged
+        id: signing
+        run: |
+          # An in-app updater is only safe while every release is signed with the same
+          # key. Android refuses key-change updates outright, which would strand every
+          # installed copy, so fail the release loudly instead of shipping one.
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "⚠️ apksigner unavailable; skipping certificate check."
+            echo "fingerprint=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          FINGERPRINT=$("$APKSIGNER" verify --print-certs ./aedex-release.apk \
+            | grep -oP 'SHA-256 digest: \K[0-9a-f]+' | head -1) || true
+
+          if [ -z "$FINGERPRINT" ]; then
+            echo "⚠️ Could not read a signing certificate; skipping."
+            echo "fingerprint=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
+          echo "🔑 Signing certificate SHA-256: $FINGERPRINT"
+
+          # The previous release's update.json records the fingerprint it shipped with.
+          # Fetching it is a few hundred bytes, so this check is effectively free.
+          PREVIOUS=$(curl -sS -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/xelpaxu/aedex/releases?per_page=5" \
+            | jq -r --arg tag "${{ steps.tag_gen.outputs.tag }}" \
+                '[.[] | select(.tag_name != $tag) | .assets[] | select(.name == "update.json") | .browser_download_url] | .[0] // ""' \
+            | head -1)
+
+          if [ -z "$PREVIOUS" ]; then
+            echo "ℹ️ No previous update.json found; treating this as the first release."
+            exit 0
+          fi
+
+          PREV_FINGERPRINT=$(curl -sS "$PREVIOUS" | jq -r '.signingFingerprint // ""')
+
+          if [ -n "$PREV_FINGERPRINT" ] && [ "$PREV_FINGERPRINT" != "$FINGERPRINT" ]; then
+            echo ""
+            echo "❌ SIGNING CERTIFICATE CHANGED"
+            echo "   previous: $PREV_FINGERPRINT"
+            echo "   current:  $FINGERPRINT"
+            echo "   Android cannot update an app with a different signature, so publishing"
+            echo "   this would make the in-app updater fail for every installed user."
+            exit 1
+          fi
+
+          echo "✅ Certificate matches the previous release."
+
+      - name: 📋 Generate update.json manifest
+        run: |
+          # The app polls this instead of the GitHub API: the CDN has no rate limit,
+          # which matters because every device fetches it and carriers NAT many
+          # users behind a single IP.
+          # Built with jq so a commit message containing quotes or newlines cannot
+          # produce malformed JSON.
+          jq -n \
+            --arg version "${{ steps.apk.outputs.version_name }}" \
+            --argjson buildNumber "${{ steps.apk.outputs.version_code }}" \
+            --argjson minSupported "${{ steps.apk.outputs.version_code }}" \
+            --arg mandatory "true" \
+            --arg notes "${{ github.event.head_commit.message }}" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg downloadUrl "https://github.com/xelpaxu/aedex/releases/download/${{ steps.tag_gen.outputs.tag }}/aedex-release.apk" \
+            --argjson sizeBytes "${{ steps.apk.outputs.size_bytes }}" \
+            --arg fingerprint "${{ steps.signing.outputs.fingerprint }}" \
+            '{
+              version: $version,
+              buildNumber: $buildNumber,
+              minSupportedBuildNumber: $minSupported,
+              mandatory: ($mandatory == "true"),
+              notes: $notes,
+              publishedAt: $publishedAt,
+              downloadUrl: $downloadUrl,
+              sizeBytes: $sizeBytes,
+              signingFingerprint: $fingerprint
+            }' > ./update.json
+
+          echo "📄 update.json:"
+          cat ./update.json
 
       - name: 🎉 Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_gen.outputs.tag }}
           name: AEDEX Release ${{ steps.tag_gen.outputs.tag }}
-          files: ./aedex-release.apk
+          files: |
+            ./aedex-release.apk
+            ./update.json
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -219,4 +339,7 @@ jobs:
           EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_bXVzaWNhbC1mb3dsLTM4LmNsZXJrLmFjY291bnRzLmRldiQ' }}
           EXPO_PUBLIC_CONVEX_URL: ${{ secrets.EXPO_PUBLIC_CONVEX_URL || 'https://admired-yak-177.convex.cloud' }}
         run: |
-          eas update --branch production --message "${{ github.event.head_commit.message }}"
+          # Targets the "production" channel declared on the production build profile
+          # in eas.json. app.json sets checkAutomatically=NEVER, so the app performs
+          # its own check and prompt rather than expo-updates doing it at launch.
+          eas update --channel production --message "${{ github.event.head_commit.message }}"

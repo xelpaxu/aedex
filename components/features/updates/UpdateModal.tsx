@@ -1,19 +1,17 @@
-import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Updates from "expo-updates";
 import {
   AlertTriangle,
   CheckCircle2,
   CloudDownload,
   Download,
+  ExternalLink,
   RotateCw,
-  Sparkles,
+  ShieldAlert,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Easing,
   Linking,
   Modal,
@@ -22,407 +20,413 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "../../../context/ThemeContext";
+import {
+  getCurrentBuildNumber,
+  getCurrentVersionName,
+  ReleaseManifest,
+} from "../../../services/update_service";
 
-const { width } = Dimensions.get("window");
+export type UpdateState =
+  | { phase: "idle" }
+  | { phase: "checking" }
+  | { phase: "ota_downloading" }
+  | { phase: "ota_ready" }
+  | { phase: "apk_available"; manifest: ReleaseManifest; error?: string }
+  | {
+      phase: "apk_downloading";
+      manifest: ReleaseManifest;
+      downloadedBytes: number;
+      totalBytes: number;
+      fraction: number;
+    }
+  | {
+      phase: "apk_ready";
+      manifest: ReleaseManifest;
+      downloadedBytes: number;
+      totalBytes: number;
+      error?: string;
+    }
+  | { phase: "apk_installing"; manifest: ReleaseManifest };
 
-export type UpdateStatus =
-  | "idle"
-  | "checking"
-  | "downloading"
-  | "ready"
-  | "apk_available"
-  | "up-to-date"
-  | "error";
-
-interface UpdateModalProps {
-  visible: boolean;
-  onFinish: () => void;
-  autoCheckOnMount?: boolean;
+export interface UpdateModalProps {
+  state: UpdateState;
+  onDownload: () => void;
+  onInstall: () => void;
+  onApplyOta: () => void;
+  onAllowInstall: () => void;
+  onCancelDownload: () => void;
 }
 
-interface NewReleaseInfo {
-  tagName: string;
-  releaseName: string;
-  downloadUrl: string;
-  htmlUrl: string;
+function formatBytes(bytes: number): string {
+  if (!bytes) return "--";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 export const UpdateModal: React.FC<UpdateModalProps> = ({
-  visible,
-  onFinish,
-  autoCheckOnMount = true,
+  state,
+  onDownload,
+  onInstall,
+  onApplyOta,
+  onAllowInstall,
+  onCancelDownload,
 }) => {
-  const [status, setStatus] = useState<UpdateStatus>("idle");
-  const [statusMessage, setStatusMessage] = useState("Checking for updates...");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const { colors } = useTheme();
 
-  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const [newRelease, setNewRelease] = useState<NewReleaseInfo | null>(null);
+  const phase = state.phase;
+  const busy =
+    phase === "checking" ||
+    phase === "ota_downloading" ||
+    phase === "apk_downloading" ||
+    phase === "apk_installing";
 
   useEffect(() => {
-    if (visible) {
-      Animated.timing(fadeAnim, {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
+  useEffect(() => {
+    if (!busy) return;
+    pulseAnim.setValue(1);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [busy, pulseAnim]);
+
+  // OTA has no byte-level progress, so drive an indeterminate sweep.
+  useEffect(() => {
+    if (phase !== "ota_downloading") {
+      progressAnim.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(progressAnim, {
         toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+        duration: 1400,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: false,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [phase, progressAnim]);
 
-      // Pulsing effect
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
+  const fraction =
+    phase === "apk_downloading"
+      ? state.fraction
+      : phase === "apk_ready"
+        ? 1
+        : 0;
 
-      if (autoCheckOnMount) {
-        handleCheckForUpdates();
-      }
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: fraction,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [fraction, progressAnim]);
+
+  if (phase === "idle" || phase === "checking") return null;
+
+  const manifest: ReleaseManifest | null =
+    phase === "ota_downloading" || phase === "ota_ready" ? null : state.manifest;
+
+  const title = (() => {
+    switch (phase) {
+      case "apk_available":
+        return "Update Required";
+      case "apk_downloading":
+        return "Downloading Update";
+      case "apk_ready":
+        return "Ready to Install";
+      case "apk_installing":
+        return "Installing Update";
+      case "ota_downloading":
+        return "Downloading Update";
+      case "ota_ready":
+        return "Update Ready";
+      default:
+        return "Update";
     }
-  }, [visible]);
+  })();
 
-  const checkGitHubRelease = async (): Promise<boolean> => {
-    try {
-      const res = await fetch(
-        "https://api.github.com/repos/xelpaxu/aedex/releases/latest",
-        {
-          headers: { Accept: "application/vnd.github.v3+json" },
-        },
-      );
-      if (!res.ok) return false;
-      const data = await res.json();
-      const tagName = data.tag_name || "";
-      const apkAsset = data.assets?.find((a: any) =>
-        a.name?.toLowerCase().endsWith(".apk"),
-      );
-      const downloadUrl = apkAsset?.browser_download_url || data.html_url;
-
-      const currentVersion = Constants.expoConfig?.version || "1.0.0";
-
-      // If GitHub release tag indicates a new major/minor build and has an APK asset
-      if (tagName && !tagName.includes(currentVersion) && apkAsset) {
-        setNewRelease({
-          tagName,
-          releaseName: data.name || tagName,
-          downloadUrl,
-          htmlUrl: data.html_url,
-        });
-        setStatus("apk_available");
-        setStatusMessage(
-          `New base release (${tagName}) with native updates is available for download.`,
-        );
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
+  const subtitle = (() => {
+    switch (phase) {
+      case "apk_available":
+        return manifest
+          ? `AEDEX ${manifest.version} is available. You must install it to continue.`
+          : "You must install it to continue.";
+      case "apk_downloading":
+        return "Keep AEDEX open until the download finishes.";
+      case "apk_ready":
+        return state.error ?? "The update is downloaded and ready to install.";
+      case "apk_installing":
+        return "Confirm the install in the system installer to continue.";
+      case "ota_downloading":
+        return "Fetching the latest app code...";
+      case "ota_ready":
+        return "Restart AEDEX to apply the update.";
+      default:
+        return "";
     }
-  };
+  })();
 
-  const handleCheckForUpdates = async () => {
-    // In local development or Expo Go, expo-updates does not run live OTA updates
-    if (__DEV__) {
-      setStatus("checking");
-      setStatusMessage("Development environment detected");
-
-      const timer = setTimeout(() => {
-        setStatus("up-to-date");
-        setStatusMessage("App is running latest local code");
-        const dismissTimer = setTimeout(() => {
-          onFinish();
-        }, 1200);
-        return () => clearTimeout(dismissTimer);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-
-    try {
-      setStatus("checking");
-      setStatusMessage("Connecting to AEDEX update channel...");
-
-      const update = await Updates.checkForUpdateAsync();
-
-      if (update.isAvailable) {
-        setStatus("downloading");
-        setStatusMessage("Downloading new AEDEX update package...");
-
-        // Animate progress bar smoothly to 85%
-        Animated.timing(progressAnim, {
-          toValue: 0.85,
-          duration: 3500,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: false,
-        }).start();
-
-        const result = await Updates.fetchUpdateAsync();
-
-        if (result.isNew) {
-          // Finish progress bar
-          Animated.timing(progressAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: false,
-          }).start();
-
-          setStatus("ready");
-          setStatusMessage("Update downloaded! Restart to apply changes now, or continue and apply on next launch.");
-          return;
-        }
-      }
-
-      // If no OTA update, check if there's a new standalone APK release on GitHub
-      const hasNewApk = await checkGitHubRelease();
-      if (!hasNewApk) {
-        setStatus("up-to-date");
-        setStatusMessage("You are running the latest AEDEX build");
-        setTimeout(onFinish, 1200);
-      }
-    } catch (err: any) {
-      console.warn("Update check error:", err);
-      // Fallback: check GitHub release on OTA error
-      const hasNewApk = await checkGitHubRelease();
-      if (!hasNewApk) {
-        setStatus("error");
-        setErrorMessage(err?.message || "Could not connect to update servers");
-        setTimeout(onFinish, 2500);
-      }
-    }
-  };
-
-  const handleSafeRestart = async () => {
-    setStatusMessage("Applying update and restarting AEDEX...");
-    // Stop ongoing animated loops to prevent native freeze
-    pulseAnim.stopAnimation();
-    fadeAnim.stopAnimation();
-
-    // Small delay allows the React view and native layout to stabilize before context recreation
-    setTimeout(async () => {
-      try {
-        await Updates.reloadAsync();
-      } catch (e) {
-        console.warn("ReloadAsync failed, proceeding:", e);
-        onFinish();
-      }
-    }, 400);
-  };
-
-  const handleDownloadApk = async () => {
-    if (newRelease?.downloadUrl) {
-      try {
-        await Linking.openURL(newRelease.downloadUrl);
-      } catch (err) {
-        console.error("Could not open download URL:", err);
-      }
-    }
-  };
-
-  if (!visible) return null;
-
+  const showProgress = phase === "apk_downloading" || phase === "ota_downloading";
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
   });
 
+  const icon = (() => {
+    switch (phase) {
+      case "apk_available":
+        return <Download size={36} color={colors.accent} />;
+      case "apk_downloading":
+      case "ota_downloading":
+        return (
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <CloudDownload size={36} color={colors.accent} />
+          </Animated.View>
+        );
+      case "apk_ready":
+        return <CheckCircle2 size={36} color={colors.safe} />;
+      case "apk_installing":
+        return (
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <RotateCw size={36} color={colors.accent} />
+          </Animated.View>
+        );
+      case "ota_ready":
+        return <CheckCircle2 size={36} color={colors.safe} />;
+      default:
+        return null;
+    }
+  })();
+
+  const needsInstallPermission =
+    phase === "apk_ready" && !!state.error;
+
   return (
     <Modal
-      transparent
-      visible={visible}
-      animationType="fade"
+      visible
+      animationType="none"
       statusBarTranslucent
+      // Hard block: back and dismiss are swallowed so a mandatory update cannot be skipped.
+      onRequestClose={() => {}}
     >
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-          {/* Glowing Header Gradient */}
+      <View style={[styles.backdrop, { backgroundColor: colors.bg }]}>
+        <Animated.View style={[styles.card, { opacity: fadeAnim, borderColor: colors.border }]}>
           <LinearGradient
-            colors={["rgba(79, 142, 247, 0.15)", "rgba(34, 211, 238, 0.03)"]}
-            style={styles.cardHeader}
+            colors={[colors.accentGlow, "rgba(0,0,0,0)"]}
+            style={styles.header}
           >
-            {/* Status Icon */}
-            <Animated.View
+            <View
               style={[
                 styles.iconWrapper,
-                (status === "checking" || status === "downloading") && {
-                  transform: [{ scale: pulseAnim }],
-                },
+                { backgroundColor: colors.surfaceRaised, borderColor: colors.borderBright },
               ]}
             >
-              {status === "checking" && (
-                <RotateCw size={34} color="#4F8EF7" />
-              )}
-              {status === "downloading" && (
-                <CloudDownload size={36} color="#22D3EE" />
-              )}
-              {status === "ready" && (
-                <CheckCircle2 size={36} color="#10B981" />
-              )}
-              {status === "apk_available" && (
-                <Download size={36} color="#38BDF8" />
-              )}
-              {status === "up-to-date" && (
-                <Sparkles size={34} color="#10B981" />
-              )}
-              {status === "error" && (
-                <AlertTriangle size={34} color="#F59E0B" />
-              )}
-            </Animated.View>
+              {icon}
+            </View>
 
-            <Text style={styles.title}>
-              {status === "ready"
-                ? "Update Ready"
-                : status === "downloading"
-                  ? "Updating AEDEX"
-                  : status === "apk_available"
-                    ? "New APK Available"
-                    : status === "up-to-date"
-                      ? "Up to Date"
-                      : status === "error"
-                        ? "Update Notice"
-                        : "Checking Updates"}
-            </Text>
+            <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSub }]}>{subtitle}</Text>
 
-            <Text style={styles.subtitle}>{statusMessage}</Text>
-
-            {/* Progress Bar for Downloading */}
-            {status === "downloading" && (
-              <View style={styles.progressTrack}>
-                <Animated.View
-                  style={[styles.progressBar, { width: progressWidth }]}
-                >
-                  <LinearGradient
-                    colors={["#4F8EF7", "#22D3EE"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </Animated.View>
+            {manifest ? (
+              <View style={[styles.versionPill, { backgroundColor: colors.surfaceElevated }]}>
+                <Text style={[styles.versionText, { color: colors.textSub }]}>
+                  v{getCurrentVersionName()} (build {getCurrentBuildNumber()}) → v
+                  {manifest.version} (build {manifest.buildNumber})
+                </Text>
               </View>
-            )}
+            ) : null}
 
-            {/* Ready Status: Safe Restart or Continue */}
-            {status === "ready" && (
-              <View style={styles.readyContainer}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.restartButton}
-                  onPress={handleSafeRestart}
-                >
-                  <LinearGradient
-                    colors={["#10B981", "#059669"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
-                  >
-                    <Text style={styles.restartButtonText}>Restart AEDEX Now</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+            {showProgress ? (
+              <View style={styles.progressBlock}>
+                <View style={[styles.progressTrack, { backgroundColor: colors.surfaceElevated }]}>
+                  <Animated.View style={[styles.progressBar, { width: progressWidth }]}>
+                    <LinearGradient
+                      colors={[colors.accent, colors.safe]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </Animated.View>
+                </View>
 
-                <TouchableOpacity
-                  style={[styles.skipButton, { marginTop: 10, alignSelf: "center" }]}
-                  onPress={onFinish}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.skipButtonText}>Apply on Next Launch</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* APK Available Status: Direct Download Button */}
-            {status === "apk_available" && (
-              <View style={styles.readyContainer}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.restartButton}
-                  onPress={handleDownloadApk}
-                >
-                  <LinearGradient
-                    colors={["#38BDF8", "#0284C7"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.buttonGradient}
-                  >
-                    <Text style={styles.restartButtonText}>
-                      Download APK ({newRelease?.tagName || "Latest"})
+                <View style={styles.progressMeta}>
+                  {phase === "apk_downloading" ? (
+                    <Text style={[styles.progressText, { color: colors.textDim }]}>
+                      {formatBytes(state.downloadedBytes)} of{" "}
+                      {formatBytes(state.totalBytes)} ·{" "}
+                      {Math.floor(state.fraction * 100)}%
                     </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                  ) : (
+                    <ActivityIndicator size="small" color={colors.accent} />
+                  )}
+                  {phase === "apk_downloading" ? (
+                    <TouchableOpacity onPress={onCancelDownload} hitSlop={10}>
+                      <Text style={[styles.linkText, { color: colors.textSub }]}>Cancel</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
-            )}
+            ) : null}
 
-            {/* Error, skip, or continue button */}
-            {(status === "error" ||
-              status === "up-to-date" ||
-              status === "apk_available") && (
-                <TouchableOpacity
-                  style={styles.skipButton}
-                  onPress={onFinish}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.skipButtonText}>Continue to App</Text>
-                </TouchableOpacity>
-              )}
-
-            {/* Spinner indicator during check */}
-            {status === "checking" && (
-              <View style={styles.spinnerRow}>
-                <ActivityIndicator size="small" color="#4F8EF7" />
-                <Text style={styles.spinnerText}>Syncing with server...</Text>
+            {needsInstallPermission ? (
+              <View style={[styles.warnRow, { backgroundColor: colors.warnGlow }]}>
+                <ShieldAlert size={18} color={colors.warn} />
+                <Text style={[styles.warnText, { color: colors.warn }]}>
+                  Android needs permission for AEDEX to install updates.
+                </Text>
               </View>
-            )}
-          </LinearGradient>
+            ) : null}
+
+            {phase === "apk_available" && state.error ? (
+              <View style={[styles.warnRow, { backgroundColor: colors.dangerGlow }]}>
+                <AlertTriangle size={18} color={colors.danger} />
+                <Text style={[styles.warnText, { color: colors.danger }]}>{state.error}</Text>
+              </View>
+            ) : null}
+
+            {manifest?.notes ? (
+              <View style={[styles.notes, { borderColor: colors.border }]}>
+                <Text style={[styles.notesText, { color: colors.textSub }]} numberOfLines={4}>
+                  {manifest.notes}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* ---- Actions ---- */}
+            {phase === "apk_available" ? (
+              <PrimaryButton label={state.error ? "Try Download Again" : "Download Update"} onPress={onDownload} />
+            ) : null}
+
+            {phase === "apk_ready" ? (
+              <>
+                {needsInstallPermission ? (
+                  <PrimaryButton label="Allow Installation" onPress={onAllowInstall} />
+                ) : null}
+                {needsInstallPermission ? (
+                  <TouchableOpacity style={styles.secondary} onPress={onInstall}>
+                    <Text style={[styles.secondaryText, { color: colors.textSub }]}>
+                      I have allowed it — install now
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <PrimaryButton label="Install Now" onPress={onInstall} />
+                )}
+              </>
+            ) : null}
+
+            {phase === "apk_installing" ? (
+              <View style={styles.waitRow}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={[styles.waitText, { color: colors.textDim }]}>
+                  Waiting for the system installer...
+                </Text>
+              </View>
+            ) : null}
+
+            {phase === "ota_ready" ? (
+              <PrimaryButton label="Restart AEDEX" onPress={onApplyOta} />
+            ) : null}
+
+            {phase === "apk_available" || phase === "apk_ready" ? (
+              <TouchableOpacity
+                style={styles.secondary}
+                onPress={() => Linking.openURL(manifest!.downloadUrl)}
+              >
+                <Text style={[styles.secondaryText, { color: colors.textDim }]}>
+                  <ExternalLink size={13} /> Download manually instead
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            </LinearGradient>
         </Animated.View>
       </View>
     </Modal>
   );
 };
 
+const PrimaryButton: React.FC<{ label: string; onPress: () => void }> = ({
+  label,
+  onPress,
+}) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      style={styles.primary}
+      onPress={onPress}
+    >
+      <LinearGradient
+        colors={[colors.accent, colors.safe]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.primaryGradient}
+      >
+        <Text style={styles.primaryText}>{label}</Text>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
-  overlay: {
+  backdrop: {
     flex: 1,
-    backgroundColor: "rgba(5, 8, 14, 0.88)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
   },
   card: {
-    width: Math.min(width - 48, 380),
-    backgroundColor: "#101622",
+    width: "100%",
+    maxWidth: 380,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(79, 142, 247, 0.22)",
     overflow: "hidden",
-    shadowColor: "#4F8EF7",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
     elevation: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
   },
-  cardHeader: {
+  header: {
     paddingVertical: 32,
     paddingHorizontal: 24,
     alignItems: "center",
+    gap: 0,
   },
   iconWrapper: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "rgba(22, 28, 42, 0.9)",
     borderWidth: 1,
-    borderColor: "rgba(79, 142, 247, 0.3)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 18,
@@ -430,7 +434,6 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "Manrope_700Bold",
     fontSize: 20,
-    color: "#FFFFFF",
     marginBottom: 8,
     textAlign: "center",
     letterSpacing: 0.3,
@@ -438,66 +441,115 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
-    color: "#94A3B8",
     textAlign: "center",
     lineHeight: 19,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  versionPill: {
     paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    marginBottom: 4,
+  },
+  versionText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    textAlign: "center",
+  },
+  progressBlock: {
+    width: "100%",
+    marginTop: 20,
   },
   progressTrack: {
     width: "100%",
-    height: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 3,
+    height: 7,
+    borderRadius: 4,
     overflow: "hidden",
-    marginVertical: 12,
   },
   progressBar: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: 4,
   },
-  readyContainer: {
+  progressMeta: {
     width: "100%",
-    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
   },
-  restartButton: {
+  progressText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+  },
+  linkText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+  },
+  warnRow: {
     width: "100%",
-    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  warnText: {
+    flex: 1,
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  notes: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+  },
+  notesText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  primary: {
+    width: "100%",
+    height: 50,
     borderRadius: 14,
     overflow: "hidden",
+    marginTop: 20,
   },
-  buttonGradient: {
+  primaryGradient: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  restartButtonText: {
+  primaryText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
     color: "#FFFFFF",
   },
-  skipButton: {
-    marginTop: 6,
+  secondary: {
+    marginTop: 12,
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
-  skipButtonText: {
+  secondaryText: {
     fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: "#CBD5E1",
+    fontSize: 12,
   },
-  spinnerRow: {
+  waitRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 10,
-    marginTop: 8,
+    marginTop: 22,
   },
-  spinnerText: {
+  waitText: {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
-    color: "#64748B",
   },
 });
 

@@ -1,4 +1,3 @@
-import { AccessProvider } from "../context/AccessContext";
 // app/_layout.tsx
 import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import {
@@ -13,10 +12,11 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StatusBar, Text, View } from "react-native";
+import { StatusBar, Text, View } from "react-native";
 import SplashScreenView from "../components/SplashScreen";
-import { UpdateModal } from "../components/features/updates/UpdateModal";
+import { AccessProvider } from "../context/AccessContext";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { UpdateProvider } from "../context/UpdateProvider";
 import { tokenCache } from "../lib/cache";
 
 const PUBLISHABLE_KEY =
@@ -48,11 +48,36 @@ function getConvexClient() {
 function RootLayoutNav() {
   const { isSignedIn } = useAuth();
   const { isDark, colors } = useTheme();
-  return <><StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg}/>
-    <Stack screenOptions={{headerShown:false,contentStyle:{backgroundColor:colors.bg}}}>
-      <Stack.Protected guard={!isSignedIn}><Stack.Screen name="(auth)"/></Stack.Protected>
-      <Stack.Protected guard={!!isSignedIn}><Stack.Screen name="(root)"/></Stack.Protected>
-    </Stack></>;
+  return (
+    <>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+        <Stack.Protected guard={!isSignedIn}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!isSignedIn}>
+          <Stack.Screen name="(root)" />
+        </Stack.Protected>
+      </Stack>
+    </>
+  );
+}
+
+/**
+ * Rendered after fonts load. The custom splash plays once, then the router mounts.
+ * The update gate lives above this in UpdateProvider, so it stays mounted across
+ * the splash-to-app transition and keeps checking while the user works.
+ */
+function AppShell() {
+  const [splashDone, setSplashDone] = useState(false);
+
+  const onSplashFinish = useCallback(() => {
+    setSplashDone(true);
+  }, []);
+
+  if (!splashDone) return <SplashScreenView onFinish={onSplashFinish} />;
+
+  return <RootLayoutNav />;
 }
 
 function RootLayoutContent() {
@@ -64,10 +89,6 @@ function RootLayoutContent() {
     Inter_700Bold,
   });
 
-  const [splashDone, setSplashDone] = useState(false);
-  const [showUpdateCheck, setShowUpdateCheck] = useState(false);
-  const [appReady, setAppReady] = useState(false);
-
   // Hide native splash once fonts are ready
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -75,71 +96,12 @@ function RootLayoutContent() {
     }
   }, [fontsLoaded, fontError]);
 
-  const onSplashFinish = useCallback(() => {
-    setSplashDone(true);
-    // Open the update check modal right after splash screen
-    setShowUpdateCheck(true);
-  }, []);
-
-  const onUpdateCheckFinish = useCallback(() => {
-    setShowUpdateCheck(false);
-    setTimeout(() => {
-      setAppReady(true);
-    }, 200);
-  }, []);
-
   // While fonts are loading, render nothing (native splash stays visible)
   if (!fontsLoaded && !fontError) return null;
 
-  // Fonts loaded but custom splash hasn't finished yet
-  if (!splashDone) {
-    const convex = getConvexClient();
-
-    return (
-      <ClerkProvider tokenCache={tokenCache} publishableKey={PUBLISHABLE_KEY}>
-        <ClerkLoaded>
-          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <SplashScreenView onFinish={onSplashFinish} />
-          </ConvexProviderWithClerk>
-        </ClerkLoaded>
-      </ClerkProvider>
-    );
-  }
-
-  // Update check modal right after splash screen
-  if (showUpdateCheck) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "#0B0E14" }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
-        <UpdateModal
-          visible={showUpdateCheck}
-          onFinish={onUpdateCheckFinish}
-          autoCheckOnMount={true}
-        />
-      </View>
-    );
-  }
-
-  // ========== FIX: Wait for app to be ready before mounting ==========
-  if (!appReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#0B0E14",
-        }}
-      >
-        <ActivityIndicator size="large" color="#4F8EF7" />
-        <Text style={{ color: "#697A9B", marginTop: 12, fontSize: 12 }}>
-          Initializing...
-        </Text>
-      </View>
-    );
-  }
-
-  // Everything ready — show the app
+  // Providers stay mounted for the whole session. Previously this component
+  // returned four different trees, which tore down and rebuilt Clerk and Convex
+  // on every splash transition and left no stable place to mount a global gate.
   const convex = getConvexClient();
 
   return (
@@ -147,7 +109,11 @@ function RootLayoutContent() {
       <ClerkLoaded>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ThemeProvider>
-            <AccessProvider><RootLayoutNav /></AccessProvider>
+            <UpdateProvider>
+              <AccessProvider>
+                <AppShell />
+              </AccessProvider>
+            </UpdateProvider>
           </ThemeProvider>
         </ConvexProviderWithClerk>
       </ClerkLoaded>
@@ -163,7 +129,6 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
-
 
 class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
