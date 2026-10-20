@@ -199,6 +199,10 @@ export async function fetchOtaUpdate(): Promise<boolean> {
 }
 
 export async function reloadToApplyOtaUpdate(): Promise<void> {
+  if (__DEV__ || !Updates.isEnabled) {
+    console.log("[update] reloadAsync skipped in DEV or when updates are disabled");
+    return;
+  }
   await Updates.reloadAsync();
 }
 

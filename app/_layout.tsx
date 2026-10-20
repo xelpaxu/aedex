@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import { ClerkLoaded, ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -11,9 +11,12 @@ import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useCallback, useEffect, useState } from "react";
-import { StatusBar, Text, View } from "react-native";
+import React, { useEffect, useSyncExternalStore } from "react";
+import { ActivityIndicator, StatusBar, Text, View } from "react-native";
 import SplashScreenView from "../components/SplashScreen";
+import ReturningUserScreen from "../components/ReturningUserScreen";
+import BrandMascot from "../components/BrandMascot";
+import { startupState } from "../lib/startupState";
 import { AccessProvider } from "../context/AccessContext";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { UpdateProvider } from "../context/UpdateProvider";
@@ -63,21 +66,36 @@ function RootLayoutNav() {
   );
 }
 
-/**
- * Rendered after fonts load. The custom splash plays once, then the router mounts.
- * The update gate lives above this in UpdateProvider, so it stays mounted across
- * the splash-to-app transition and keeps checking while the user works.
- */
+function SessionGate() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const state = useSyncExternalStore(startupState.subscribe, startupState.getSnapshot, startupState.getSnapshot);
+  const { colors } = useTheme();
+  useEffect(() => {
+    if (isLoaded) startupState.resolveAuth(!!isSignedIn);
+  }, [isLoaded, isSignedIn]);
+  if (!isLoaded || !state.authReady) {
+    return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+      <ActivityIndicator color={colors.accent}/>
+      <Text style={{ color: colors.textSub, marginTop: 12 }}>Checking your saved session...</Text>
+    </View>;
+  }
+  // Only a session restored on launch asks for confirmation. A fresh login
+  // proceeds directly, and signing out cannot reopen the startup animation.
+  if (isSignedIn && state.needsChoice)
+    return <ReturningUserScreen onContinue={startupState.continueSession}/>;
+  return <AccessProvider><RootLayoutNav/></AccessProvider>;
+}
+
 function AppShell() {
-  const [splashDone, setSplashDone] = useState(false);
-
-  const onSplashFinish = useCallback(() => {
-    setSplashDone(true);
-  }, []);
-
-  if (!splashDone) return <SplashScreenView onFinish={onSplashFinish} />;
-
-  return <RootLayoutNav />;
+  const state = useSyncExternalStore(startupState.subscribe, startupState.getSnapshot, startupState.getSnapshot);
+  if (!state.splashDone) return <SplashScreenView onFinish={startupState.finishSplash}/>;
+  return (
+    <ClerkProvider tokenCache={tokenCache} publishableKey={PUBLISHABLE_KEY}>
+      <ConvexProviderWithClerk client={getConvexClient()} useAuth={useAuth}>
+        <SessionGate/>
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  );
 }
 
 function RootLayoutContent() {
@@ -99,26 +117,8 @@ function RootLayoutContent() {
   // While fonts are loading, render nothing (native splash stays visible)
   if (!fontsLoaded && !fontError) return null;
 
-  // Providers stay mounted for the whole session. Previously this component
-  // returned four different trees, which tore down and rebuilt Clerk and Convex
-  // on every splash transition and left no stable place to mount a global gate.
-  const convex = getConvexClient();
-
-  return (
-    <ClerkProvider tokenCache={tokenCache} publishableKey={PUBLISHABLE_KEY}>
-      <ClerkLoaded>
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <ThemeProvider>
-            <UpdateProvider>
-              <AccessProvider>
-                <AppShell />
-              </AccessProvider>
-            </UpdateProvider>
-          </ThemeProvider>
-        </ConvexProviderWithClerk>
-      </ClerkLoaded>
-    </ClerkProvider>
-  );
+  // Splash state lives above authentication; Clerk changes cannot replay it.
+  return <ThemeProvider><UpdateProvider><AppShell/></UpdateProvider></ThemeProvider>;
 }
 
 interface ErrorBoundaryProps {
@@ -157,6 +157,7 @@ class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundar
           }}
         >
           <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
+          <BrandMascot pose="error" size={180}/>
           <Text style={{ color: "#EF4444", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>
             AEDEX Startup Warning
           </Text>

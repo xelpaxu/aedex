@@ -2,9 +2,10 @@ import { Image } from "expo-image";
 import React from "react";
 
 const poses = {
-  login: require("../assets/images/branding/login.webp"),
-  normal: require("../assets/images/branding/normal.webp"),
-  success: require("../assets/images/branding/success.webp"),
+  error: require("../assets/images/404.png"),
+  login: require("../assets/images/login.png"),
+  normal: require("../assets/images/normal pose.png"),
+  success: require("../assets/images/sucess.png"),
 };
 
 /** Decorative artwork; surrounding text carries the screen's meaning. */

@@ -231,12 +231,19 @@ export const UpdateProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [setIfMounted]);
 
   const applyOtaUpdate = useCallback(async () => {
-    try {
-      await reloadToApplyOtaUpdate();
-    } catch (err) {
-      console.warn("[update] reload failed:", err);
-    }
-  }, []);
+    // 1. Immediately dismiss modal and switch to non-dialog reloading view
+    setIfMounted({ phase: "ota_reloading" });
+
+    // 2. Wait 500ms so touch events finish and native Android Dialog is completely unmounted
+    setTimeout(async () => {
+      try {
+        await reloadToApplyOtaUpdate();
+      } catch (err) {
+        console.warn("[update] reload failed:", err);
+        setIfMounted({ phase: "ota_ready" });
+      }
+    }, 500);
+  }, [setIfMounted]);
 
   const value = useMemo<UpdateContextValue>(
     () => ({

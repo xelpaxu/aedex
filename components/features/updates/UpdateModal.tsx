@@ -32,6 +32,7 @@ export type UpdateState =
   | { phase: "checking" }
   | { phase: "ota_downloading" }
   | { phase: "ota_ready" }
+  | { phase: "ota_reloading" }
   | { phase: "apk_available"; manifest: ReleaseManifest; error?: string }
   | {
       phase: "apk_downloading";
@@ -151,6 +152,48 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   }, [fraction, progressAnim]);
 
   if (phase === "idle" || phase === "checking") return null;
+
+  if (phase === "ota_reloading") {
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            backgroundColor: colors.bg,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+            zIndex: 999999,
+            elevation: 999,
+          },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text
+          style={{
+            fontFamily: "Manrope_700Bold",
+            fontSize: 18,
+            color: colors.text,
+            marginTop: 18,
+            textAlign: "center",
+          }}
+        >
+          Restarting AEDEX
+        </Text>
+        <Text
+          style={{
+            fontFamily: "Inter_400Regular",
+            fontSize: 13,
+            color: colors.textSub,
+            marginTop: 6,
+            textAlign: "center",
+          }}
+        >
+          Applying latest update...
+        </Text>
+      </View>
+    );
+  }
 
   const manifest: ReleaseManifest | null =
     phase === "ota_downloading" || phase === "ota_ready" ? null : state.manifest;

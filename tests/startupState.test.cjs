@@ -1,0 +1,51 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const ts = require("typescript");
+const Module = require("node:module");
+const path = require("node:path");
+const source = path.join(__dirname, "../lib/startupState.ts");
+const compiled = ts.transpileModule(fs.readFileSync(source, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } });
+const mod = new Module(source);
+mod._compile(compiled.outputText, source);
+const { createStartupState } = mod.exports;
+test("startup splash completes once and never replays during login or logout", () => {
+  const state = createStartupState();
+  state.finishSplash();
+  state.resolveAuth(false);
+  state.resolveAuth(true);
+  assert.deepEqual(state.getSnapshot(), { splashDone: true, authReady: true, needsChoice: false });
+  state.resolveAuth(false);
+  state.resolveAuth(true);
+  assert.equal(state.getSnapshot().splashDone, true);
+  assert.equal(state.getSnapshot().needsChoice, false);
+});
+test("restored sessions wait for Continue before entering; refreshes preserve the choice", () => {
+  const state = createStartupState();
+  state.finishSplash();
+  state.resolveAuth(true);
+  assert.equal(state.getSnapshot().needsChoice, true);
+  state.resolveAuth(true);
+  assert.equal(state.getSnapshot().needsChoice, true);
+  state.continueSession();
+  state.resolveAuth(true);
+  assert.equal(state.getSnapshot().needsChoice, false);
+});
+test("switching accounts and expired sessions return to login without another splash", () => {
+  const state = createStartupState();
+  state.finishSplash(); state.resolveAuth(true);
+  state.resolveAuth(false);
+  assert.equal(state.getSnapshot().needsChoice, false);
+  state.resolveAuth(true);
+  assert.equal(state.getSnapshot().needsChoice, false);
+  assert.equal(state.getSnapshot().splashDone, true);
+});
+test("a new process asks again, while component remounts retain the same state", () => {
+  const previous = createStartupState();
+  previous.finishSplash(); previous.resolveAuth(true); previous.continueSession();
+  const nextLaunch = createStartupState();
+  assert.equal(nextLaunch.getSnapshot().splashDone, false);
+  nextLaunch.resolveAuth(true);
+  assert.equal(nextLaunch.getSnapshot().needsChoice, true);
+  assert.equal(previous.getSnapshot().needsChoice, false);
+});
