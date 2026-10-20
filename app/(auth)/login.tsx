@@ -1,3 +1,4 @@
+import BrandMascot from "@/components/BrandMascot";
 import { useOAuth, useSignIn } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Link } from "expo-router";
@@ -6,7 +7,6 @@ import { AlertCircle, Eye, EyeOff, Lock, Mail, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -302,11 +302,9 @@ export default function LoginScreen() {
         >
           {/* ── Brand & Welcome ── */}
           <View style={styles.header}>
-            <Image
-              source={require("../../assets/logo/aedex.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.mascot}>
+              <BrandMascot pose="login" size={132} />
+            </View>
             <Text style={styles.appTitle}>AEDEX</Text>
             <Text style={styles.appSubtitle}>VECTOR SURVEILLANCE & TRIAGE</Text>
             <Text style={styles.title}>Sign in to your account</Text>
@@ -601,9 +599,7 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       alignItems: "center",
       marginBottom: 26,
     },
-    logo: {
-      width: 80,
-      height: 80,
+    mascot: {
       marginBottom: 12,
     },
     appTitle: {

@@ -1,3 +1,4 @@
+import BrandMascot from "@/components/BrandMascot";
 import ReportStatsCard from "@/components/features/reports/ReportStatCard";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
@@ -597,6 +598,7 @@ export default function ReportsScreen() {
           >
             {communityReports.length === 0 ? (
               <View style={styles.emptyCard}>
+                <BrandMascot size={104} />
                 <Text style={styles.emptyText}>No community reports yet.</Text>
               </View>
             ) : (
@@ -652,6 +654,7 @@ export default function ReportsScreen() {
           <View style={styles.card}>
             {myReports.length === 0 ? (
               <View style={styles.emptyInCard}>
+                <BrandMascot size={104} />
                 <Text style={styles.emptyText}>No reports submitted yet.</Text>
               </View>
             ) : (
@@ -793,7 +796,7 @@ const createStyles = (C: ThemeColors) =>
     tabTextActive: { color: "#FFFFFF" },
 
     // Scroll
-    scroll: { paddingBottom: 20 },
+    scroll: { paddingBottom: 130 },
 
     // Hero
     heroRow: {
@@ -839,5 +842,5 @@ const createStyles = (C: ThemeColors) =>
       padding: 24,
       alignItems: "center",
     },
-    emptyText: { color: C.textSub, fontSize: 13 },
+    emptyText: { color: C.textSub, fontSize: 13, marginTop: 12, textAlign: "center" },
   });

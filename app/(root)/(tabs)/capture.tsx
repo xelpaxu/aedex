@@ -1,7 +1,8 @@
+import BrandMascot from "@/components/BrandMascot";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
-import { Camera, Check, Images, Upload } from "lucide-react-native";
+import { Camera, Images, Upload } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -146,9 +147,7 @@ const SuccessToast = ({
         },
       ]}
     >
-      <View style={[toastStyles.dot, { backgroundColor: C.safe }]}>
-        <Check color="#FFFFFF" size={12} strokeWidth={3.5} />
-      </View>
+      <BrandMascot pose="success" size={44} />
       <Text style={[toastStyles.text, { color: C.safe }]}>Image queued</Text>
     </Animated.View>
   );
@@ -273,7 +272,6 @@ export default function CaptureScreen() {
         image={selectedImage}
         metadata={{
           timestamp: new Date().toLocaleString(),
-          location: "Detected Location",
           lat: location?.lat ?? 0,
           lng: location?.lng ?? 0,
         }}

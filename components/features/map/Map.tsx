@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./MapControls";
 import { PIN_DATA_URIS } from "./pinAssets";
 import { useProfile } from "@/context/AccessContext";
@@ -121,6 +122,7 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.bg}; }
+    .leaflet-bottom { bottom: 110px; }
     .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
     
     @keyframes bluePulse {
@@ -1443,6 +1445,7 @@ export default function MapComponent({
   }, []);
 
   const isLoading = allReports === undefined;
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(C), [C]);
 
   return (
@@ -1470,7 +1473,7 @@ export default function MapComponent({
         </View>
 
         {/* ── RIGHT FLOATING CONTROLS ── */}
-        <View style={styles.rightPanel}>
+        <View style={[styles.rightPanel, { bottom: 94 + insets.bottom }]}>
           <FloatBtn
             icon={LocateFixed}
             accessibilityLabel="Center map on my location"
@@ -1486,7 +1489,7 @@ export default function MapComponent({
 
         {/* ── BOTTOM MAP LEGEND (Hidden when report detail sheet is active or in expanded mode) ── */}
         {!selectedReport && !isExpanded && (
-          <View style={styles.legend}>
+          <View style={[styles.legend, { bottom: 94 + insets.bottom }]}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: C.danger }]} />
               <Text style={styles.legendText}>Critical</Text>
@@ -1506,7 +1509,7 @@ export default function MapComponent({
         )}
 
         {(isLoading || !mapReady) && (
-          <View style={styles.statusOverlayBox}>
+          <View style={[styles.statusOverlayBox, { top: isExpanded ? 136 : 280 }]}>
             <ActivityIndicator size="small" color={C.accent} />
             <Text style={styles.statusOverlayText}>
               {isLoading ? "Loading surveillance data…" : "Acquiring GPS fix…"}
@@ -1514,7 +1517,7 @@ export default function MapComponent({
           </View>
         )}
         {!isLoading && mapReady && verifiedHotspots.length === 0 && (
-          <View style={styles.statusOverlayBox}>
+          <View style={[styles.statusOverlayBox, { top: isExpanded ? 136 : 280 }]}>
             <Text style={styles.statusOverlayText}>
               No reports matching current filter
             </Text>
@@ -1523,6 +1526,7 @@ export default function MapComponent({
       </Animated.View>
 
       {/* Enhanced Bottom sheet / Snackbar for report detail */}
+      <View pointerEvents="box-none" style={[StyleSheet.absoluteFillObject, { bottom: 94 + insets.bottom }]}>
       <ReportBottomSheet
         report={selectedReport}
         userPos={userPos}
@@ -1539,6 +1543,7 @@ export default function MapComponent({
           }
         }}
       />
+      </View>
     </View>
   );
 }
@@ -1688,7 +1693,7 @@ const createStyles = (C: ThemeColors) =>
     statusOverlayBox: {
       position: "absolute",
       alignSelf: "center",
-      top: 142,
+      top: 280,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,

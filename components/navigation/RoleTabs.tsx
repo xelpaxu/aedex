@@ -35,13 +35,26 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
       screenOptions={{
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: C.textSub,
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarStyle: {
-          height: 60 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 6),
+          position: "absolute",
+          left: 18,
+          right: 18,
+          bottom: Math.max(insets.bottom, 12),
+          height: 70,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderRadius: 26,
           backgroundColor: C.surface,
-          borderTopColor: C.border,
+          borderWidth: 1,
+          borderColor: C.borderBright,
+          borderTopWidth: 1,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.22,
+          shadowRadius: 18,
+          elevation: 12,
         },
         header: ({ options }) => (
           <View
@@ -82,14 +95,14 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
             <Pressable
               accessibilityLabel="Notifications"
               onPress={() => router.push("/notifications")}
-              style={{ padding: 11 }}
+              style={{ padding: 11, backgroundColor: C.surfaceRaised, borderRadius: 14, borderWidth: 1, borderColor: C.border }}
             >
               <Bell color={C.textSub} size={20} />
             </Pressable>
             <Pressable
               accessibilityLabel="Settings"
               onPress={() => router.push("/settings")}
-              style={{ padding: 11 }}
+              style={{ padding: 11, backgroundColor: C.surfaceRaised, borderRadius: 14, borderWidth: 1, borderColor: C.border }}
             >
               <Settings color={C.textSub} size={20} />
             </Pressable>
@@ -104,7 +117,20 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
           options={{
             title,
             headerShown: name !== "profile",
-            tabBarIcon: ({ color, size }) => <Icon color={color} size={size} />,
+            tabBarIcon: ({ color, focused }) => (
+              <View style={{
+                width: name === "capture" ? 52 : 44,
+                height: name === "capture" ? 52 : 32,
+                marginTop: name === "capture" ? -20 : 0,
+                borderRadius: name === "capture" ? 19 : 12,
+                alignItems: "center", justifyContent: "center",
+                backgroundColor: name === "capture" ? accent : focused ? (tanod ? C.warnGlow : C.accentGlow) : "transparent",
+                borderWidth: name === "capture" ? 3 : 0,
+                borderColor: C.surface,
+              }}>
+                <Icon color={name === "capture" ? "#FFFFFF" : color} size={name === "capture" ? 26 : 21} strokeWidth={focused ? 2.5 : 1.8} />
+              </View>
+            ),
           }}
         />
       ))}

@@ -1,5 +1,5 @@
 import { useProfile } from "@/context/AccessContext";
-import { hasPilotBarangay } from "@/constants/access";
+import { formatReportLocation, hasPilotBarangay } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
 import { useAction, useConvexAuth } from "convex/react";
 import { BlurView } from "expo-blur";
@@ -34,7 +34,6 @@ import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 interface Metadata {
   timestamp: string;
-  location: string;
   lat: number;
   lng: number;
 }
@@ -108,6 +107,7 @@ export default function CapturePreview({
 
   const { isAuthenticated } = useConvexAuth();
   const runAnalysis = useAction(api.analysis.processAndSaveReport);
+  const locationLabel = formatReportLocation(profile?.barangay);
 
   const handleAnalyze = async () => {
     if (!isAuthenticated) {
@@ -125,7 +125,7 @@ export default function CapturePreview({
         description,
         lat: metadata?.lat || 0,
         lng: metadata?.lng || 0,
-        locationName: metadata?.location || "Unknown",
+        locationName: locationLabel,
       });
       router.push({ pathname: "/results", params: { reportId } });
     } catch (err: any) {
@@ -258,7 +258,7 @@ export default function CapturePreview({
                     ]}
                     numberOfLines={1}
                   >
-                    {metadata?.location ?? "Location unavailable"}
+                    {locationLabel}
                   </Text>
                 </View>
               </View>

@@ -1,3 +1,4 @@
+import BrandMascot from "@/components/BrandMascot";
 import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import {
@@ -35,10 +36,11 @@ export default function Settings() {
           >
             <ArrowLeft color={C.text} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: C.text }}>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: C.text }}>
             Settings
           </Text>
         </View>
+        <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginTop: -12 }}>Make Aedex feel like yours. Manage your account and the way you see your community.</Text>
         <Pressable
           onPress={() => router.push("/edit-profile")}
           style={{
@@ -47,12 +49,12 @@ export default function Settings() {
             gap: 14,
             padding: 18,
             backgroundColor: C.surface,
-            borderRadius: 18,
+            borderRadius: 24,
             borderWidth: 1,
             borderColor: C.border,
           }}
         >
-          <UserRound color={C.accent} />
+          <View style={{ padding: 14, borderRadius: 18, backgroundColor: C.accentGlow }}><UserRound color={C.accent} size={26} /></View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>
               {profile?.fullName || "Your profile"}
@@ -84,6 +86,11 @@ export default function Settings() {
                   backgroundColor: C.surface,
                 }}
               >
+                <View style={{ height: 72, padding: 9, borderRadius: 10, backgroundColor: mode === "light" ? "#F6F7F9" : "#0B0E14", gap: 6 }}>
+                  <View style={{ width: "55%", height: 6, borderRadius: 3, backgroundColor: mode === "light" ? "#94A3B8" : "#64748B" }} />
+                  <View style={{ flex: 1, borderRadius: 7, backgroundColor: mode === "light" ? "#FFFFFF" : "#202735" }} />
+                  <View style={{ alignSelf: "center", width: "75%", height: 10, borderRadius: 5, backgroundColor: C.accent }} />
+                </View>
                 {mode === "light" ? (
                   <Sun color={C.accent} />
                 ) : (
@@ -104,7 +111,10 @@ export default function Settings() {
             gap: 5,
           }}
         >
-          <Text style={{ color: C.text, fontWeight: "600" }}>About Aedex</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+            <BrandMascot size={64} />
+            <View style={{ flex: 1 }}><Text style={{ color: C.text, fontSize: 19, fontWeight: "800", letterSpacing: 2 }}>AEDEX</Text><Text style={{ color: C.accent, fontSize: 10, fontWeight: "700", marginTop: 4 }}>LOOK OUT FOR YOUR COMMUNITY</Text></View>
+          </View>
           <Text style={{ color: C.textSub }}>
             Version {getCurrentVersionName()}
           </Text>
