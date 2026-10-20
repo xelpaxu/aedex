@@ -10,10 +10,13 @@ import {
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
   const { colors: C } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const unread = (useQuery(api.notifications.getUnreadCount) as number | undefined) ?? 0;
   const accent = tanod ? C.warn : C.accent;
   const screens = tanod
     ? [
@@ -91,7 +94,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Notifications"
+              accessibilityLabel={`Notifications${unread ? `, ${unread} unread` : ''}`}
               onPress={() => router.push("/notifications")}
               style={{
                 padding: 11,
@@ -102,6 +105,9 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               }}
             >
               <Bell color={C.textSub} size={20} />
+              {unread > 0 && <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
+              </View>}
             </Pressable>
             <Pressable
               accessibilityRole="button"

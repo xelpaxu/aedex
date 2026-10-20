@@ -1,473 +1,94 @@
-import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Bell,
-  CheckCheck,
-  CheckCircle2,
-  ChevronRight,
-  ClipboardList,
-  RefreshCw,
-  X,
-} from "lucide-react-native";
-import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "@/convex/_generated/api";
-import { Doc } from "@/convex/_generated/dataModel";
-import { useTheme } from "@/context/ThemeContext";
+import React, { useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Bell, CheckCheck, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useRouter } from 'expo-router';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
+import { useTheme } from '@/context/ThemeContext';
+import { dateLabel, imageSource, notificationLabels, type InboxNotification } from '@/lib/notifications';
+import NotificationDetail from '@/components/NotificationDetail';
 
-type Notification = Doc<"notifications">;
-const kinds = {
-  assignment: { label: "Assignment", icon: ClipboardList },
-  status_change: { label: "Status update", icon: RefreshCw },
-  resolved: { label: "Resolved", icon: CheckCircle2 },
-};
-const kindOf = (type: string) =>
-  kinds[type as keyof typeof kinds] || {
-    label: "Community update",
-    icon: Bell,
-  };
-const formatTime = (time: number) => {
-  const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
-  return minutes < 1
-    ? "Just now"
-    : minutes < 60
-      ? `${minutes}m ago`
-      : minutes < 1440
-        ? `${Math.floor(minutes / 60)}h ago`
-        : new Date(time).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          });
-};
+function NotificationRow({ item, onOpen }: { item: InboxNotification; onOpen: () => void }) {
+  const { colors: C } = useTheme();
+  const preview = useQuery(api.notifications.getNotificationPreview, item.reportId ? { notificationId: item._id } : 'skip') as { imageUri: string } | null | undefined;
+  const uri = imageSource(preview?.imageUri);
+  const [failed, setFailed] = useState(false);
+  const personal = !!item.validation;
+  const Icon = item.type === 'verification_undone' ? RefreshCw : personal || item.type === 'resolved' ? CheckCircle2 : Bell;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${item.read ? '' : 'Unread: '}${item.title}. View details`} onPress={onOpen}
+    style={{ flexDirection: 'row', gap: 12, padding: 16, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: item.read ? C.border : C.accent + '70' }}>
+    {uri && !failed ? <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: 58, height: 66, borderRadius: 12 }} />
+      : <View style={{ width: 54, height: 54, borderRadius: 16, backgroundColor: C.accentGlow, alignItems: 'center', justifyContent: 'center' }}><Icon color={C.accent} size={23} /></View>}
+    <View style={{ flex: 1, gap: 6 }}>
+      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <Text style={{ flex: 1, color: C.accent, fontWeight: '700', fontSize: 11 }}>{notificationLabels[item.type] || 'Community update'}</Text>
+        {!item.read && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent }} />}
+      </View>
+      <Text style={{ color: C.text, fontSize: 15, lineHeight: 21, fontWeight: item.read ? '600' : '700' }}>{item.title}</Text>
+      <Text numberOfLines={2} style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>{item.message}</Text>
+      {!!item.validation?.locationName && <Text numberOfLines={1} style={{ color: C.textSub, fontSize: 12 }}>{item.validation.locationName}</Text>}
+      <Text style={{ color: C.textDim, fontSize: 11 }}>{dateLabel(item.createdAt)}</Text>
+    </View>
+    <ChevronRight size={16} color={C.textDim} style={{ alignSelf: 'center' }} />
+  </Pressable>;
+}
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const { colors: C } = useTheme();
-  const notifications = useQuery(api.notifications.getMyNotifications);
-  const markAsRead = useMutation(api.notifications.markAsRead);
-  const markAllAsRead = useMutation(api.notifications.markAllAsRead);
-  const [selected, setSelected] = useState<Notification | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [selected, setSelected] = useState<Id<'notifications'> | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const unread = notifications?.filter((n) => !n.read).length ?? 0;
-  const visible = notifications?.filter((n) => !unreadOnly || !n.read);
-  const detail =
-    notifications?.find((n) => n._id === selected?._id) ?? selected;
-  const open = (notification: Notification) => {
-    setSelected(notification);
-    setError("");
-    if (!notification.read)
-      void markAsRead({ notificationId: notification._id }).catch(() =>
-        setError(
-          "Could not mark this update as read. Close and reopen it to retry.",
-        ),
-      );
-  };
+  const [error, setError] = useState('');
+  const { results, status, loadMore } = usePaginatedQuery(api.notifications.getMyNotificationsPage, { unreadOnly }, { initialNumItems: 15 });
+  const unread = (useQuery(api.notifications.getUnreadCount) as number | undefined) ?? 0;
+  const markAllAsRead = useMutation(api.notifications.markAllAsRead);
   const readAll = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      await markAllAsRead();
-    } catch {
-      setError("Could not mark updates as read. Please try again.");
-    } finally {
-      setBusy(false);
-    }
+    setBusy(true); setError('');
+    try { await markAllAsRead(); } catch { setError('Could not mark updates as read. Please try again.'); }
+    finally { setBusy(false); }
   };
-  const DetailIcon = kindOf(detail?.type || "").icon;
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: 18,
-          gap: 20,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            onPress={() =>
-              router.canGoBack() ? router.back() : router.replace("/(root)")
-            }
-            style={{
-              padding: 12,
-              borderRadius: 14,
-              backgroundColor: C.surface,
-            }}
-          >
-            <ArrowLeft size={20} color={C.text} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Mark all notifications as read"
-            disabled={!unread || busy}
-            onPress={readAll}
-            style={{
-              flexDirection: "row",
-              gap: 6,
-              alignItems: "center",
-              padding: 12,
-              opacity: unread ? 1 : 0.4,
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator color={C.accent} />
-            ) : (
-              <CheckCheck size={18} color={C.accent} />
-            )}
-            <Text style={{ color: C.accent, fontSize: 12, fontWeight: "600" }}>
-              Mark all read
-            </Text>
-          </Pressable>
-        </View>
-        <View style={{ gap: 6 }}>
-          <Text
-            style={{
-              color: C.text,
-              fontSize: 28,
-              fontFamily: "Manrope_700Bold",
-            }}
-          >
-            Notifications
-          </Text>
-          <Text style={{ color: C.textSub, fontSize: 14 }}>
-            {unread
-              ? `${unread} unread ${unread === 1 ? "update" : "updates"} from your community`
-              : "Your reports and community updates, in one place."}
-          </Text>
-        </View>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {[false, true].map((value) => (
-            <Pressable
-              key={String(value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: unreadOnly === value }}
-              onPress={() => setUnreadOnly(value)}
-              style={{
-                minHeight: 44,
-                paddingHorizontal: 18,
-                justifyContent: "center",
-                borderRadius: 22,
-                backgroundColor: unreadOnly === value ? C.accent : C.surface,
-                borderWidth: 1,
-                borderColor: unreadOnly === value ? C.accent : C.border,
-              }}
-            >
-              <Text
-                style={{
-                  color: unreadOnly === value ? "#fff" : C.textSub,
-                  fontWeight: "600",
-                  fontSize: 13,
-                }}
-              >
-                {value ? `Unread (${unread})` : "All updates"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {!!error && !detail && (
-          <Text accessibilityRole="alert" style={{ color: C.danger }}>
-            {error}
-          </Text>
-        )}
+  return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 18, gap: 18 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(root)')} style={{ padding: 12, borderRadius: 14, backgroundColor: C.surface }}><ArrowLeft size={20} color={C.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Mark all notifications as read" disabled={!unread || busy} onPress={readAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, padding: 12, opacity: unread ? 1 : 0.4 }}>
+          {busy ? <ActivityIndicator color={C.accent} /> : <CheckCheck size={18} color={C.accent} />}
+          <Text style={{ color: C.accent, fontWeight: '600', fontSize: 12 }}>Mark all read</Text>
+        </Pressable>
       </View>
-      {notifications === undefined ? (
-        <ActivityIndicator style={{ marginTop: 60 }} color={C.accent} />
-      ) : (
-        <FlatList
-          data={visible}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingBottom: 24,
-            flexGrow: 1,
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          ListEmptyComponent={
-            <View style={{ alignItems: "center", padding: 32, gap: 12 }}>
-              <View
-                style={{
-                  padding: 22,
-                  borderRadius: 28,
-                  backgroundColor: C.accentGlow,
-                }}
-              >
-                <Bell color={C.accent} size={30} />
-              </View>
-              <Text
-                style={{
-                  color: C.text,
-                  fontSize: 18,
-                  fontFamily: "Inter_600SemiBold",
-                }}
-              >
-                {unreadOnly ? "You're all caught up" : "No updates yet"}
-              </Text>
-              <Text
-                style={{
-                  color: C.textSub,
-                  textAlign: "center",
-                  lineHeight: 21,
-                }}
-              >
-                {unreadOnly
-                  ? "New unread notifications will appear here."
-                  : "Report activity and assignments will appear here. Tap an update to see its details."}
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const { icon: Icon, label } = kindOf(item.type);
-            const color = item.type === "resolved" ? C.safe : C.accent;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${item.read ? "" : "Unread: "}${item.title}. View details`}
-                onPress={() => open(item)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "flex-start",
-                  gap: 12,
-                  padding: 16,
-                  borderRadius: 18,
-                  backgroundColor: C.surface,
-                  borderWidth: 1,
-                  borderColor: item.read ? C.border : C.accent + "60",
-                }}
-              >
-                <View
-                  style={{
-                    padding: 11,
-                    backgroundColor:
-                      item.type === "resolved" ? C.safeGlow : C.accentGlow,
-                    borderRadius: 14,
-                  }}
-                >
-                  <Icon size={20} color={color} />
-                </View>
-                <View style={{ flex: 1, gap: 6 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        flex: 1,
-                        color,
-                        fontSize: 11,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {label}
-                    </Text>
-                    {!item.read && (
-                      <View
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: 4,
-                          backgroundColor: C.accent,
-                        }}
-                      />
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      color: C.text,
-                      fontSize: 15,
-                      fontFamily: "Inter_600SemiBold",
-                      lineHeight: 21,
-                    }}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    numberOfLines={2}
-                    style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}
-                  >
-                    {item.message}
-                  </Text>
-                  <Text
-                    style={{ color: C.textDim, fontSize: 11, marginTop: 2 }}
-                  >
-                    {formatTime(item.createdAt)}
-                  </Text>
-                </View>
-                <ChevronRight
-                  size={16}
-                  color={C.textDim}
-                  style={{ alignSelf: "center" }}
-                />
-              </Pressable>
-            );
-          }}
-        />
-      )}
-      <Modal
-        visible={!!detail}
-        animationType="slide"
-        onRequestClose={() => setSelected(null)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              padding: 16,
-              borderBottomWidth: 1,
-              borderColor: C.border,
-            }}
-          >
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 16,
-                color: C.text,
-                fontFamily: "Inter_600SemiBold",
-              }}
-            >
-              Notification details
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close notification details"
-              onPress={() => setSelected(null)}
-              style={{ padding: 12 }}
-            >
-              <X size={22} color={C.text} />
-            </Pressable>
-          </View>
-          {detail && (
-            <ScrollView
-              contentContainerStyle={{
-                padding: 24,
-                gap: 22,
-                width: "100%",
-                maxWidth: 600,
-                alignSelf: "center",
-              }}
-            >
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  padding: 18,
-                  borderRadius: 22,
-                  backgroundColor: C.accentGlow,
-                }}
-              >
-                <DetailIcon size={30} color={C.accent} />
-              </View>
-              <View style={{ gap: 10 }}>
-                <Text
-                  style={{ color: C.accent, fontWeight: "600", fontSize: 13 }}
-                >
-                  {kindOf(detail.type).label}
-                </Text>
-                <Text
-                  style={{
-                    color: C.text,
-                    fontSize: 26,
-                    lineHeight: 34,
-                    fontFamily: "Manrope_700Bold",
-                  }}
-                >
-                  {detail.title}
-                </Text>
-                <Text style={{ color: C.textSub, fontSize: 13 }}>
-                  {new Date(detail.createdAt).toLocaleString(undefined, {
-                    dateStyle: "long",
-                    timeStyle: "short",
-                  })}
-                </Text>
-              </View>
-              <View style={{ height: 1, backgroundColor: C.border }} />
-              <Text
-                selectable
-                style={{ color: C.text, fontSize: 16, lineHeight: 27 }}
-              >
-                {detail.message}
-              </Text>
-              {detail.reportId && (
-                <View
-                  style={{
-                    padding: 18,
-                    borderRadius: 16,
-                    backgroundColor: C.surface,
-                    gap: 8,
-                  }}
-                >
-                  <Text style={{ color: C.text, fontWeight: "600" }}>
-                    Related report
-                  </Text>
-                  <Text selectable style={{ color: C.textSub, fontSize: 12 }}>
-                    Reference: {detail.reportId}
-                  </Text>
-                  <Text
-                    style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}
-                  >
-                    Open the report to see the site, evidence and current
-                    status.
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setSelected(null);
-                      router.push({
-                        pathname: "/results",
-                        params: { reportId: detail.reportId! },
-                      });
-                    }}
-                    style={{
-                      marginTop: 6,
-                      flexDirection: "row",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: 8,
-                      minHeight: 48,
-                      borderRadius: 12,
-                      backgroundColor: C.accent,
-                    }}
-                  >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
-                      View report
-                    </Text>
-                    <ArrowRight size={18} color="#fff" />
-                  </Pressable>
-                </View>
-              )}
-              {!!error && (
-                <Text accessibilityRole="alert" style={{ color: C.danger }}>
-                  {error}
-                </Text>
-              )}
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
-  );
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: C.text, fontSize: 28, fontFamily: 'Manrope_700Bold' }}>Notifications</Text>
+        <Text style={{ color: C.textSub, fontSize: 14 }}>{unread ? `${unread} unread ${unread === 1 ? 'update' : 'updates'}` : 'Your reports and community updates, in one place.'}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[false, true].map(value => <Pressable key={String(value)} accessibilityRole="button" accessibilityState={{ selected: unreadOnly === value }} onPress={() => setUnreadOnly(value)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 22, backgroundColor: unreadOnly === value ? C.accent : C.surface, borderWidth: 1, borderColor: unreadOnly === value ? C.accent : C.border }}>
+          <Text style={{ color: unreadOnly === value ? '#fff' : C.textSub, fontWeight: '600', fontSize: 13 }}>{value ? `Unread (${unread})` : 'All updates'}</Text>
+        </Pressable>)}
+      </View>
+      {!!error && <Text accessibilityRole="alert" style={{ color: C.danger }}>{error}</Text>}
+    </View>
+    {status === 'LoadingFirstPage' ? <ActivityIndicator style={{ marginTop: 60 }} color={C.accent} /> : <FlatList
+      data={results as InboxNotification[]}
+      keyExtractor={item => item._id}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 }}
+      ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      onEndReached={() => { if (status === 'CanLoadMore') loadMore(15); }}
+      onEndReachedThreshold={0.3}
+      ListEmptyComponent={<View style={{ padding: 32, gap: 12, alignItems: 'center' }}>
+        <Bell color={C.accent} size={32} />
+        <Text style={{ color: C.text, fontSize: 18, fontWeight: '700' }}>{unreadOnly ? "You're all caught up" : 'No updates yet'}</Text>
+        <Text style={{ color: C.textSub, textAlign: 'center', lineHeight: 21 }}>When an officer validates your report, its image, location and review details will appear here.</Text>
+      </View>}
+      ListFooterComponent={status === 'LoadingMore' ? <ActivityIndicator color={C.accent} style={{ padding: 20 }} /> : status === 'CanLoadMore' ? <Pressable accessibilityRole="button" onPress={() => loadMore(15)} style={{ padding: 20, alignItems: 'center' }}><Text style={{ color: C.accent, fontWeight: '600' }}>Load older updates</Text></Pressable> : null}
+      renderItem={({ item }) => <NotificationRow item={item} onOpen={() => setSelected(item._id)} />}
+    />}
+    <Modal visible={selected !== null} animationType="slide" onRequestClose={() => setSelected(null)}>
+      {selected && <NotificationDetail key={selected} notificationId={selected} onClose={() => setSelected(null)} />}
+    </Modal>
+  </SafeAreaView>;
 }
