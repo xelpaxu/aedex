@@ -1,167 +1,432 @@
-import BrandMascot from "@/components/BrandMascot";
 import { useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import {
   ArrowLeft,
+  Bell,
+  Check,
   ChevronRight,
-  UserRound,
-  Sun,
-  Moon,
+  LayoutDashboard,
   LogOut,
+  Moon,
   RefreshCw,
+  Sun,
+  UserRound,
 } from "lucide-react-native";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useProfile } from "@/context/AccessContext";
+import { hasTanodAccess } from "@/constants/access";
 import { useUpdate } from "@/context/UpdateProvider";
 import { getCurrentVersionName } from "@/services/update_service";
+
 export default function Settings() {
   const { colors: C, theme, setTheme } = useTheme();
   const profile = useProfile();
+  const tanod = hasTanodAccess(profile);
   const { signOut } = useAuth();
   const router = useRouter();
   const { state, checkNow } = useUpdate();
+  const [signingOut, setSigningOut] = useState(false);
+  const [error, setError] = useState("");
+  const [checked, setChecked] = useState(false);
   const checking = state.phase === "checking";
+  const section = {
+    color: C.text,
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 12,
+  };
+  const row = {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    padding: 17,
+    minHeight: 76,
+  };
+  const panel = {
+    backgroundColor: C.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: C.border,
+    overflow: "hidden" as const,
+  };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 24 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: 36,
+          gap: 28,
+          maxWidth: 640,
+          width: "100%",
+          alignSelf: "center",
+        }}
+      >
+        <View style={{ gap: 20 }}>
           <Pressable
+            accessibilityRole="button"
             accessibilityLabel="Back"
-            hitSlop={12}
             onPress={() =>
               router.canGoBack() ? router.back() : router.replace("/(root)")
             }
+            style={{
+              alignSelf: "flex-start",
+              padding: 12,
+              backgroundColor: C.surface,
+              borderRadius: 14,
+            }}
           >
-            <ArrowLeft color={C.text} />
+            <ArrowLeft color={C.text} size={20} />
           </Pressable>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: C.text }}>
-            Settings
-          </Text>
+          <View style={{ gap: 6 }}>
+            <Text
+              style={{
+                color: C.text,
+                fontFamily: "Manrope_700Bold",
+                fontSize: 28,
+              }}
+            >
+              Settings
+            </Text>
+            <Text style={{ color: C.textSub, fontSize: 14 }}>
+              Your account, your preferences.
+            </Text>
+          </View>
         </View>
-        <Text style={{ color: C.textSub, fontSize: 14, lineHeight: 21, marginTop: -12 }}>Make Aedex feel like yours. Manage your account and the way you see your community.</Text>
         <Pressable
-          onPress={() => router.push("/edit-profile")}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            padding: 18,
-            backgroundColor: C.surface,
-            borderRadius: 24,
-            borderWidth: 1,
-            borderColor: C.border,
-          }}
+          accessibilityRole="button"
+          accessibilityLabel="View your profile"
+          onPress={() =>
+            router.push(
+              tanod ? "/(root)/(tanod-tabs)/profile" : "/(root)/(tabs)/profile",
+            )
+          }
+          style={[
+            panel,
+            {
+              padding: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+            },
+          ]}
         >
-          <View style={{ padding: 14, borderRadius: 18, backgroundColor: C.accentGlow }}><UserRound color={C.accent} size={26} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>
+          <View
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 20,
+              backgroundColor: C.accentGlow,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: C.accent,
+                fontFamily: "Manrope_700Bold",
+                fontSize: 22,
+              }}
+            >
+              {profile?.fullName?.trim().charAt(0).toUpperCase() || "A"}
+            </Text>
+          </View>
+          <View style={{ flex: 1, gap: 5 }}>
+            <Text
+              style={{
+                color: C.text,
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 17,
+              }}
+            >
               {profile?.fullName || "Your profile"}
             </Text>
-            <Text style={{ color: C.textSub, marginTop: 4 }}>
-              {profile?.barangay} · Edit personal details
+            <Text style={{ color: C.textSub, fontSize: 12 }}>
+              {profile?.barangay || "Community member"}
+            </Text>
+            <Text style={{ color: C.accent, fontSize: 12 }}>
+              {tanod ? "Tanod profile" : "View your profile"}
             </Text>
           </View>
-          <ChevronRight color={C.textSub} />
+          <ChevronRight color={C.textDim} size={20} />
         </Pressable>
-        <View style={{ gap: 12 }}>
-          <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>
-            Appearance
-          </Text>
+        <View>
+          <Text style={section}>Appearance</Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
-            {(["light", "dark"] as const).map((mode) => (
-              <Pressable
-                key={mode}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: theme === mode }}
-                onPress={() => setTheme(mode)}
-                style={{
-                  flex: 1,
-                  padding: 20,
-                  gap: 12,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: theme === mode ? C.accent : C.border,
-                  backgroundColor: C.surface,
-                }}
-              >
-                <View style={{ height: 72, padding: 9, borderRadius: 10, backgroundColor: mode === "light" ? "#F6F7F9" : "#0B0E14", gap: 6 }}>
-                  <View style={{ width: "55%", height: 6, borderRadius: 3, backgroundColor: mode === "light" ? "#94A3B8" : "#64748B" }} />
-                  <View style={{ flex: 1, borderRadius: 7, backgroundColor: mode === "light" ? "#FFFFFF" : "#202735" }} />
-                  <View style={{ alignSelf: "center", width: "75%", height: 10, borderRadius: 5, backgroundColor: C.accent }} />
-                </View>
-                {mode === "light" ? (
-                  <Sun color={C.accent} />
-                ) : (
-                  <Moon color={C.accent} />
-                )}
-                <Text style={{ color: C.text, fontWeight: "600" }}>
-                  {mode === "light" ? "Light" : "Dark"}
+            {(["light", "dark"] as const).map((mode) => {
+              const active = theme === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${mode} appearance`}
+                  accessibilityState={{ checked: active }}
+                  onPress={() => setTheme(mode)}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    gap: 14,
+                    borderRadius: 18,
+                    borderWidth: 2,
+                    borderColor: active ? C.accent : C.border,
+                    backgroundColor: C.surface,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: 88,
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: mode === "light" ? "#F1F3F6" : "#0B0E14",
+                      gap: 8,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: "48%",
+                        height: 5,
+                        borderRadius: 3,
+                        backgroundColor:
+                          mode === "light" ? "#64748B" : "#9AA8BD",
+                      }}
+                    />
+                    <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
+                      <View
+                        style={{
+                          width: "28%",
+                          borderRadius: 5,
+                          backgroundColor:
+                            mode === "light" ? "#DBEAFE" : "#1D3457",
+                        }}
+                      />
+                      <View
+                        style={{
+                          flex: 1,
+                          borderRadius: 5,
+                          backgroundColor:
+                            mode === "light" ? "#fff" : "#202735",
+                        }}
+                      />
+                    </View>
+                    <View
+                      style={{
+                        alignSelf: "center",
+                        width: "64%",
+                        height: 9,
+                        borderRadius: 5,
+                        backgroundColor: "#2563EB",
+                      }}
+                    />
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 7,
+                    }}
+                  >
+                    {mode === "light" ? (
+                      <Sun size={17} color={C.textSub} />
+                    ) : (
+                      <Moon size={17} color={C.textSub} />
+                    )}
+                    <Text
+                      style={{
+                        flex: 1,
+                        color: C.text,
+                        fontWeight: "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      {mode === "light" ? "Light" : "Dark"}
+                    </Text>
+                    <View
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: active ? C.accent : C.borderBright,
+                        backgroundColor: active ? C.accent : "transparent",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {active && <Check color="#fff" size={13} />}
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        <View>
+          <Text style={section}>Account & activity</Text>
+          <View style={panel}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/edit-profile")}
+              style={row}
+            >
+              <UserRound color={C.accent} size={21} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
+                  style={{ color: C.text, fontWeight: "600", fontSize: 14 }}
+                >
+                  Personal details
                 </Text>
-              </Pressable>
-            ))}
+                <Text style={{ color: C.textSub, fontSize: 12 }}>
+                  Manage your community profile
+                </Text>
+              </View>
+              <ChevronRight color={C.textDim} size={18} />
+            </Pressable>
+            <View
+              style={{ height: 1, backgroundColor: C.border, marginLeft: 52 }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/notifications")}
+              style={row}
+            >
+              <Bell color={C.accent} size={21} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
+                  style={{ color: C.text, fontWeight: "600", fontSize: 14 }}
+                >
+                  Notifications
+                </Text>
+                <Text style={{ color: C.textSub, fontSize: 12 }}>
+                  Report updates and assignments
+                </Text>
+              </View>
+              <ChevronRight color={C.textDim} size={18} />
+            </Pressable>
+            {tanod && (
+              <>
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: C.border,
+                    marginLeft: 52,
+                  }}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push("/(root)/(tanod-tabs)/dashboard")}
+                  style={row}
+                >
+                  <LayoutDashboard color={C.warn} size={21} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text
+                      style={{ color: C.text, fontWeight: "600", fontSize: 14 }}
+                    >
+                      Team dashboard
+                    </Text>
+                    <Text style={{ color: C.textSub, fontSize: 12 }}>
+                      Your field operations overview
+                    </Text>
+                  </View>
+                  <ChevronRight color={C.textDim} size={18} />
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
-        <View
-          style={{
-            padding: 18,
-            backgroundColor: C.surface,
-            borderRadius: 16,
-            gap: 5,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <BrandMascot size={64} />
-            <View style={{ flex: 1 }}><Text style={{ color: C.text, fontSize: 19, fontWeight: "800", letterSpacing: 2 }}>AEDEX</Text><Text style={{ color: C.accent, fontSize: 10, fontWeight: "700", marginTop: 4 }}>LOOK OUT FOR YOUR COMMUNITY</Text></View>
+        <View>
+          <Text style={section}>About Aedex</Text>
+          <View style={panel}>
+            <View style={{ padding: 18, gap: 6 }}>
+              <Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>
+                Community dengue surveillance
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 12 }}>
+                Version {getCurrentVersionName()} / Pilot program
+              </Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: C.border }} />
+            <Pressable
+              accessibilityRole="button"
+              disabled={checking}
+              onPress={async () => {
+                setError("");
+                try {
+                  await checkNow();
+                  setChecked(true);
+                } catch {
+                  setError("Could not check for updates. Try again.");
+                }
+              }}
+              style={row}
+            >
+              {checking ? (
+                <ActivityIndicator color={C.accent} />
+              ) : (
+                <RefreshCw size={20} color={C.accent} />
+              )}
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text
+                  style={{ color: C.text, fontSize: 14, fontWeight: "600" }}
+                >
+                  {checking ? "Checking for updates..." : "Check for updates"}
+                </Text>
+                <Text style={{ color: C.textSub, fontSize: 12 }}>
+                  {checked && state.phase === "idle"
+                    ? "Update check complete"
+                    : "Keep Aedex up to date"}
+                </Text>
+              </View>
+              <ChevronRight color={C.textDim} size={18} />
+            </Pressable>
           </View>
-          <Text style={{ color: C.textSub }}>
-            Version {getCurrentVersionName()}
-          </Text>
-          <Text style={{ color: C.textSub, fontSize: 13 }}>
-            Community dengue surveillance · Pilot program
-          </Text>
         </View>
+        {!!error && (
+          <Text accessibilityRole="alert" style={{ color: C.danger }}>
+            {error}
+          </Text>
+        )}
         <Pressable
-          onPress={() => void checkNow()}
-          disabled={checking}
-          style={{
-            padding: 18,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            borderRadius: 16,
-            backgroundColor: C.surface,
-            opacity: checking ? 0.6 : 1,
+          accessibilityRole="button"
+          disabled={signingOut}
+          onPress={async () => {
+            setSigningOut(true);
+            setError("");
+            try {
+              await signOut();
+            } catch {
+              setError("Could not sign out. Please try again.");
+              setSigningOut(false);
+            }
           }}
-        >
-          {checking ? (
-            <ActivityIndicator size="small" color={C.accent} />
-          ) : (
-            <RefreshCw color={C.accent} size={20} />
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: C.text, fontWeight: "600" }}>
-              Check for updates
-            </Text>
-            <Text style={{ color: C.textSub, fontSize: 13 }}>
-              {checking ? "Checking…" : "AEDEX updates itself automatically"}
-            </Text>
-          </View>
-        </Pressable>
-        <Pressable
-          onPress={() => void signOut()}
           style={{
-            padding: 16,
+            minHeight: 52,
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
-            borderRadius: 14,
+            justifyContent: "center",
+            gap: 10,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: C.danger + "40",
             backgroundColor: C.dangerGlow,
           }}
         >
-          <LogOut color={C.danger} size={20} />
-          <Text style={{ color: C.danger, fontWeight: "600" }}>Sign out</Text>
+          {signingOut ? (
+            <ActivityIndicator color={C.danger} />
+          ) : (
+            <LogOut color={C.danger} size={19} />
+          )}
+          <Text style={{ color: C.danger, fontWeight: "600" }}>
+            {signingOut ? "Signing out..." : "Sign out"}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

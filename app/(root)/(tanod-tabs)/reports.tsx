@@ -1,96 +1,400 @@
-import { ThemeColors, useTheme } from "@/context/ThemeContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useProfile } from "@/context/AccessContext";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { CheckCircle2, ChevronRight, Clock3, ListFilter, MapPin, Search, ShieldAlert, X } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { CheckCheck, Search, Users, X } from "lucide-react-native";
+import React, { useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
-
-type Filter = "ALL" | "CRITICAL" | "PENDING" | "RESOLVED";
-type ReportItem = { _id: string; status?: string; locationName?: string; address?: string; reasoning?: string; notes?: string; imageUri?: string; reportImage?: string; _creationTime?: number };
-const done = (item: ReportItem) => item.status === "Resolved" || item.status === "Completed";
-const urgent = (item: ReportItem) => item.status === "CRITICAL" || item.status === "HIGH RISK";
-const imageUri = (value?: string) => !value ? "" : value.startsWith("data:") || value.startsWith("http") ? value : `data:image/jpeg;base64,${value}`;
+import AssignmentCard from "@/components/features/reports/AssignmentCard";
+import { filterReports, reportCounts, ReportFilter } from "@/lib/tanodReports";
 
 export default function TanodReportsScreen() {
   const router = useRouter();
   const { colors: C } = useTheme();
-  const [filter, setFilter] = useState<Filter>("ALL");
+  const profile = useProfile();
+  const insets = useSafeAreaInsets();
+  const [scope, setScope] = useState<"mine" | "others">("mine");
+  const [filter, setFilter] = useState<ReportFilter>("all");
   const [query, setQuery] = useState("");
-  const currentUser = useQuery(api.users.getMe);
-  const assignedReports = useQuery(api.reports.getAssignedReports);
-  const styles = useMemo(() => createStyles(C), [C]);
-  const reports = useMemo(
-    () => (assignedReports ?? []) as ReportItem[],
-    [assignedReports],
+  const [team, setTeam] = useState("");
+  const assignments = useQuery(api.reports.getAssignedReports, {
+    scope: "barangay",
+  });
+  const mine = useMemo(
+    () => assignments?.filter((item) => item.isMine) ?? [],
+    [assignments],
   );
-  const counts = useMemo(() => {
-    let critical = 0, pending = 0, resolved = 0;
-    for (const item of reports) {
-      if (done(item)) resolved += 1;
-      else {
-        pending += 1;
-        if (urgent(item)) critical += 1;
-      }
-    }
-    return { all: reports.length, critical, pending, resolved };
-  }, [reports]);
-  const visibleReports = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return reports.filter((item) => {
-      const matchesFilter = filter === "ALL" || (filter === "CRITICAL" && urgent(item) && !done(item)) || (filter === "PENDING" && !done(item)) || (filter === "RESOLVED" && done(item));
-      if (!matchesFilter || !term) return matchesFilter;
-      return `${item.locationName ?? ""} ${item.address ?? ""} ${item.reasoning ?? ""}`.toLowerCase().includes(term);
-    });
-  }, [filter, query, reports]);
-  const openReport = useCallback((id: string) => router.push({ pathname: "/results", params: { reportId: id } }), [router]);
-
-  if (assignedReports === undefined) return <View style={styles.loading}><Image source={require("../../../assets/images/pin_moderate.png")} style={styles.loadingPin} resizeMode="contain" /><ActivityIndicator color={C.accent} /><Text style={styles.loadingText}>Syncing assignment queue…</Text></View>;
-
+  const others = useMemo(
+    () => assignments?.filter((item) => !item.isMine) ?? [],
+    [assignments],
+  );
+  const teams = useMemo(
+    () =>
+      Array.from(
+        new Map(others.map((item) => [item.teamId, item.teamName])).entries(),
+      ).sort((a, b) => a[1].localeCompare(b[1])),
+    [others],
+  );
+  const scoped = useMemo(
+    () =>
+      scope === "mine"
+        ? mine
+        : others.filter((item) => !team || item.teamId === team),
+    [scope, mine, others, team],
+  );
+  const counts = reportCounts(scoped);
+  const visible = useMemo(
+    () => filterReports(scoped, filter, query),
+    [scoped, filter, query],
+  );
+  const narrowed = !!query || filter !== "all" || !!team;
+  const reset = () => {
+    setQuery("");
+    setFilter("all");
+    setTeam("");
+  };
+  const filters: [ReportFilter, string][] = [
+    ["all", "All"],
+    ["active", "Active"],
+    ["critical", "Critical"],
+    ["resolved", "Resolved"],
+  ];
   return (
-    <View style={styles.root}>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
       <FlatList
-        data={visibleReports}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <ReportCard item={item} onPress={openReport} C={C} />}
-        contentContainerStyle={styles.list}
+        data={visible}
+        keyExtractor={(item) => item.assignmentId}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={<>
-          <View style={styles.hero}>
-            <View style={styles.heroIcon}><ShieldAlert color={C.accent} size={22} /></View>
-            <View style={styles.heroBody}><Text style={styles.eyebrow}>Field assignments</Text><Text style={styles.title}>Response queue</Text><Text style={styles.subtitle}>Barangay {currentUser?.barangay || "operations"} · {counts.pending} active</Text></View>
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: 100 + Math.max(insets.bottom, 12),
+          maxWidth: 680,
+          width: "100%",
+          alignSelf: "center",
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        renderItem={({ item }) => (
+          <AssignmentCard
+            item={item}
+            onPress={() =>
+              router.push({
+                pathname: "/results",
+                params: { reportId: item._id },
+              })
+            }
+          />
+        )}
+        ListHeaderComponent={
+          <View style={{ gap: 18, paddingBottom: 14 }}>
+            <View style={{ gap: 6 }}>
+              <Text
+                style={{
+                  color: C.text,
+                  fontFamily: "Manrope_700Bold",
+                  fontSize: 26,
+                }}
+              >
+                Field reports
+              </Text>
+              <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>
+                Follow your assignments and team activity in{" "}
+                {profile?.assignedBarangay || "your barangay"}.
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                padding: 4,
+                borderRadius: 16,
+                backgroundColor: C.surfaceRaised,
+              }}
+            >
+              {(["mine", "others"] as const).map((value) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: scope === value }}
+                  onPress={() => {
+                    setScope(value);
+                    reset();
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: 48,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 7,
+                    backgroundColor:
+                      scope === value ? C.surface : "transparent",
+                    borderWidth: 1,
+                    borderColor:
+                      scope === value ? C.borderBright : "transparent",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: scope === value ? C.text : C.textSub,
+                      fontSize: 13,
+                      fontFamily: "Inter_600SemiBold",
+                    }}
+                  >
+                    {value === "mine" ? "My team" : "Other teams"}
+                  </Text>
+                  {assignments !== undefined && (
+                    <Text
+                      style={{
+                        color: scope === value ? C.warn : C.textDim,
+                        fontSize: 12,
+                      }}
+                    >
+                      {value === "mine" ? mine.length : others.length}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+            {scope === "others" && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  alignItems: "flex-start",
+                }}
+              >
+                <Users color={C.textSub} size={16} />
+                <Text
+                  style={{
+                    flex: 1,
+                    color: C.textSub,
+                    fontSize: 12,
+                    lineHeight: 18,
+                  }}
+                >
+                  Browse other tanod teams&apos; assignments. Their reports are
+                  available to view.
+                </Text>
+              </View>
+            )}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                minHeight: 48,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 14,
+                backgroundColor: C.surface,
+              }}
+            >
+              <Search size={18} color={C.textDim} />
+              <TextInput
+                accessibilityLabel="Search reports by location or team"
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search location, team or report"
+                placeholderTextColor={C.textDim}
+                style={{
+                  flex: 1,
+                  color: C.text,
+                  fontSize: 13,
+                  paddingVertical: 13,
+                }}
+                returnKeyType="search"
+              />
+              {!!query && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  onPress={() => setQuery("")}
+                  style={{ padding: 10 }}
+                >
+                  <X size={16} color={C.textSub} />
+                </Pressable>
+              )}
+            </View>
+            {scope === "others" && teams.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8 }}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: !team }}
+                  onPress={() => setTeam("")}
+                  style={{
+                    minHeight: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    backgroundColor: !team ? C.warnGlow : C.surface,
+                  }}
+                >
+                  <Text
+                    style={{ color: !team ? C.warn : C.textSub, fontSize: 12 }}
+                  >
+                    All teams
+                  </Text>
+                </Pressable>
+                {teams.map(([id, name]) => (
+                  <Pressable
+                    key={id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: team === id }}
+                    onPress={() => setTeam(id)}
+                    style={{
+                      minHeight: 44,
+                      justifyContent: "center",
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      backgroundColor: team === id ? C.warnGlow : C.surface,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: team === id ? C.warn : C.textSub,
+                        fontSize: 12,
+                      }}
+                    >
+                      {name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 7 }}
+            >
+              {filters.map(([value, label]) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: filter === value }}
+                  onPress={() => setFilter(value)}
+                  style={{
+                    minHeight: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 14,
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: filter === value ? C.warn : C.border,
+                    backgroundColor: filter === value ? C.warnGlow : C.surface,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: filter === value ? C.warn : C.textSub,
+                      fontSize: 12,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {label}
+                    {assignments === undefined ? "" : ` ${counts[value]}`}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{
+                  color: C.text,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 14,
+                }}
+              >
+                {assignments === undefined
+                  ? "Loading assignments"
+                  : `${visible.length} ${visible.length === 1 ? "assignment" : "assignments"}`}
+              </Text>
+              <Text style={{ color: C.textDim, fontSize: 11 }}>
+                Critical first
+              </Text>
+            </View>
           </View>
-          <View style={styles.searchBox}><Search color={C.textDim} size={18} /><TextInput value={query} onChangeText={setQuery} placeholder="Search location or report" placeholderTextColor={C.textDim} style={styles.searchInput} returnKeyType="search" accessibilityLabel="Search assigned reports" />{query ? <Pressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10} onPress={() => setQuery("")}><X color={C.textSub} size={17} /></Pressable> : null}</View>
-          <View style={styles.filterHeading}><ListFilter color={C.textSub} size={14} /><Text style={styles.filterHeadingText}>Filter queue</Text></View>
-          <View style={styles.filters}>
-            <FilterChip label="All" count={counts.all} active={filter === "ALL"} onPress={() => setFilter("ALL")} tone={C.accent} C={C} />
-            <FilterChip label="Critical" count={counts.critical} active={filter === "CRITICAL"} onPress={() => setFilter("CRITICAL")} tone={C.danger} C={C} />
-            <FilterChip label="Pending" count={counts.pending} active={filter === "PENDING"} onPress={() => setFilter("PENDING")} tone={C.warn} C={C} />
-            <FilterChip label="Cleared" count={counts.resolved} active={filter === "RESOLVED"} onPress={() => setFilter("RESOLVED")} tone={C.safe} C={C} />
-          </View>
-          <View style={styles.resultsHeader}><Text style={styles.resultsTitle}>{visibleReports.length} {visibleReports.length === 1 ? "assignment" : "assignments"}</Text><Text style={styles.resultsMeta}>Updated live</Text></View>
-        </>}
-        ListEmptyComponent={<View style={styles.empty}><Image source={require("../../../assets/images/pin_safe.png")} style={styles.emptyPin} resizeMode="contain" /><Text style={styles.emptyTitle}>Queue is clear</Text><Text style={styles.emptyText}>{query ? "No assignments match your search." : "No assignments match this filter."}</Text></View>}
+        }
+        ListEmptyComponent={
+          assignments === undefined ? (
+            <ActivityIndicator color={C.warn} style={{ padding: 35 }} />
+          ) : (
+            <View
+              style={{
+                padding: 30,
+                gap: 12,
+                alignItems: "center",
+                backgroundColor: C.surface,
+                borderRadius: 18,
+              }}
+            >
+              <CheckCheck color={C.textSub} size={28} />
+              <Text
+                style={{
+                  color: C.text,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 17,
+                }}
+              >
+                {narrowed
+                  ? "No matching assignments"
+                  : scope === "mine"
+                    ? "No assignments yet"
+                    : "No other team assignments"}
+              </Text>
+              <Text
+                style={{
+                  color: C.textSub,
+                  textAlign: "center",
+                  fontSize: 13,
+                  lineHeight: 20,
+                }}
+              >
+                {narrowed
+                  ? "Try another location or adjust your filters."
+                  : scope === "mine"
+                    ? "Reports assigned to your team will appear here."
+                    : "Assignments for other teams in your barangay will appear here."}
+              </Text>
+              {narrowed && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={reset}
+                  style={{
+                    minHeight: 44,
+                    justifyContent: "center",
+                    paddingHorizontal: 16,
+                  }}
+                >
+                  <Text style={{ color: C.warn, fontWeight: "600" }}>
+                    Clear filters
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )
+        }
       />
     </View>
   );
 }
-
-function FilterChip({ label, count, active, onPress, tone, C }: { label: string; count: number; active: boolean; onPress: () => void; tone: string; C: ThemeColors }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${label}, ${count} reports`} accessibilityState={{ selected: active }} onPress={onPress} style={[chip.base, { backgroundColor: active ? tone : C.surface, borderColor: active ? tone : C.border }]}><Text style={[chip.label, { color: active ? "#FFFFFF" : C.textSub }]}>{label}</Text><View style={[chip.count, { backgroundColor: active ? "rgba(255,255,255,.22)" : C.surfaceRaised }]}><Text style={[chip.countText, { color: active ? "#FFFFFF" : C.text }]}>{count}</Text></View></Pressable>;
-}
-
-function ReportCard({ item, onPress, C }: { item: ReportItem; onPress: (id: string) => void; C: ThemeColors }) {
-  const isDone = done(item), isUrgent = urgent(item);
-  const tone = isDone ? C.safe : isUrgent ? C.danger : C.warn;
-  const pin = isDone ? require("../../../assets/images/pin_safe.png") : isUrgent ? require("../../../assets/images/pin_critical.png") : require("../../../assets/images/pin_moderate.png");
-  const photo = imageUri(item.imageUri || item.reportImage);
-  return <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Open ${isUrgent ? "critical " : ""}report at ${item.locationName || item.address || "reported location"}`} activeOpacity={0.8} onPress={() => onPress(item._id)} style={[card.root, { backgroundColor: C.surface, borderColor: C.border }]}>
-    <View style={card.visual}>{photo ? <Image source={{ uri: photo }} style={card.photo} /> : <View style={[card.photo, { backgroundColor: C.surfaceRaised }]} />}<View style={[card.scrim, { backgroundColor: tone + "18" }]} /><Image source={pin} style={card.pin} resizeMode="contain" /><View style={[card.status, { backgroundColor: tone }]}>{isDone ? <CheckCircle2 color="#FFF" size={11} /> : <Clock3 color="#FFF" size={11} />}<Text style={card.statusText}>{isDone ? "CLEARED" : isUrgent ? "CRITICAL" : "PENDING"}</Text></View></View>
-    <View style={card.body}><View style={card.locationRow}><MapPin color={tone} size={14} /><Text style={[card.location, { color: C.text }]} numberOfLines={1}>{item.locationName || item.address || "Reported vector site"}</Text></View><Text style={[card.copy, { color: C.textSub }]} numberOfLines={2}>{item.reasoning || item.notes || "A possible mosquito breeding site requires field verification."}</Text><View style={[card.footer, { borderTopColor: C.border }]}><Text style={[card.date, { color: C.textDim }]}>{item._creationTime ? new Date(item._creationTime).toLocaleDateString([], { month: "short", day: "numeric" }) : "Recently assigned"}</Text><View style={card.open}><Text style={[card.openText, { color: C.accent }]}>{isDone ? "VIEW REPORT" : "OPEN TASK"}</Text><ChevronRight color={C.accent} size={14} /></View></View></View>
-  </TouchableOpacity>;
-}
-
-const chip = StyleSheet.create({ base: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 11 }, label: { fontSize: 11, fontWeight: "700" }, count: { minWidth: 19, height: 19, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 }, countText: { fontSize: 11, fontWeight: "700" } });
-const card = StyleSheet.create({ root: { borderWidth: 1, borderRadius: 22, overflow: "hidden" }, visual: { height: 112, position: "relative", overflow: "hidden" }, photo: { ...StyleSheet.absoluteFillObject }, scrim: { ...StyleSheet.absoluteFillObject }, pin: { position: "absolute", width: 78, height: 78, left: 10, bottom: -5 }, status: { position: "absolute", right: 12, top: 12, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 9 }, statusText: { color: "#FFF", fontSize: 11, fontWeight: "700", letterSpacing: 0.3 }, body: { padding: 14, gap: 9 }, locationRow: { flexDirection: "row", alignItems: "center", gap: 6 }, location: { flex: 1, fontSize: 14, fontWeight: "700" }, copy: { fontSize: 11, lineHeight: 17 }, footer: { borderTopWidth: 1, paddingTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, date: { fontSize: 11 }, open: { flexDirection: "row", alignItems: "center", gap: 2 }, openText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 } });
-const createStyles = (C: ThemeColors) => StyleSheet.create({ root: { flex: 1, backgroundColor: C.bg }, loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.bg, gap: 10 }, loadingPin: { width: 64, height: 64 }, loadingText: { color: C.textSub, fontSize: 12, fontWeight: "700" }, list: { padding: 16, paddingBottom: 118, gap: 12 }, hero: { flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 23, padding: 17, marginBottom: 14 }, heroIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: C.accentGlow }, heroBody: { flex: 1 }, eyebrow: { color: C.accent, fontSize: 11, fontWeight: "700", letterSpacing: 0.3 }, title: { color: C.text, fontSize: 21, fontWeight: "700", letterSpacing: -0.5, marginTop: 3 }, subtitle: { color: C.textSub, fontSize: 11, marginTop: 3 }, searchBox: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 13 }, searchInput: { flex: 1, color: C.text, fontSize: 13, paddingVertical: 10 }, filterHeading: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 9 }, filterHeadingText: { color: C.textSub, fontSize: 11, fontWeight: "700", letterSpacing: 0.3 }, filters: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 18 }, resultsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }, resultsTitle: { color: C.text, fontSize: 15, fontWeight: "700" }, resultsMeta: { color: C.safe, fontSize: 11, fontWeight: "700" }, empty: { alignItems: "center", paddingVertical: 45 }, emptyPin: { width: 88, height: 88 }, emptyTitle: { color: C.text, fontSize: 16, fontWeight: "700", marginTop: 5 }, emptyText: { color: C.textSub, fontSize: 12, marginTop: 5 } });

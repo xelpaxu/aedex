@@ -1,10 +1,9 @@
 import { Tabs, useRouter } from "expo-router";
 import {
   Map,
+  LayoutDashboard,
   ScanLine,
   ClipboardList,
-  UserRound,
-  LayoutDashboard,
   Bell,
   Settings,
 } from "lucide-react-native";
@@ -19,15 +18,13 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
   const screens = tanod
     ? [
         { name: "dashboard", title: "Dashboard", icon: LayoutDashboard },
-        { name: "reports", title: "Assignments", icon: ClipboardList },
-        { name: "map", title: "Field map", icon: Map },
-        { name: "profile", title: "Profile", icon: UserRound },
+        { name: "map", title: "Map", icon: Map },
+        { name: "reports", title: "Reports", icon: ClipboardList },
       ]
     : [
         { name: "map", title: "Map", icon: Map },
-        { name: "capture", title: "Report", icon: ScanLine },
+        { name: "capture", title: "Capture", icon: ScanLine },
         { name: "reports", title: "Reports", icon: ClipboardList },
-        { name: "profile", title: "Profile", icon: UserRound },
       ];
   return (
     <Tabs
@@ -79,7 +76,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                   letterSpacing: 1,
                 }}
               >
-                {tanod ? "TANOD WORKSPACE" : "AEDEX COMMUNITY"}
+                {tanod ? "Field workspace" : "Aedex community"}
               </Text>
               <Text
                 style={{
@@ -93,16 +90,30 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               </Text>
             </View>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Notifications"
               onPress={() => router.push("/notifications")}
-              style={{ padding: 11, backgroundColor: C.surfaceRaised, borderRadius: 14, borderWidth: 1, borderColor: C.border }}
+              style={{
+                padding: 11,
+                backgroundColor: C.surfaceRaised,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}
             >
               <Bell color={C.textSub} size={20} />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Settings"
               onPress={() => router.push("/settings")}
-              style={{ padding: 11, backgroundColor: C.surfaceRaised, borderRadius: 14, borderWidth: 1, borderColor: C.border }}
+              style={{
+                padding: 11,
+                backgroundColor: C.surfaceRaised,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: C.border,
+              }}
             >
               <Settings color={C.textSub} size={20} />
             </Pressable>
@@ -110,25 +121,46 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
         ),
       }}
     >
+      <Tabs.Screen
+        name="profile"
+        options={{ href: null, headerShown: false }}
+      />
+      {tanod && <Tabs.Screen name="capture" options={{ href: null }} />}
       {screens.map(({ name, title, icon: Icon }) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
             title,
-            headerShown: name !== "profile",
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => (
-              <View style={{
-                width: name === "capture" ? 52 : 44,
-                height: name === "capture" ? 52 : 32,
-                marginTop: name === "capture" ? -20 : 0,
-                borderRadius: name === "capture" ? 19 : 12,
-                alignItems: "center", justifyContent: "center",
-                backgroundColor: name === "capture" ? accent : focused ? (tanod ? C.warnGlow : C.accentGlow) : "transparent",
-                borderWidth: name === "capture" ? 3 : 0,
-                borderColor: C.surface,
-              }}>
-                <Icon color={name === "capture" ? "#FFFFFF" : color} size={name === "capture" ? 26 : 21} strokeWidth={focused ? 2.5 : 1.8} />
+              <View
+                style={{
+                  width: name === "capture" ? 52 : 44,
+                  height: name === "capture" ? 52 : 32,
+                  marginTop: name === "capture" ? -20 : 0,
+                  borderRadius: name === "capture" ? 19 : 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    name === "capture"
+                      ? accent
+                      : focused
+                        ? tanod
+                          ? C.warnGlow
+                          : C.accentGlow
+                        : "transparent",
+                  borderWidth: name === "capture" ? 3 : 0,
+                  borderColor: C.surface,
+                }}
+              >
+                <Icon
+                  color={
+                    name === "capture" ? (tanod ? "#111827" : "#FFFFFF") : color
+                  }
+                  size={name === "capture" ? 26 : 21}
+                  strokeWidth={focused ? 2.5 : 1.8}
+                />
               </View>
             ),
           }}

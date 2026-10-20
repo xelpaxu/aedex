@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { Modal, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SlidersHorizontal, X, Check, Layers, Maximize2, Minimize2, MapPin } from "lucide-react-native";
+import {
+  SlidersHorizontal,
+  X,
+  Check,
+  Maximize2,
+  Minimize2,
+  MapPin,
+} from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 type Props = {
   tanod: boolean;
@@ -39,44 +46,60 @@ export default function MapControls(p: Props) {
   const selected = options.find((o) => o[0] === p.filter);
   return (
     <>
-      <View
-        style={{
-          backgroundColor: C.surface,
-          borderColor: C.border,
-          borderWidth: 1,
-          borderRadius: 22,
-          shadowColor: "#000", shadowOpacity: 0.14, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 6,
-          padding: 14,
-          gap: 10,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={{ padding: 10, borderRadius: 14, backgroundColor: p.tanod ? C.warnGlow : C.accentGlow }}><MapPin color={accent} size={22} /></View>
+      <View style={{ gap: 8 }} pointerEvents="box-none">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: C.surface,
+            borderRadius: 18,
+            padding: 6,
+            borderWidth: 1,
+            borderColor: C.border,
+            shadowColor: "#000",
+            shadowOpacity: 0.12,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 5,
+          }}
+        >
+          <MapPin size={19} color={accent} style={{ marginLeft: 8 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: accent, fontSize: 11, fontWeight: "700" }}>
-              {p.tanod ? "FIELD OPERATIONS" : "COMMUNITY MAP"}
-            </Text>
             <Text
               numberOfLines={1}
               style={{
                 color: C.text,
-                fontWeight: "600",
+                fontFamily: "Inter_600SemiBold",
                 fontSize: 14,
-                marginTop: 3,
               }}
             >
-              {p.barangay || "Pilot area"} · {selected?.[1]}
+              {p.barangay || "Community map"}
+            </Text>
+            <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>
+              {selected?.[1]} / {p.counts[selected?.[2] || "all"] ?? 0} sites
             </Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              p.expanded ? "Show map filters" : "Hide map filters"
+            }
+            onPress={p.onExpand}
+            style={{ padding: 12 }}
+          >
+            {p.expanded ? (
+              <Minimize2 size={18} color={C.textSub} />
+            ) : (
+              <Maximize2 size={18} color={C.textSub} />
+            )}
+          </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Map filters and layers"
             onPress={() => setOpen(true)}
             style={{
-              minHeight: 44,
-              minWidth: 44,
-              alignItems: "center",
-              justifyContent: "center",
+              padding: 12,
               borderRadius: 12,
               backgroundColor: C.surfaceRaised,
             }}
@@ -85,7 +108,11 @@ export default function MapControls(p: Props) {
           </Pressable>
         </View>
         {!p.expanded && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7 }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, paddingBottom: 3 }}
+          >
             {options.map(([value, label, key]) => (
               <Pressable
                 key={value}
@@ -93,14 +120,15 @@ export default function MapControls(p: Props) {
                 accessibilityState={{ selected: p.filter === value }}
                 onPress={() => p.onFilter(value)}
                 style={{
-                  minWidth: 90,
                   minHeight: 44,
-                  justifyContent: "center",
+                  paddingHorizontal: 13,
+                  flexDirection: "row",
                   alignItems: "center",
-                  paddingHorizontal: 4,
-                  borderRadius: 10,
-                  backgroundColor:
-                    p.filter === value ? accent : C.surfaceRaised,
+                  gap: 7,
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  borderColor: p.filter === value ? accent : C.border,
+                  backgroundColor: p.filter === value ? accent : C.surface,
                 }}
               >
                 <Text
@@ -115,24 +143,25 @@ export default function MapControls(p: Props) {
                         : C.text,
                   }}
                 >
-                  {label} {p.counts[key] ?? 0}
+                  {label}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color:
+                      p.filter === value
+                        ? p.tanod
+                          ? "#111827"
+                          : "#fff"
+                        : C.textSub,
+                  }}
+                >
+                  {p.counts[key] ?? 0}
                 </Text>
               </Pressable>
             ))}
           </ScrollView>
         )}
-        {!p.expanded && <View style={{ flexDirection: "row", gap: 8 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Switch map style" onPress={() => p.onMode(p.mode === "vector" ? "satellite" : "vector")} style={{ flex: 1, flexDirection: "row", gap: 7, alignItems: "center", padding: 12, borderRadius: 12, backgroundColor: C.surfaceRaised }}>
-            <Layers color={accent} size={17} /><Text style={{ color: C.text, fontSize: 12, fontWeight: "600" }}>{p.mode === "vector" ? "Street map" : "Satellite"}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="switch" accessibilityState={{ checked: p.zones }} accessibilityLabel="Risk zones" onPress={() => p.onZones(!p.zones)} style={{ padding: 12, borderRadius: 12, backgroundColor: p.zones ? C.accentGlow : C.surfaceRaised }}>
-            <Text style={{ color: p.zones ? C.accent : C.textSub, fontSize: 12, fontWeight: "600" }}>Risk zones {p.zones ? "on" : "off"}</Text>
-          </Pressable>
-        </View>}
-        <Pressable accessibilityRole="button" onPress={p.onExpand} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, minHeight: 36 }}>
-          {p.expanded ? <Minimize2 size={15} color={accent} /> : <Maximize2 size={15} color={accent} />}
-          <Text style={{ color: accent, fontSize: 12, fontWeight: "600" }}>{p.expanded ? "Show map controls" : "Focus on the map"}</Text>
-        </Pressable>
       </View>
       <Modal
         visible={open}
