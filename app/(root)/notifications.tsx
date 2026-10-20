@@ -61,7 +61,7 @@ export default function NotificationsScreen() {
       </View>
       <View style={{ gap: 6 }}>
         <Text style={{ color: C.text, fontSize: 28, fontFamily: 'Manrope_700Bold' }}>Notifications</Text>
-        <Text style={{ color: C.textSub, fontSize: 14 }}>{unread ? `${unread} unread ${unread === 1 ? 'update' : 'updates'}` : 'Your reports and community updates, in one place.'}</Text>
+        <Text style={{ color: C.textSub, fontSize: 14 }}>{unread ? `${unread} unread ${unread === 1 ? 'update' : 'updates'}` : 'Updates about your reports, in one place.'}</Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {[false, true].map(value => <Pressable key={String(value)} accessibilityRole="button" accessibilityState={{ selected: unreadOnly === value }} onPress={() => setUnreadOnly(value)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 22, backgroundColor: unreadOnly === value ? C.accent : C.surface, borderWidth: 1, borderColor: unreadOnly === value ? C.accent : C.border }}>
