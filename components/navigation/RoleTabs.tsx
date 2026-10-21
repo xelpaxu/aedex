@@ -1,12 +1,13 @@
+import UserAvatar from "@/components/UserAvatar";
+import AnimatedTabBar from "./AnimatedTabBar";
 import { Tabs, useRouter } from "expo-router";
 import {
   Map,
   ScanLine,
   ClipboardList,
   Bell,
-  UserRound,
 } from "lucide-react-native";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Image, Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "convex/react";
@@ -25,6 +26,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
   ];
   return (
     <Tabs
+      tabBar={(props) => <AnimatedTabBar {...props} tanod={tanod} />}
       initialRouteName="map"
       safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
@@ -56,27 +58,30 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
         header: ({ options }) => (
           <View
             style={{
-              paddingTop: insets.top + 6,
-              paddingBottom: 10,
+              paddingTop: insets.top + 12,
+              paddingBottom: 16,
               paddingHorizontal: 20,
-              backgroundColor: C.bg,
+              backgroundColor: C.surface,
               borderBottomColor: C.border,
-              borderBottomWidth: 0,
+              borderBottomWidth: 1,
               flexDirection: "row",
               alignItems: "center",
-              gap: 12,
+              gap: 10,
             }}
           >
+            <View style={{ width: 52, height: 52, borderRadius: 18, overflow: "hidden", backgroundColor: "#00191D", borderWidth: 1, borderColor: C.border }}>
+              <Image source={require("@/assets/logo/aedex.png")} resizeMode="cover" accessible accessibilityLabel="Aedex logo" style={{ width: 78, height: 52, alignSelf: "center" }} />
+            </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  color: accent,
-                  fontSize: 10,
+                  color: C.textSub,
+                  fontSize: 9,
                   fontWeight: "700",
                   letterSpacing: 1,
                 }}
               >
-                {tanod ? "Field workspace" : "Aedex community"}
+                {tanod ? "AEDEX / FIELD TEAM" : "AEDEX / COMMUNITY"}
               </Text>
               <Text
                 style={{
@@ -94,7 +99,10 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               accessibilityLabel={`Notifications${unread ? `, ${unread} unread` : ''}`}
               onPress={() => router.push("/notifications")}
               style={{
-                padding: 11,
+                width: 48,
+                height: 48,
+                alignItems: "center",
+                justifyContent: "center",
                 backgroundColor: C.surfaceRaised,
                 borderRadius: 14,
                 borderWidth: 1,
@@ -111,14 +119,17 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               accessibilityLabel="Your profile"
               onPress={() => router.push(tanod ? "/(root)/(tanod-tabs)/profile" : "/(root)/(tabs)/profile")}
               style={{
-                padding: 11,
+                width: 48,
+                height: 48,
+                alignItems: "center",
+                justifyContent: "center",
                 backgroundColor: C.surfaceRaised,
                 borderRadius: 14,
                 borderWidth: 1,
                 borderColor: C.border,
               }}
             >
-              <UserRound color={accent} size={20} />
+              <UserAvatar size={42} />
             </Pressable>
           </View>
         ),
@@ -129,43 +140,13 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
         options={{ href: null, title: "Profile", headerShown: false }}
       />
       {tanod && <Tabs.Screen name="dashboard" options={{ href: null, title: "Dashboard" }} />}
-      {screens.map(({ name, title, icon: Icon }) => (
+      {screens.map(({ name, title }) => (
         <Tabs.Screen
           key={name}
           name={name}
           options={{
             title,
             headerShown: true,
-            tabBarIcon: ({ color, focused }) => (
-              <View
-                style={{
-                  width: 56,
-                  height: 36,
-                  marginTop: 0,
-                  borderRadius: 20,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor:
-                    name === "capture"
-                      ? accent
-                      : focused
-                        ? tanod
-                          ? C.warnGlow
-                          : C.accentGlow
-                        : "transparent",
-                  borderWidth: 0,
-                  borderColor: C.surface,
-                }}
-              >
-                <Icon
-                  color={
-                    name === "capture" ? (tanod ? "#111827" : "#FFFFFF") : color
-                  }
-                  size={22}
-                  strokeWidth={focused ? 2.5 : 1.8}
-                />
-              </View>
-            ),
           }}
         />
       ))}

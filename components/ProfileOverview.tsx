@@ -1,7 +1,8 @@
+import UserAvatar from "@/components/UserAvatar";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ChevronRight, MapPin, Settings, UserRound, ClipboardList, Bell, ShieldCheck } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "@/context/AccessContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -32,7 +33,7 @@ export default function ProfileOverview() {
         <View style={[s.hero, { backgroundColor: C.surface, borderColor: C.border }]}>
           <View style={s.row}>
             <View style={[s.avatar, { borderColor: accent, backgroundColor: C.surfaceRaised }]}>
-              {user?.imageUrl ? <Image source={{ uri: user.imageUrl }} style={{ width: 72, height: 72, borderRadius: 23 }} /> : <UserRound color={accent} size={36} />}
+              <UserAvatar size={72} />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
               <Text style={[s.eyebrow, { color: accent }]}>{tanod ? "BARANGAY TANOD" : "COMMUNITY MEMBER"}</Text>
