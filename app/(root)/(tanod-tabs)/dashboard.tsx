@@ -9,7 +9,6 @@ import {
   ClipboardList,
   Globe2,
   MapPinned,
-  ScanLine,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
@@ -194,7 +193,7 @@ export default function TanodDashboardScreen() {
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push("/(root)/capture")}
+          onPress={openReports}
           style={{
             flex: 1,
             backgroundColor: C.surface,
@@ -205,7 +204,7 @@ export default function TanodDashboardScreen() {
             gap: 16,
           }}
         >
-          <ScanLine color={C.textSub} size={23} />
+          <ClipboardList color={C.warn} size={23} />
           <View style={{ gap: 5 }}>
             <Text
               style={{
@@ -214,10 +213,10 @@ export default function TanodDashboardScreen() {
                 fontSize: 14,
               }}
             >
-              New report
+              Team reports
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12, lineHeight: 18 }}>
-              Capture a site photo
+              Review assigned sites
             </Text>
           </View>
         </Pressable>

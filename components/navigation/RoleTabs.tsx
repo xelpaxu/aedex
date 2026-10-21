@@ -4,6 +4,7 @@ import { Tabs, useRouter } from "expo-router";
 import {
   Map,
   ScanLine,
+  LayoutDashboard,
   ClipboardList,
   Bell,
 } from "lucide-react-native";
@@ -22,7 +23,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
   const accent = tanod ? C.warn : C.accent;
   const screens = [
     { name: "map", title: "Map", icon: Map },
-    { name: "capture", title: "Capture", icon: ScanLine },
+    tanod ? { name: "dashboard", title: "Dashboard", icon: LayoutDashboard } : { name: "capture", title: "Capture", icon: ScanLine },
     { name: "reports", title: "Reports", icon: ClipboardList },
   ];
   return (
@@ -136,7 +137,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
         name="profile"
         options={{ href: null, title: "Profile", headerShown: false }}
       />
-      {tanod && <Tabs.Screen name="dashboard" options={{ href: null, title: "Dashboard" }} />}
+      {tanod && <Tabs.Screen name="capture" options={{ href: null }} />}
       {screens.map(({ name, title }) => (
         <Tabs.Screen
           key={name}

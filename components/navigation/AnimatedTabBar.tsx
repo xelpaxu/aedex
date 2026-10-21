@@ -1,12 +1,12 @@
 import { useTheme } from "@/context/ThemeContext";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { ClipboardList, Map, ScanLine } from "lucide-react-native";
+import { ClipboardList, Map, ScanLine, LayoutDashboard } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Keyboard, Platform, Pressable, View, useWindowDimensions } from "react-native";
 import { Text } from "@/components/Typography";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const tabs = [
+const communityTabs = [
   { name: "map", label: "Map", Icon: Map },
   { name: "capture", label: "Capture", Icon: ScanLine },
   { name: "reports", label: "Reports", Icon: ClipboardList },
@@ -14,6 +14,7 @@ const tabs = [
 const CIRCLE_SIZE = 58;
 
 export default function AnimatedTabBar({ state, descriptors, navigation, tanod = false }: BottomTabBarProps & { tanod?: boolean }) {
+  const tabs = tanod ? [communityTabs[0], { name: "dashboard", label: "Dashboard", Icon: LayoutDashboard }, communityTabs[2]] : communityTabs;
   const { colors: C } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();

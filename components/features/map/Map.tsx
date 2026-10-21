@@ -1,4 +1,4 @@
-import { matchesMapStatus } from "@/lib/mapReports";
+import { matchesMapStatus, matchesMapBarangay } from "@/lib/mapReports";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./MapControls";
 import { PIN_DATA_URIS } from "./pinAssets";
@@ -692,7 +692,10 @@ export default function MapComponent({
   }, [tanodAssignments]);
 
   // Keep verification status separate from risk/location/team filters.
-  const statusReports = useMemo(() => (allReports ?? []).filter((r: Report) => matchesMapStatus(r, statusFilter)), [allReports, statusFilter]);
+  const mapBarangay = isTanod ? profile?.assignedBarangay : profile?.barangay;
+  const scopedReports = useMemo(() => (allReports ?? []).filter((report: Report) => matchesMapBarangay(report, mapBarangay)), [allReports, mapBarangay]);
+  const statusReports = useMemo(() => scopedReports.filter((report: Report) => matchesMapStatus(report, statusFilter)), [scopedReports, statusFilter]);
+  const statusCounts = useMemo(() => Object.fromEntries((["verified", "pending", "resolved", "all"] as const).map(status => [status, scopedReports.filter((report: Report) => matchesMapStatus(report, status)).length])), [scopedReports]);
 
   // Calculate filtered hotspots with radial offset for stacked/overlapping reports
   const verifiedHotspots: (Partial<Report> & {
@@ -777,6 +780,13 @@ export default function MapComponent({
     assignedReportIds,
     userPos,
   ]);
+
+  useEffect(() => {
+    if (selectedId && !verifiedHotspots.some(report => report._id === selectedId)) {
+      setSelectedId(null);
+      setSelectedReport(null);
+    }
+  }, [selectedId, verifiedHotspots]);
 
   // Compute category counts for badges
   const filterCounts = useMemo(() => {
@@ -964,7 +974,7 @@ export default function MapComponent({
         <View pointerEvents="box-none" style={styles.topControlContainer}>
           <MapControls
             tanod={isTanod}
-            barangay={isTanod ? profile?.assignedBarangay : profile?.barangay}
+            barangay={mapBarangay}
             filter={isTanod ? tanodFilter : communityFilter}
             onFilter={(value) =>
               isTanod
@@ -972,6 +982,7 @@ export default function MapComponent({
                 : setCommunityFilter(value as CommunityFilter)
             }
             counts={filterCounts}
+            statusCounts={statusCounts}
             status={statusFilter}
             onStatus={setStatusFilter}
             mode={mode}

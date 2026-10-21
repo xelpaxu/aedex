@@ -1,3 +1,5 @@
+import { useProfile } from "@/context/AccessContext";
+import { hasTanodAccess } from "@/constants/access";
 import PostCard from "@/components/features/community/CommunityCard";
 import CommunityCommentsModal, { CommentItem } from "@/components/features/community/CommunityCommentsModal";
 import CommunityShareModal from "@/components/features/community/CommunityShareModal";
@@ -17,6 +19,7 @@ const STORAGE_KEY_HELPFUL = "@aedex_helpful_reactions_v1";
 const STORAGE_KEY_COMMENTS = "@aedex_community_comments_v1";
 export default function CommunityFeedScreen() {
   const router = useRouter();
+  const tanod = hasTanodAccess(useProfile());
   const { colors: C } = useTheme();
   const allReports = useQuery(api.reports.getAllReports);
   const currentUser = useQuery(api.users.getMe);
@@ -142,7 +145,7 @@ export default function CommunityFeedScreen() {
     <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, borderBottomWidth: 0.5, borderColor: C.border, minHeight: 58 }}>
       <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace("/(root)")} />
       <Text accessibilityRole="header" style={{ flex: 1, color: C.text, fontSize: 25, fontWeight: "700", letterSpacing: -0.7 }}>Community</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Capture a new report" onPress={() => router.push("/(root)/capture")} style={({ pressed }) => ({ width: 48, height: 48, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 })}><Plus size={28} color={C.actionText} /></Pressable>
+      {!tanod && <Pressable accessibilityRole="button" accessibilityLabel="Capture a new report" onPress={() => router.push("/(root)/capture")} style={({ pressed }) => ({ width: 48, height: 48, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 })}><Plus size={28} color={C.actionText} /></Pressable>}
     </View>
     {allReports === undefined ? <ActivityIndicator color={C.actionText} style={{ marginTop: 48 }} /> : <FlatList data={communityReports} keyExtractor={item => item._id} showsVerticalScrollIndicator={false} initialNumToRender={4} maxToRenderPerBatch={4} contentContainerStyle={{ paddingBottom: 24, maxWidth: 640, width: "100%", alignSelf: "center" }}
       ListHeaderComponent={<View style={{ paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 0.5, borderColor: C.border }}><Text style={{ color: C.textSub, fontSize: 13 }}>{currentUser?.barangay ? `Your community / ${currentUser.barangay}` : "Reports from the community"}</Text></View>}

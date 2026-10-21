@@ -18,6 +18,7 @@ type Props = {
   filter: string;
   onFilter: (value: string) => void;
   counts: Record<string, number>;
+  statusCounts: Record<string, number>;
   status: "verified" | "pending" | "resolved" | "all";
   onStatus: (value: "verified" | "pending" | "resolved" | "all") => void;
   mode: "vector" | "satellite";
@@ -42,7 +43,7 @@ export default function MapControls(p: Props) {
         ["NEARBY", "Nearby", "nearby"],
         ["CRITICAL", "Critical", "critical"],
       ];
-  const statuses = [{ value: "verified", label: "Verified" }, { value: "pending", label: "Pending validation" }, { value: "resolved", label: "Resolved" }, { value: "all", label: "All statuses" }] as const;
+  const statuses = [{ value: "verified", label: "Verified", detail: "Validated reports that are still active" }, { value: "pending", label: "Pending validation", detail: "Reports waiting for an officer review" }, { value: "resolved", label: "Resolved", detail: "Sites with a completed response" }, { value: "all", label: "All statuses", detail: "Every report status in your barangay" }] as const;
   const statusLabel = statuses.find(item => item.value === p.status)?.label;
   const selected = options.find((o) => o[0] === p.filter);
   return (
@@ -190,20 +191,24 @@ export default function MapControls(p: Props) {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, gap: 24 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={{ padding: 14, borderRadius: 20, backgroundColor: C.surfaceRaised }}><SlidersHorizontal color={accent} size={24} /></View>
-                <View style={{ flex: 1, gap: 4 }}><Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 24 }}>Your map, your view</Text><Text style={{ color: C.textSub, fontSize: 13 }}>Filters & layers</Text></View>
+                <View style={{ flex: 1, gap: 4 }}><Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 24 }}>Filters & layers</Text><Text style={{ color: C.textSub, fontSize: 13 }}>{p.barangay || "Barangay unavailable"} only</Text></View>
                 <Pressable accessibilityRole="button" accessibilityLabel="Close map options" onPress={() => setOpen(false)} style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, backgroundColor: pressed ? C.surfaceRaised : C.bg, alignItems: "center", justifyContent: "center" })}><X color={C.text} size={20} /></Pressable>
               </View>
               <View style={{ gap: 12 }}>
                 <Text accessibilityRole="header" style={{ color: C.text, fontSize: 16, fontWeight: "600" }}>Report status</Text>
-                <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>Verified reports are shown by default. All statuses also includes reports awaiting validation and resolved reports.</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {statuses.map(item => <Pressable key={item.value} accessibilityRole="radio" accessibilityState={{ checked: p.status === item.value }} onPress={() => p.onStatus(item.value)} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: p.status === item.value ? accent : C.border, backgroundColor: pressed || p.status === item.value ? C.surfaceRaised : C.surface, flexDirection: "row", alignItems: "center", gap: 8 })}><Text style={{ color: C.text, fontSize: 13 }}>{item.label}</Text>{p.status === item.value && <Check size={16} color={accent} />}</Pressable>)}
+                <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>Only reports in {p.barangay || "your assigned barangay"} are shown.</Text>
+                <View style={{ borderTopWidth: 0.5, borderColor: C.border }}>
+                  {statuses.map(item => <Pressable key={item.value} accessibilityRole="radio" accessibilityLabel={`${item.label}, ${p.statusCounts[item.value] ?? 0} reports`} accessibilityState={{ checked: p.status === item.value }} onPress={() => p.onStatus(item.value)} style={({ pressed }) => ({ minHeight: 72, paddingVertical: 16, paddingHorizontal: 4, borderBottomWidth: 0.5, borderColor: C.border, backgroundColor: pressed ? C.surfaceRaised : "transparent", flexDirection: "row", alignItems: "center", gap: 12 })}>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: p.status === item.value ? 6 : 1.5, borderColor: p.status === item.value ? accent : C.textDim }} />
+                    <View style={{ flex: 1, gap: 5 }}><Text style={{ color: C.text, fontSize: 15, fontWeight: p.status === item.value ? "600" : "400" }}>{item.label}</Text><Text style={{ color: C.textSub, fontSize: 12, lineHeight: 18 }}>{item.detail}</Text></View>
+                    <Text style={{ color: C.textSub, fontSize: 14, fontWeight: "600" }}>{p.statusCounts[item.value] ?? 0}</Text>
+                  </Pressable>)}
                 </View>
               </View>
               <View style={{ gap: 12 }}>
-                <Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Show sites</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                  {options.map(([value, label, key]) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: p.filter === value }} onPress={() => p.onFilter(value)} style={({ pressed }) => ({ flexGrow: 1, flexBasis: "44%", minHeight: 56, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: p.filter === value ? accent : C.border, backgroundColor: pressed || p.filter === value ? C.surfaceRaised : C.surface, flexDirection: "row", alignItems: "center", gap: 8 })}>
+                <Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Narrow results</Text>
+                <View style={{ gap: 0, borderTopWidth: 0.5, borderColor: C.border }}>
+                  {options.map(([value, label, key]) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: p.filter === value }} onPress={() => p.onFilter(value)} style={({ pressed }) => ({ minHeight: 56, paddingVertical: 16, paddingHorizontal: 4, borderBottomWidth: 0.5, borderColor: C.border, backgroundColor: pressed ? C.surfaceRaised : "transparent", flexDirection: "row", alignItems: "center", gap: 8 })}>
                     <Text style={{ flex: 1, color: C.text, fontWeight: "600", fontSize: 13 }}>{label}</Text>
                     <Text style={{ color: C.textSub, fontSize: 12 }}>{p.counts[key] ?? 0}</Text>
                     {p.filter === value && <Check color={accent} size={16} />}
@@ -232,7 +237,7 @@ export default function MapControls(p: Props) {
             </ScrollView>
             <View style={{ paddingHorizontal: 22, paddingTop: 12, paddingBottom: 16, borderTopWidth: 1, borderTopColor: C.border }}>
               <Pressable accessibilityRole="button" onPress={() => setOpen(false)} style={({ pressed }) => ({ minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: accent, opacity: pressed ? 0.8 : 1 })}>
-                <Text style={{ color: p.tanod ? "#111827" : "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Back to map</Text>
+                <Text style={{ color: p.tanod ? "#111827" : "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Show {p.counts[selected?.[2] || "all"] ?? 0} reports</Text>
               </Pressable>
             </View>
           </SafeAreaView>
