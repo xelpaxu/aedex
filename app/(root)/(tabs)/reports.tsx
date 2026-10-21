@@ -55,7 +55,7 @@ const sl = StyleSheet.create({
     marginBottom: 14,
     marginHorizontal: 20,
   },
-  text: { fontSize: 16, fontWeight: "600" },
+  text: { fontSize: 18, fontWeight: "600" },
 });
 
 // ─── Priority highlight card ──────────────────────────────────────────────────
@@ -234,6 +234,7 @@ const HistoryRow = ({
 }) => {
   const isResolved = ["Resolved", "Completed"].includes(item.status);
   const isCrit = item.status === "CRITICAL" || item.status === "HIGH RISK";
+  const statusLabel = isResolved ? "Resolved" : item.verified ? "Verified" : "In review";
   const color = isResolved ? C.safe : isCrit ? C.danger : C.warn;
 
   return (
@@ -280,7 +281,7 @@ const HistoryRow = ({
         <View
           style={[hr.dot, { backgroundColor: color, shadowColor: color }]}
         />
-        <Text style={[hr.statusText, { color }]}>{item.status}</Text>
+        <Text style={[hr.statusText, { color }]}>{statusLabel}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -289,7 +290,7 @@ const hr = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     gap: 14,
   },
@@ -321,7 +322,7 @@ const hr = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  statusText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
+  statusText: { fontSize: 12, fontWeight: "600" },
 });
 
 // ─── Urgent notice row ────────────────────────────────────────────────────────
@@ -459,7 +460,7 @@ export default function ReportsScreen() {
   }
 
   const communityReports = allReports ?? [];
-  const criticalReports = myReports.filter((r: any) => r.status === "CRITICAL");
+  const criticalReports = myReports.filter((r: any) => r.verified && ["CRITICAL", "HIGH RISK"].includes(r.status));
 
   return (
     <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
@@ -791,7 +792,7 @@ const createStyles = (C: ThemeColors) =>
     tabTextActive: { color: "#FFFFFF" },
 
     // Scroll
-    scroll: { paddingBottom: 130 },
+    scroll: { paddingBottom: 32 },
 
     // Hero
     heroRow: {
@@ -817,7 +818,7 @@ const createStyles = (C: ThemeColors) =>
       marginBottom: 22,
       backgroundColor: C.surface,
       borderRadius: 16,
-      borderWidth: 1,
+      borderWidth: 0.5,
       borderColor: C.border,
       overflow: "hidden",
     },

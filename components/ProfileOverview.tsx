@@ -24,16 +24,19 @@ export default function ProfileOverview() {
   return <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.bg }}>
     <AccountHeader title="Profile" onBack={() => router.canGoBack() ? router.back() : router.replace(tanod ? "/(root)/(tanod-tabs)/map" : "/(root)/(tabs)/map")} action="Edit" onAction={() => router.push("/edit-profile")} />
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 116 + insets.bottom, maxWidth: 620, width: "100%", alignSelf: "center" }}>
-      <View style={{ alignItems: "center", gap: 10, paddingBottom: 32 }}>
-        <UserAvatar size={88} />
-        <Text style={{ color: C.text, fontSize: 27, fontWeight: "600", textAlign: "center", marginTop: 6 }}>{profile?.fullName || user?.fullName || "Your account"}</Text>
-        <Text style={{ color: C.textSub, fontSize: 15 }}>{tanod ? "Barangay tanod" : "Community member"}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 18, paddingBottom: 28 }}>
+        <UserAvatar size={80} />
+        <View style={{ flex: 1, gap: 7 }}>
+          <Text style={{ color: C.text, fontSize: 25, lineHeight: 32, fontWeight: "700", letterSpacing: -0.6 }}>{profile?.fullName || user?.fullName || "Your account"}</Text>
+          <Text style={{ color: C.textSub, fontSize: 14 }}>{tanod ? "Barangay tanod" : "Community member"}</Text>
+          <Text style={{ color: C.actionText, fontSize: 14, fontWeight: "500" }}>{community}</Text>
+        </View>
       </View>
-      <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 15, fontWeight: "600", paddingBottom: 12 }}>Personal information</Text>
-      <View style={{ borderTopWidth: 0.5, borderColor: C.border }}>{[{ label: "Email", value: user?.primaryEmailAddress?.emailAddress || profile?.email || "Not set" }, { label: "Phone", value: profile?.phone || "Not added" }, { label: tanod ? "Assigned barangay" : "Barangay", value: community }].map((detail, index) => <View key={detail.label} style={{ paddingVertical: 18, paddingHorizontal: 0, backgroundColor: "transparent", gap: 7, borderTopWidth: index ? 0.5 : 0, borderColor: C.border }}><Text style={{ color: C.textSub, fontSize: 13 }}>{detail.label}</Text><Text selectable style={{ color: C.text, fontSize: 16, lineHeight: 24 }}>{detail.value}</Text></View>)}</View>
+      <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 15, fontWeight: "600", paddingBottom: 12 }}>Contact details</Text>
+      <View style={{ borderTopWidth: 0.5, borderColor: C.border }}>{[{ label: "Email", value: user?.primaryEmailAddress?.emailAddress || profile?.email || "Not set" }, { label: "Phone", value: profile?.phone || "Not added" }, { label: tanod ? "Assigned barangay" : "Barangay", value: community }].map((detail, index) => <View key={detail.label} style={{ paddingVertical: 16, paddingHorizontal: 0, backgroundColor: "transparent", gap: 6, borderTopWidth: index ? 0.5 : 0, borderColor: C.border }}><Text style={{ color: C.textSub, fontSize: 13 }}>{detail.label}</Text><Text selectable style={{ color: C.text, fontSize: 16, lineHeight: 24 }}>{detail.value}</Text></View>)}</View>
       <View style={{ marginTop: 32 }}>
-        <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 15, fontWeight: "600", paddingBottom: 8 }}>Activity & preferences</Text>
-        <View style={{ borderTopWidth: 0.5, borderColor: C.border }}>{actions.map(({ title, icon: Icon, onPress }) => <Pressable key={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 16, minHeight: 64, paddingVertical: 18, borderBottomWidth: 1, borderColor: C.border, paddingHorizontal: 0, backgroundColor: pressed ? C.surfaceRaised : "transparent" })}><Icon color={C.actionText} size={21} /><Text style={{ flex: 1, color: C.text, fontSize: 16 }}>{title}</Text><ChevronRight color={C.textDim} size={18} /></Pressable>)}</View>
+        <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 15, fontWeight: "600", paddingBottom: 8 }}>Your activity</Text>
+        <View style={{ borderTopWidth: 0.5, borderColor: C.border }}>{actions.map(({ title, icon: Icon, onPress }) => <Pressable key={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 16, minHeight: 64, paddingVertical: 18, borderBottomWidth: 0.5, borderColor: C.border, paddingHorizontal: 0, backgroundColor: pressed ? C.surfaceRaised : "transparent" })}><Icon color={C.actionText} size={21} /><Text style={{ flex: 1, color: C.text, fontSize: 16 }}>{title}</Text><ChevronRight color={C.textDim} size={18} /></Pressable>)}</View>
       </View>
     </ScrollView>
   </SafeAreaView>;

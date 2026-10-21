@@ -53,6 +53,7 @@ export default function EditProfile({
       : "skip",
   );
   const accent = C.accent;
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   async function updatePhoto() {
@@ -132,13 +133,15 @@ export default function EditProfile({
         <AccountHeader title={mandatory ? "Complete profile" : "Edit profile"} onBack={!mandatory && !embedded ? () => router.canGoBack() ? router.back() : router.replace("/(root)") : undefined} action={busy ? "Saving..." : "Done"} onAction={save} disabled={busy || uploading} />
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 24, gap: 28, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, gap: 28, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
         >
-          <View style={{ alignItems: "center", gap: 12, paddingTop: 12, paddingBottom: 8 }}>
-            <UserAvatar size={88} />
-            <Pressable accessibilityRole="button" accessibilityState={{ disabled: uploading, busy: uploading }} disabled={uploading || busy} onPress={updatePhoto} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed || uploading ? 0.6 : 1 })}>
-              {uploading && <ActivityIndicator color={C.actionText} size="small" />}<Text style={{ color: C.actionText, fontSize: 15, fontWeight: "600" }}>{uploading ? "Updating photo..." : "Change photo"}</Text>
-            </Pressable>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 18, paddingBottom: 4 }}>
+            <UserAvatar size={76} />
+            <View style={{ flex: 1, gap: 4 }}><Text style={{ color: C.text, fontSize: 20, fontWeight: "600" }}>Profile photo</Text><Text style={{ color: C.textSub, fontSize: 13 }}>Visible on your account</Text>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: uploading || busy, busy: uploading }} disabled={uploading || busy} onPress={updatePhoto} style={({ pressed }) => ({ minHeight: 48, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed || uploading ? 0.6 : 1 })}>
+                {uploading && <ActivityIndicator color={C.actionText} size="small" />}<Text style={{ color: C.actionText, fontSize: 15, fontWeight: "600" }}>{uploading ? "Updating photo..." : "Change photo"}</Text>
+              </Pressable>
+            </View>
           </View>
           {mandatory && (
             <View
@@ -192,8 +195,8 @@ export default function EditProfile({
               </Text>
             </View>
           )}
-          <View style={{ gap: 0 }}>
-            <Text style={{ fontSize: 17, fontWeight: "600", color: C.text, paddingBottom: 16 }}>
+          <View style={{ gap: 14 }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: C.text, paddingBottom: 4 }}>
               Name & contact
             </Text>
             {[
@@ -201,13 +204,16 @@ export default function EditProfile({
               ["Last name", lastName, setLastName],
               ["Phone (optional)", phone, setPhone],
             ].map(([label, value, setter]) => (
-              <View key={String(label)} style={{ borderTopWidth: 0.5, borderColor: C.border, paddingTop: 12 }}>
+              <View key={String(label)} style={{ gap: 8 }}>
                 <Text style={{ fontSize: 13, color: C.textSub }}>
                   {String(label)}
                 </Text>
                 <TextInput
                   accessibilityLabel={String(label)}
-                  style={[inputStyle, { fontFamily: Platform.OS === "ios" ? "System" : "sans-serif" }]}
+                  style={[inputStyle, { fontFamily: Platform.OS === "ios" ? "System" : "sans-serif", backgroundColor: C.surface, borderWidth: 1, borderColor: focusedField === String(label) ? C.actionText : C.border, borderRadius: 12, paddingHorizontal: 14 }]}
+                  onFocus={() => setFocusedField(String(label))}
+                  onBlur={() => setFocusedField(null)}
+                  autoCorrect={false}
                   value={value as string}
                   onChangeText={setter as (s: string) => void}
                   editable={!busy && !uploading}
@@ -276,7 +282,7 @@ export default function EditProfile({
               {error}
             </Text>
           )}
-          <Pressable
+          {(mandatory || embedded) && <Pressable
             accessibilityRole="button"
             disabled={busy || uploading}
             accessibilityState={{ disabled: busy || uploading, busy }}
@@ -301,7 +307,7 @@ export default function EditProfile({
                 {mandatory ? "Save & continue" : "Save changes"}
               </Text>
             )}
-          </Pressable>
+          </Pressable>}
           {mandatory && <Pressable
             accessibilityRole="button"
             onPress={() => void signOut()}
