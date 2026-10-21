@@ -4,7 +4,7 @@
     "slug": "moskito",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo/aedex-app-icon.png",
+    "icon": "./assets/logo/app-icon-opaque.png",
     "scheme": "aedex",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -33,7 +33,7 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/logo/aedex-icon.png"
+        "foregroundImage": "./assets/logo/app-icon-android.png"
       },
       "edgeToEdgeEnabled": false,
       "predictiveBackGestureEnabled": false,
@@ -41,7 +41,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/logo/aedex.png"
+      "favicon": "./assets/logo/app-icon.png"
     },
     "plugins": [
       [
