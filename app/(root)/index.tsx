@@ -6,7 +6,7 @@ export default function Index() {
     <Redirect
       href={
         hasTanodAccess(useProfile())
-          ? "/(root)/(tanod-tabs)/dashboard"
+          ? "/(root)/(tanod-tabs)/map"
           : "/(root)/(tabs)/map"
       }
     />

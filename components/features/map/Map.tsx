@@ -1,6 +1,7 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./MapControls";
 import { PIN_DATA_URIS } from "./pinAssets";
+import { streetMapThemeCss } from "@/constants/map-theme";
 import { useProfile } from "@/context/AccessContext";
 import { hasTanodAccess } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
@@ -116,7 +117,8 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.bg}; }
     .leaflet-bottom { bottom: 110px; }
-    .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
+    .leaflet-control-attribution { font-size: 10px; }
+    ${streetMapThemeCss(C)}
     
     @keyframes locationPulse {
       0% { transform: scale(0.8); opacity: 0.9; }
@@ -132,6 +134,10 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       0% { transform: scale(0.92); opacity: 0.7; }
       50% { transform: scale(1.25); opacity: 0.15; }
       100% { transform: scale(0.92); opacity: 0.7; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
     }
 
     /* Citizen location marker (NO square container) */
@@ -235,7 +241,7 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       .setView([${INITIAL_LOCATION.latitude}, ${INITIAL_LOCATION.longitude}], ${INITIAL_ZOOM});
 
     var tileLayers = {
-      vector: L.tileLayer('${TILE_URLS.vector}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.vector}' }),
+      vector: L.tileLayer('${TILE_URLS.vector}', { className: 'aedex-street-tiles', maxZoom: 19, attribution: '${TILE_ATTRIBUTION.vector}' }),
       satellite: L.tileLayer('${TILE_URLS.satellite}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.satellite}' })
     };
     var currentTileLayer = tileLayers.vector.addTo(map);
@@ -1001,6 +1007,7 @@ export default function MapComponent({
           ref={webviewRef}
           originWhitelist={["*"]}
           source={{ html }}
+          onLoadStart={() => setMapReady(false)}
           onMessage={handleWebViewMessage}
           style={{ flex: 1, backgroundColor: C.bg }}
           javaScriptEnabled
@@ -1039,7 +1046,7 @@ export default function MapComponent({
         <View
           style={[
             styles.rightPanel,
-            { top: isExpanded ? 78 : 130, bottom: undefined },
+            { top: isExpanded ? 94 : 156, bottom: undefined },
           ]}
         >
           <FloatBtn
@@ -1059,7 +1066,7 @@ export default function MapComponent({
           <View
             style={[
               styles.legend,
-              { bottom: 86 + Math.max(insets.bottom, 12) },
+              { bottom: 96 + Math.max(insets.bottom, 12) },
             ]}
           >
             <View style={styles.legendItem}>
@@ -1081,7 +1088,7 @@ export default function MapComponent({
 
         {(isLoading || !mapReady) && (
           <View
-            style={[styles.statusOverlayBox, { top: isExpanded ? 80 : 132 }]}
+            style={[styles.statusOverlayBox, { top: isExpanded ? 94 : 156 }]}
           >
             <ActivityIndicator size="small" color={C.accent} />
             <Text style={styles.statusOverlayText}>
@@ -1091,7 +1098,7 @@ export default function MapComponent({
         )}
         {!isLoading && mapReady && verifiedHotspots.length === 0 && (
           <View
-            style={[styles.statusOverlayBox, { top: isExpanded ? 80 : 132 }]}
+            style={[styles.statusOverlayBox, { top: isExpanded ? 94 : 156 }]}
           >
             <Text style={styles.statusOverlayText}>
               No reports matching current filter
@@ -1105,7 +1112,7 @@ export default function MapComponent({
         pointerEvents="box-none"
         style={[
           StyleSheet.absoluteFillObject,
-          { bottom: 86 + Math.max(insets.bottom, 12) },
+          { bottom: 96 + Math.max(insets.bottom, 12) },
         ]}
       >
         <ReportBottomSheet
@@ -1245,8 +1252,8 @@ const createStyles = (C: ThemeColors) =>
       backgroundColor: C.surface + "F2",
       borderWidth: 1,
       borderColor: C.border,
-      borderRadius: 14,
-      paddingVertical: 7,
+      borderRadius: 24,
+      paddingVertical: 12,
       paddingHorizontal: 11,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 3 },

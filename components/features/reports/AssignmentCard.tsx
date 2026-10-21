@@ -1,4 +1,5 @@
 import { CheckCircle2, ChevronRight, MapPin, Users } from "lucide-react-native";
+import { useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { AssignedReport, isCritical, isResolved } from "@/lib/tanodReports";
@@ -11,6 +12,7 @@ export default function AssignmentCard({
   onPress: () => void;
 }) {
   const { colors: C } = useTheme();
+  const [failedPhoto, setFailedPhoto] = useState(false);
   const resolved = isResolved(item);
   const critical = isCritical(item);
   const color = resolved ? C.safe : critical ? C.danger : C.warn;
@@ -31,26 +33,28 @@ export default function AssignmentCard({
       accessibilityLabel={`${label}, ${item.locationName}, assigned to ${item.teamName}. View report`}
       onPress={onPress}
       style={({ pressed }) => ({
-        borderRadius: 16,
+        borderRadius: 26,
         borderWidth: 1,
         borderColor: critical ? C.danger + "45" : C.border,
         backgroundColor: pressed ? C.surfaceRaised : C.surface,
-        padding: 16,
-        gap: 13,
+        padding: 20,
+        gap: 16,
       })}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {photo ? (
+        {photo && !failedPhoto ? (
           <Image
             source={{ uri: photo }}
-            style={{ width: 64, height: 72, borderRadius: 12 }}
+            onError={() => setFailedPhoto(true)}
+            accessible={false}
+            style={{ width: 68, height: 80, borderRadius: 20 }}
           />
         ) : (
           <View
             style={{
-              width: 58,
-              height: 64,
-              borderRadius: 12,
+              width: 68,
+              height: 80,
+              borderRadius: 20,
               backgroundColor: resolved
                 ? C.safeGlow
                 : critical
@@ -69,7 +73,7 @@ export default function AssignmentCard({
         )}
         <View style={{ flex: 1, gap: 5 }}>
           <Text
-            style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color, textTransform: "capitalize" }}
+            style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: C.text, textTransform: "capitalize", alignSelf: "flex-start", backgroundColor: resolved ? C.safeGlow : critical ? C.dangerGlow : C.warnGlow, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: color }}
           >
             {label}
           </Text>
@@ -78,13 +82,13 @@ export default function AssignmentCard({
             style={{
               color: C.text,
               fontFamily: "Inter_600SemiBold",
-              fontSize: 16,
-              lineHeight: 21,
+              fontSize: 17,
+              lineHeight: 24,
             }}
           >
             {item.locationName || "Reported site"}
           </Text>
-          <Text style={{ color: C.textSub, fontSize: 11 }}>
+          <Text style={{ color: C.textSub, fontSize: 12 }}>
             Assigned{" "}
             {new Date(item.assignedAt).toLocaleDateString(undefined, {
               month: "short",
@@ -109,7 +113,7 @@ export default function AssignmentCard({
           gap: 7,
           borderTopWidth: 1,
           borderTopColor: C.border,
-          paddingTop: 11,
+          paddingTop: 16,
         }}
       >
         <Users color={C.textSub} size={14} />
@@ -122,7 +126,7 @@ export default function AssignmentCard({
         <Text
           style={{
             color: item.isMine ? C.warn : C.textDim,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: "600",
           }}
         >

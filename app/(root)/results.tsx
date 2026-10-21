@@ -31,6 +31,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { streetMapThemeCss } from "@/constants/map-theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -219,6 +220,7 @@ function buildPreviewMapHtml(
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: ${C.surfaceRaised}; }
+    ${streetMapThemeCss(C)}
     .leaflet-control-attribution { font-size: 7px; opacity: 0.5; }
     .leaflet-control-zoom { display: none; }
     
@@ -289,6 +291,7 @@ function buildPreviewMapHtml(
     }).setView([${lat}, ${lng}], 15);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      className: 'aedex-street-tiles',
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);

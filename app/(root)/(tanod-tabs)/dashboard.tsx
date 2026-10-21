@@ -43,19 +43,20 @@ export default function TanodDashboardScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         padding: 20,
-        gap: 22,
-        paddingBottom: 100 + Math.max(insets.bottom, 12),
+        gap: 28,
+        paddingBottom: 116 + Math.max(insets.bottom, 12),
         maxWidth: 680,
         width: "100%",
         alignSelf: "center",
       }}
     >
       <View style={{ gap: 7 }}>
+        <Text style={{ color: C.textSub, fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 1.6 }}>FIELD OPERATIONS</Text>
         <Text style={{ color: C.textSub, fontSize: 13 }}>
           {profile?.assignedBarangay || "Your barangay"}
         </Text>
         <Text
-          style={{ color: C.text, fontFamily: "Manrope_700Bold", fontSize: 27 }}
+          style={{ color: C.text, fontFamily: "Manrope_700Bold", fontSize: 30 }}
         >
           Good day, {profile?.firstName || "Officer"}.
         </Text>
@@ -67,20 +68,20 @@ export default function TanodDashboardScreen() {
         accessibilityRole="button"
         accessibilityLabel="View my team assignments"
         onPress={openReports}
-        style={{
-          backgroundColor: C.surface,
-          borderRadius: 18,
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? C.surfaceRaised : C.surface,
+          borderRadius: 28,
           borderWidth: 1,
           borderColor: C.border,
           overflow: "hidden",
-        }}
+        })}
       >
-        <View style={{ padding: 20, gap: 16 }}>
+        <View style={{ padding: 24, gap: 20, borderTopWidth: 4, borderTopColor: C.warn }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <View
               style={{
                 padding: 10,
-                borderRadius: 12,
+                borderRadius: 18,
                 backgroundColor: C.warnGlow,
               }}
             >
@@ -161,7 +162,7 @@ export default function TanodDashboardScreen() {
               >
                 {loading ? "--" : value}
               </Text>
-              <Text style={{ color: C.textSub, fontSize: 11 }}>{label}</Text>
+              <Text style={{ color: C.textSub, fontSize: 12 }}>{label}</Text>
             </View>
           ))}
         </View>
@@ -175,9 +176,9 @@ export default function TanodDashboardScreen() {
             backgroundColor: C.surface,
             borderColor: C.border,
             borderWidth: 1,
-            borderRadius: 16,
+            borderRadius: 24,
             padding: 16,
-            gap: 12,
+            gap: 16,
           }}
         >
           <MapPinned color={C.warn} size={23} />
@@ -204,9 +205,9 @@ export default function TanodDashboardScreen() {
             backgroundColor: C.surface,
             borderColor: C.border,
             borderWidth: 1,
-            borderRadius: 16,
+            borderRadius: 24,
             padding: 16,
-            gap: 12,
+            gap: 16,
           }}
         >
           <ScanLine color={C.textSub} size={23} />
@@ -254,7 +255,7 @@ export default function TanodDashboardScreen() {
             accessibilityLabel="View all team assignments"
             onPress={openReports}
             style={{
-              minHeight: 44,
+              minHeight: 48,
               paddingHorizontal: 8,
               flexDirection: "row",
               alignItems: "center",
@@ -290,7 +291,7 @@ export default function TanodDashboardScreen() {
               backgroundColor: C.surface,
               borderWidth: 1,
               borderColor: C.border,
-              borderRadius: 18,
+              borderRadius: 28,
               gap: 9,
             }}
           >
@@ -325,9 +326,11 @@ export default function TanodDashboardScreen() {
           flexDirection: "row",
           gap: 12,
           alignItems: "center",
-          paddingVertical: 16,
-          borderTopWidth: 1,
-          borderTopColor: C.border,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: C.border,
+          backgroundColor: C.surface,
+          borderRadius: 24,
         }}
       >
         <Globe2 color={C.textSub} size={21} />

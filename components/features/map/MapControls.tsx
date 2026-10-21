@@ -53,8 +53,8 @@ export default function MapControls(p: Props) {
             alignItems: "center",
             gap: 8,
             backgroundColor: C.surface,
-            borderRadius: 18,
-            padding: 6,
+            borderRadius: 26,
+            padding: 10,
             borderWidth: 1,
             borderColor: C.border,
             shadowColor: "#000",
@@ -76,7 +76,7 @@ export default function MapControls(p: Props) {
             >
               {p.barangay || "Community map"}
             </Text>
-            <Text style={{ color: C.textSub, fontSize: 11, marginTop: 2 }}>
+            <Text style={{ color: C.textSub, fontSize: 12, marginTop: 4 }}>
               {selected?.[1]} · {p.counts[selected?.[2] || "all"] ?? 0} sites
             </Text>
           </View>
@@ -86,7 +86,7 @@ export default function MapControls(p: Props) {
               p.expanded ? "Exit focused map view" : "Use focused map view"
             }
             onPress={p.onExpand}
-            style={{ padding: 12 }}
+            style={{ padding: 14 }}
           >
             {p.expanded ? (
               <Minimize2 size={18} color={C.textSub} />
@@ -99,8 +99,8 @@ export default function MapControls(p: Props) {
             accessibilityLabel="Map filters and layers"
             onPress={() => setOpen(true)}
             style={{
-              padding: 12,
-              borderRadius: 12,
+              padding: 14,
+              borderRadius: 24,
               backgroundColor: C.surfaceRaised,
             }}
           >
@@ -111,7 +111,7 @@ export default function MapControls(p: Props) {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 6, paddingBottom: 3 }}
+            contentContainerStyle={{ gap: 8, paddingBottom: 6 }}
           >
             {options.map(([value, label, key]) => (
               <Pressable
@@ -120,12 +120,12 @@ export default function MapControls(p: Props) {
                 accessibilityState={{ selected: p.filter === value }}
                 onPress={() => p.onFilter(value)}
                 style={{
-                  minHeight: 44,
-                  paddingHorizontal: 13,
+                  minHeight: 48,
+                  paddingHorizontal: 16,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 7,
-                  borderRadius: 12,
+                  borderRadius: 24,
                   borderWidth: 1,
                   borderColor: p.filter === value ? accent : C.border,
                   backgroundColor: p.filter === value ? (p.tanod ? C.warnGlow : C.accentGlow) : C.surface,
@@ -178,8 +178,8 @@ export default function MapControls(p: Props) {
             style={{
               maxHeight: "85%",
               backgroundColor: C.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
             }}
           >
             <View style={{ alignSelf: "center", width: 36, height: 4, borderRadius: 2, backgroundColor: C.borderBright, marginTop: 10 }} />
@@ -220,7 +220,7 @@ export default function MapControls(p: Props) {
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 10,
-                      borderRadius: 12,
+                      borderRadius: 24,
                       padding: 14,
                       backgroundColor: p.filter === value ? (p.tanod ? C.warnGlow : C.accentGlow) : C.surfaceRaised,
                       borderWidth: 1,
@@ -249,7 +249,7 @@ export default function MapControls(p: Props) {
                     style={{
                       flex: 1,
                       padding: 14,
-                      borderRadius: 12,
+                      borderRadius: 24,
                       borderWidth: 1,
                       borderColor: p.mode === mode ? accent : C.border,
                       backgroundColor: p.mode === mode ? (p.tanod ? C.warnGlow : C.accentGlow) : C.surface,
@@ -300,7 +300,7 @@ export default function MapControls(p: Props) {
                 }}
                 style={{
                   padding: 14,
-                  borderRadius: 12,
+                  borderRadius: 24,
                   backgroundColor: C.surfaceRaised,
                 }}
               >

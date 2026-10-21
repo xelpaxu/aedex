@@ -3,6 +3,7 @@ import { Linking, Platform, Pressable, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useTheme } from '@/context/ThemeContext';
 import { validCoordinates } from '@/lib/notifications';
+import { streetMapThemeCss } from '@/constants/map-theme';
 
 export default function NotificationMap({ lat, lng }: { lat: number; lng: number }) {
   const { colors: C } = useTheme();
@@ -12,12 +13,12 @@ export default function NotificationMap({ lat, lng }: { lat: number; lng: number
   const html = useMemo(() => valid ? `<!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>html,body,#map{height:100%;margin:0;background:#EEF4F2}</style>
+    <style>html,body,#map{height:100%;margin:0;background:${C.bg}}${streetMapThemeCss(C)}</style>
     </head><body><div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>const map=L.map('map',{scrollWheelZoom:false}).setView([${lat},${lng}],16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-    L.marker([${lat},${lng}]).addTo(map);</script></body></html>` : '', [valid, lat, lng]);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{className:'aedex-street-tiles',maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    L.marker([${lat},${lng}]).addTo(map);</script></body></html>` : '', [valid, lat, lng, C]);
 
   if (!valid) return <Text style={{ color: C.textSub }}>Coordinates were not recorded for this report.</Text>;
   return <View style={{ gap: 10 }}>

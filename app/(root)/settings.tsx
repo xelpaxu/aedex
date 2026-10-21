@@ -42,20 +42,20 @@ export default function Settings() {
   const checking = state.phase === "checking";
   const section = {
     color: C.text,
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    marginBottom: 12,
+    marginBottom: 14,
   };
   const row = {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
     padding: 17,
-    minHeight: 80,
+    minHeight: 84,
   };
   const panel = {
     backgroundColor: C.surface,
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: C.border,
     overflow: "hidden" as const,
@@ -67,7 +67,7 @@ export default function Settings() {
         contentContainerStyle={{
           padding: 20,
           paddingBottom: 36,
-          gap: 24,
+          gap: 28,
           maxWidth: 640,
           width: "100%",
           alignSelf: "center",
@@ -82,9 +82,9 @@ export default function Settings() {
             }
             style={{
               alignSelf: "flex-start",
-              padding: 12,
+              padding: 14,
               backgroundColor: C.surface,
-              borderRadius: 14,
+              borderRadius: 18,
             }}
           >
             <ArrowLeft color={C.text} size={20} />
@@ -94,13 +94,13 @@ export default function Settings() {
               style={{
                 color: C.text,
                 fontFamily: "Manrope_700Bold",
-                fontSize: 28,
+                fontSize: 32,
               }}
             >
               Settings
             </Text>
             <Text style={{ color: C.textSub, fontSize: 14 }}>
-              Manage your account and how Aedex looks.
+              Your account, your community, your preferences.
             </Text>
           </View>
         </View>
@@ -126,7 +126,7 @@ export default function Settings() {
             style={{
               width: 54,
               height: 54,
-              borderRadius: 16,
+              borderRadius: 24,
               backgroundColor: accentGlow,
               alignItems: "center",
               justifyContent: "center",
@@ -177,7 +177,7 @@ export default function Settings() {
                     flex: 1,
                     padding: 12,
                     gap: 14,
-                    borderRadius: 18,
+                    borderRadius: 24,
                     borderWidth: 2,
                     borderColor: active ? accent : C.border,
                     backgroundColor: C.surface,
@@ -277,7 +277,7 @@ export default function Settings() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/edit-profile")}
-              style={row}
+              style={({ pressed }) => [row, { backgroundColor: pressed ? C.surfaceRaised : "transparent" }]}
             >
               <UserRound color={accent} size={21} />
               <View style={{ flex: 1, gap: 4 }}>
@@ -298,7 +298,7 @@ export default function Settings() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/notifications")}
-              style={row}
+              style={({ pressed }) => [row, { backgroundColor: pressed ? C.surfaceRaised : "transparent" }]}
             >
               <Bell color={accent} size={21} />
               <View style={{ flex: 1, gap: 4 }}>
@@ -325,7 +325,7 @@ export default function Settings() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => router.push("/(root)/(tanod-tabs)/dashboard")}
-                  style={row}
+                  style={({ pressed }) => [row, { backgroundColor: pressed ? C.surfaceRaised : "transparent" }]}
                 >
                   <LayoutDashboard color={C.warn} size={21} />
                   <View style={{ flex: 1, gap: 4 }}>
@@ -368,7 +368,7 @@ export default function Settings() {
                   setError("Could not check for updates. Try again.");
                 }
               }}
-              style={row}
+              style={({ pressed }) => [row, { backgroundColor: pressed ? C.surfaceRaised : "transparent" }]}
             >
               {checking ? (
                 <ActivityIndicator color={accent} />
@@ -415,7 +415,7 @@ export default function Settings() {
             alignItems: "center",
             justifyContent: "center",
             gap: 10,
-            borderRadius: 16,
+            borderRadius: 24,
             borderWidth: 1,
             borderColor: C.danger + "40",
             backgroundColor: C.dangerGlow,

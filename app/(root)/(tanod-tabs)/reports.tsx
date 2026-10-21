@@ -2,7 +2,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useProfile } from "@/context/AccessContext";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { CheckCheck, Search, Users, X } from "lucide-react-native";
+import { Search, Users, X, LayoutDashboard, ArrowUpRight, ClipboardList } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import AssignmentCard from "@/components/features/reports/AssignmentCard";
-import { filterReports, reportCounts, ReportFilter } from "@/lib/tanodReports";
+import { filterReports, reportCounts, ReportFilter, AssignedReport } from "@/lib/tanodReports";
 
 export default function TanodReportsScreen() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export default function TanodReportsScreen() {
   const [team, setTeam] = useState("");
   const assignments = useQuery(api.reports.getAssignedReports, {
     scope: "barangay",
-  });
+  }) as AssignedReport[] | undefined;
   const mine = useMemo(
     () => assignments?.filter((item) => item.isMine) ?? [],
     [assignments],
@@ -78,12 +78,12 @@ export default function TanodReportsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           padding: 20,
-          paddingBottom: 100 + Math.max(insets.bottom, 12),
+          paddingBottom: 116 + Math.max(insets.bottom, 12),
           maxWidth: 680,
           width: "100%",
           alignSelf: "center",
         }}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         renderItem={({ item }) => (
           <AssignmentCard
             item={item}
@@ -96,13 +96,18 @@ export default function TanodReportsScreen() {
           />
         )}
         ListHeaderComponent={
-          <View style={{ gap: 18, paddingBottom: 14 }}>
+          <View style={{ gap: 20, paddingBottom: 20 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open field dashboard" onPress={() => router.push("/(root)/(tanod-tabs)/dashboard")} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, minHeight: 56, borderRadius: 22, borderWidth: 1, borderColor: C.border, backgroundColor: pressed ? C.surfaceRaised : C.surface })}>
+              <LayoutDashboard color={C.warn} size={20} />
+              <Text style={{ flex: 1, color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Field overview</Text>
+              <ArrowUpRight color={C.textSub} size={20} />
+            </Pressable>
             <View style={{ gap: 6 }}>
               <Text
                 style={{
                   color: C.text,
                   fontFamily: "Manrope_700Bold",
-                  fontSize: 26,
+                  fontSize: 30,
                 }}
               >
                 Field reports
@@ -115,8 +120,8 @@ export default function TanodReportsScreen() {
             <View
               style={{
                 flexDirection: "row",
-                padding: 4,
-                borderRadius: 16,
+                padding: 6,
+                borderRadius: 28,
                 backgroundColor: C.surfaceRaised,
               }}
             >
@@ -132,7 +137,7 @@ export default function TanodReportsScreen() {
                   style={{
                     flex: 1,
                     minHeight: 48,
-                    borderRadius: 12,
+                    borderRadius: 24,
                     alignItems: "center",
                     justifyContent: "center",
                     flexDirection: "row",
@@ -166,6 +171,14 @@ export default function TanodReportsScreen() {
                 </Pressable>
               ))}
             </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {([{ key: "active", label: "Active", color: C.text }, { key: "critical", label: "Critical", color: C.danger }, { key: "resolved", label: "Resolved", color: C.safe }] as const).map(stat => (
+                <Pressable key={stat.key} accessibilityRole="button" accessibilityLabel={`${stat.label}: ${assignments === undefined ? "loading" : counts[stat.key]}. Filter assignments`} accessibilityState={{ selected: filter === stat.key }} onPress={() => setFilter(stat.key)} style={({ pressed }) => ({ flex: 1, minWidth: 85, padding: 14, gap: 8, borderRadius: 22, borderWidth: 1, borderColor: filter === stat.key ? stat.color : C.border, backgroundColor: pressed ? C.surfaceRaised : C.surface })}>
+                  <Text style={{ color: stat.color, fontFamily: "Manrope_700Bold", fontSize: 26 }}>{assignments === undefined ? "--" : counts[stat.key]}</Text>
+                  <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600" }}>{stat.label}</Text>
+                </Pressable>
+              ))}
+            </View>
             {scope === "others" && (
               <View
                 style={{
@@ -193,11 +206,11 @@ export default function TanodReportsScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 10,
-                minHeight: 48,
-                paddingHorizontal: 14,
+                minHeight: 56,
+                paddingHorizontal: 16,
                 borderWidth: 1,
                 borderColor: C.border,
-                borderRadius: 14,
+                borderRadius: 20,
                 backgroundColor: C.surface,
               }}
             >
@@ -223,7 +236,7 @@ export default function TanodReportsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Clear search"
                   onPress={() => setQuery("")}
-                  style={{ padding: 10 }}
+                  style={{ minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" }}
                 >
                   <X size={16} color={C.textSub} />
                 </Pressable>
@@ -240,10 +253,10 @@ export default function TanodReportsScreen() {
                   accessibilityState={{ selected: !team }}
                   onPress={() => setTeam("")}
                   style={{
-                    minHeight: 44,
+                    minHeight: 48,
                     justifyContent: "center",
                     paddingHorizontal: 12,
-                    borderRadius: 12,
+                    borderRadius: 24,
                     backgroundColor: !team ? C.warnGlow : C.surface,
                   }}
                 >
@@ -260,10 +273,10 @@ export default function TanodReportsScreen() {
                     accessibilityState={{ selected: team === id }}
                     onPress={() => setTeam(id)}
                     style={{
-                      minHeight: 44,
+                      minHeight: 48,
                       justifyContent: "center",
                       paddingHorizontal: 12,
-                      borderRadius: 12,
+                      borderRadius: 24,
                       backgroundColor: team === id ? C.warnGlow : C.surface,
                     }}
                   >
@@ -291,10 +304,10 @@ export default function TanodReportsScreen() {
                   accessibilityState={{ selected: filter === value }}
                   onPress={() => setFilter(value)}
                   style={{
-                    minHeight: 44,
+                    minHeight: 48,
                     justifyContent: "center",
                     paddingHorizontal: 14,
-                    borderRadius: 12,
+                    borderRadius: 24,
                     borderWidth: 1,
                     borderColor: filter === value ? C.warn : C.border,
                     backgroundColor: filter === value ? C.warnGlow : C.surface,
@@ -312,7 +325,7 @@ export default function TanodReportsScreen() {
                   >
                     {label}
                   </Text>
-                  {assignments !== undefined && <Text style={{ color: filter === value ? C.warn : C.textSub, fontSize: 11, fontWeight: "700", backgroundColor: C.surfaceRaised, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 }}>{counts[value]}</Text>}
+                  {assignments !== undefined && <Text style={{ color: filter === value ? C.warn : C.textSub, fontSize: 12, fontWeight: "700", backgroundColor: C.surfaceRaised, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 }}>{counts[value]}</Text>}
                 </Pressable>
               ))}
             </ScrollView>
@@ -334,7 +347,7 @@ export default function TanodReportsScreen() {
                   ? "Loading assignments"
                   : `${visible.length} ${visible.length === 1 ? "assignment" : "assignments"}`}
               </Text>
-              <Text style={{ color: C.textDim, fontSize: 11 }}>
+              <Text style={{ color: C.textDim, fontSize: 12 }}>
                 Critical first
               </Text>
             </View>
@@ -350,10 +363,10 @@ export default function TanodReportsScreen() {
                 gap: 12,
                 alignItems: "center",
                 backgroundColor: C.surface,
-                borderRadius: 18,
+                borderRadius: 28,
               }}
             >
-              <CheckCheck color={C.textSub} size={28} />
+              <View style={{ padding: 20, borderRadius: 28, backgroundColor: C.warnGlow }}><ClipboardList color={C.warn} size={28} /></View>
               <Text
                 style={{
                   color: C.text,
@@ -386,7 +399,7 @@ export default function TanodReportsScreen() {
                   accessibilityRole="button"
                   onPress={reset}
                   style={{
-                    minHeight: 44,
+                    minHeight: 48,
                     justifyContent: "center",
                     paddingHorizontal: 16,
                   }}

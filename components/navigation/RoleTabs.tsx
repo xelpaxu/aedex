@@ -1,14 +1,12 @@
 import { Tabs, useRouter } from "expo-router";
 import {
   Map,
-  LayoutDashboard,
   ScanLine,
   ClipboardList,
   Bell,
-  Settings,
   UserRound,
 } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "convex/react";
@@ -16,45 +14,43 @@ import { api } from "@/convex/_generated/api";
 export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
   const { colors: C } = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const unread = (useQuery(api.notifications.getUnreadCount) as number | undefined) ?? 0;
   const accent = tanod ? C.warn : C.accent;
-  const screens = tanod
-    ? [
-        { name: "dashboard", title: "Dashboard", icon: LayoutDashboard },
-        { name: "map", title: "Map", icon: Map },
-        { name: "reports", title: "Reports", icon: ClipboardList },
-      ]
-    : [
-        { name: "map", title: "Map", icon: Map },
-        { name: "capture", title: "Capture", icon: ScanLine },
-        { name: "reports", title: "Reports", icon: ClipboardList },
-      ];
+  const screens = [
+    { name: "map", title: "Map", icon: Map },
+    { name: "capture", title: "Capture", icon: ScanLine },
+    { name: "reports", title: "Reports", icon: ClipboardList },
+  ];
   return (
     <Tabs
-      initialRouteName={tanod ? "dashboard" : "map"}
+      initialRouteName="map"
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={{
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: C.textSub,
         tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 12, fontFamily: "Inter_600SemiBold", marginTop: 3 },
+        tabBarItemStyle: { paddingVertical: 2 },
+        tabBarIconStyle: { height: 36 },
+        tabBarLabelPosition: "below-icon",
         tabBarStyle: {
           position: "absolute",
-          left: 18,
-          right: 18,
+          marginHorizontal: Math.max(24, (width - 420) / 2),
           bottom: Math.max(insets.bottom, 12),
-          height: 70,
+          height: 76,
           paddingTop: 8,
           paddingBottom: 8,
-          borderRadius: 20,
+          borderRadius: 38,
           backgroundColor: C.surface,
           borderWidth: 1,
           borderColor: C.borderBright,
           borderTopWidth: 1,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
+          shadowOpacity: 0.16,
+          shadowRadius: 24,
           elevation: 6,
         },
         header: ({ options }) => (
@@ -62,10 +58,10 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
             style={{
               paddingTop: insets.top + 6,
               paddingBottom: 10,
-              paddingHorizontal: 16,
+              paddingHorizontal: 20,
               backgroundColor: C.bg,
               borderBottomColor: C.border,
-              borderBottomWidth: 1,
+              borderBottomWidth: 0,
               flexDirection: "row",
               alignItems: "center",
               gap: 12,
@@ -85,7 +81,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               <Text
                 style={{
                   color: C.text,
-                  fontSize: 18,
+                  fontSize: 23,
                   fontFamily: "Manrope_700Bold",
                   marginTop: 3,
                 }}
@@ -112,8 +108,8 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Settings"
-              onPress={() => router.push("/settings")}
+              accessibilityLabel="Your profile"
+              onPress={() => router.push(tanod ? "/(root)/(tanod-tabs)/profile" : "/(root)/(tabs)/profile")}
               style={{
                 padding: 11,
                 backgroundColor: C.surfaceRaised,
@@ -122,7 +118,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                 borderColor: C.border,
               }}
             >
-              <Settings color={C.textSub} size={20} />
+              <UserRound color={accent} size={20} />
             </Pressable>
           </View>
         ),
@@ -130,9 +126,9 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
     >
       <Tabs.Screen
         name="profile"
-        options={{ title: "Profile", headerShown: false, tabBarIcon: ({ color }) => <UserRound color={color} size={21} /> }}
+        options={{ href: null, title: "Profile", headerShown: false }}
       />
-      {tanod && <Tabs.Screen name="capture" options={{ href: null }} />}
+      {tanod && <Tabs.Screen name="dashboard" options={{ href: null, title: "Dashboard" }} />}
       {screens.map(({ name, title, icon: Icon }) => (
         <Tabs.Screen
           key={name}
@@ -143,10 +139,10 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
             tabBarIcon: ({ color, focused }) => (
               <View
                 style={{
-                  width: name === "capture" ? 52 : 44,
-                  height: name === "capture" ? 52 : 32,
-                  marginTop: name === "capture" ? -20 : 0,
-                  borderRadius: name === "capture" ? 19 : 12,
+                  width: 56,
+                  height: 36,
+                  marginTop: 0,
+                  borderRadius: 20,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor:
@@ -157,7 +153,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                           ? C.warnGlow
                           : C.accentGlow
                         : "transparent",
-                  borderWidth: name === "capture" ? 3 : 0,
+                  borderWidth: 0,
                   borderColor: C.surface,
                 }}
               >
@@ -165,7 +161,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                   color={
                     name === "capture" ? (tanod ? "#111827" : "#FFFFFF") : color
                   }
-                  size={name === "capture" ? 26 : 21}
+                  size={22}
                   strokeWidth={focused ? 2.5 : 1.8}
                 />
               </View>
