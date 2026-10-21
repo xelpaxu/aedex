@@ -1,16 +1,15 @@
-import { darkColors, type ThemeColors } from "@/context/ThemeContext";
+import type { ThemeColors } from "@/context/ThemeContext";
 
-export const STREET_MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution/">CARTO</a>';
+export const STREET_MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-export function streetMapTileUrl(colors: ThemeColors) {
-  const style = colors.bg === darkColors.bg ? "dark_all" : "light_all";
-  const key = process.env.EXPO_PUBLIC_CARTO_API_KEY;
-  return `https://basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png${key ? `?key=${encodeURIComponent(key)}` : ""}`;
+export function streetMapTileUrl() {
+  return "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 }
 
-/** Use the basemap's original colors; theme only the surrounding map controls. */
+/** Filter only street tiles, preserving satellite imagery and report colors. */
 export function streetMapThemeCss(colors: ThemeColors) {
   return `
+    .aedex-street-tiles { filter: grayscale(1) invert(1) sepia(0.35) saturate(1.8) hue-rotate(125deg) brightness(0.85) contrast(0.9); }
     .leaflet-container { background: ${colors.bg}; }
     .leaflet-control-attribution,
     .leaflet-bar a { background: ${colors.surface}; color: ${colors.text}; }

@@ -277,7 +277,7 @@ function buildPreviewMapHtml(
       attributionControl: true
     }).setView([${lat}, ${lng}], 15);
 
-    L.tileLayer('${streetMapTileUrl(C)}', {
+    L.tileLayer('${streetMapTileUrl()}', {
       className: 'aedex-street-tiles',
       maxZoom: 19,
       attribution: '${STREET_MAP_ATTRIBUTION}'

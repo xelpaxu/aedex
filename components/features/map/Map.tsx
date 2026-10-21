@@ -223,7 +223,7 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       .setView([${INITIAL_LOCATION.latitude}, ${INITIAL_LOCATION.longitude}], ${INITIAL_ZOOM});
 
     var tileLayers = {
-      vector: L.tileLayer('${streetMapTileUrl(C)}', { className: 'aedex-street-tiles', maxZoom: 19, attribution: '${STREET_MAP_ATTRIBUTION}' }),
+      vector: L.tileLayer('${streetMapTileUrl()}', { className: 'aedex-street-tiles', maxZoom: 19, attribution: '${STREET_MAP_ATTRIBUTION}' }),
       satellite: L.tileLayer('${TILE_URLS.satellite}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.satellite}' })
     };
     var currentTileLayer = tileLayers.vector.addTo(map);
