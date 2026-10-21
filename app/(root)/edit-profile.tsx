@@ -1,17 +1,17 @@
+import UserAvatar from "@/components/UserAvatar";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { Text, TextInput } from "@/components/Typography";
 import {
   ArrowLeft,
   Check,
   MapPin,
   ShieldCheck,
-  UserRound,
 } from "lucide-react-native";
 import { api } from "@/convex/_generated/api";
 import { useProfile } from "@/context/AccessContext";
@@ -95,7 +95,11 @@ export default function EditProfile({
     try {
       await saveProfile({ firstName, lastName, phone, barangay });
       setSaved(true);
-      if (!embedded || mandatory) router.replace("/(root)");
+      if (mandatory) router.replace("/(root)");
+      else if (!embedded) {
+        if (router.canGoBack()) router.back();
+        else router.replace("/(root)");
+      }
     } catch (e) {
       setError(
         e instanceof Error
@@ -109,11 +113,12 @@ export default function EditProfile({
   const inputStyle = {
     borderWidth: 1,
     borderColor: C.border,
-    backgroundColor: C.surfaceRaised,
-    borderRadius: 12,
+    backgroundColor: C.surface,
+    borderRadius: 10,
     padding: 14,
     color: C.text,
-    fontSize: 15,
+    fontSize: 16,
+    minHeight: 54,
   };
   return (
     <SafeAreaView
@@ -128,8 +133,8 @@ export default function EditProfile({
           style={{
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 20,
-            paddingVertical: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 6,
             gap: 12,
             borderBottomWidth: 1,
             borderColor: C.border,
@@ -138,7 +143,8 @@ export default function EditProfile({
           {!mandatory && !embedded && (
             <Pressable
               accessibilityLabel="Back"
-              hitSlop={12}
+              accessibilityRole="button"
+              style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
               onPress={() =>
                 router.canGoBack() ? router.back() : router.replace("/(root)")
               }
@@ -149,41 +155,19 @@ export default function EditProfile({
           <Text
             style={{ fontWeight: "700", fontSize: 18, color: C.text, flex: 1 }}
           >
-            Your profile
-          </Text>
-          <Text style={{ fontSize: 11, color: accent, fontWeight: "700" }}>
-            {officer ? "TANOD" : "COMMUNITY"}
+            {mandatory ? "Complete profile" : "Edit profile"}
           </Text>
         </View>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
+          contentContainerStyle={{ padding: 24, gap: 28, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
         >
-          <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
-            {user?.imageUrl ? (
-              <Image
-                source={{ uri: user.imageUrl }}
-                style={{ width: 60, height: 60, borderRadius: 20 }}
-              />
-            ) : (
-              <UserRound color={accent} size={40} />
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: C.text }}>
-                {mandatory
-                  ? "Let’s get you set up"
-                  : profile?.fullName || "Your account"}
-              </Text>
-              <Text style={{ fontSize: 13, color: C.textSub, marginTop: 4 }}>
-                {user?.primaryEmailAddress?.emailAddress || profile?.email}
-              </Text>
-            </View>
+          <View style={{ alignItems: "center", gap: 12, paddingTop: 12, paddingBottom: 8 }}>
+            <UserAvatar size={88} />
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: uploading, busy: uploading }} disabled={uploading || busy} onPress={updatePhoto} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed || uploading ? 0.6 : 1 })}>
+              {uploading && <ActivityIndicator color={C.accent} size="small" />}<Text style={{ color: C.accent, fontSize: 15, fontWeight: "600" }}>{uploading ? "Updating photo..." : "Change photo"}</Text>
+            </Pressable>
           </View>
-          <Pressable accessibilityRole="button" disabled={uploading} onPress={updatePhoto} style={{ alignSelf: "flex-start", minHeight: 44, justifyContent: "center", paddingHorizontal: 16, borderRadius: 12, backgroundColor: officer ? C.warnGlow : C.accentGlow }}>
-            <Text style={{ color: accent, fontWeight: "600" }}>
-              {uploading ? "Updating photo�" : "Change profile photo"}
-            </Text>
-          </Pressable>
           {mandatory && (
             <View
               style={{
@@ -204,9 +188,9 @@ export default function EditProfile({
           {officer && (
             <View
               style={{
-                backgroundColor: C.surface,
-                padding: 16,
-                borderRadius: 16,
+                backgroundColor: C.surfaceRaised,
+                padding: 18,
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: C.border,
                 gap: 6,
@@ -236,9 +220,9 @@ export default function EditProfile({
               </Text>
             </View>
           )}
-          <View style={{ gap: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>
-              Personal details
+          <View style={{ gap: 18 }}>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: C.text }}>
+              Name & contact
             </Text>
             {[
               ["First name", firstName, setFirstName],
@@ -266,7 +250,7 @@ export default function EditProfile({
             ))}
           </View>
           <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: C.text }}>
               Reporting barangay
             </Text>
             <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20 }}>
@@ -286,7 +270,7 @@ export default function EditProfile({
                   alignItems: "center",
                   gap: 12,
                   padding: 16,
-                  borderRadius: 14,
+                  borderRadius: 10,
                   borderWidth: 1,
                   borderColor: barangay === b ? accent : C.border,
                   backgroundColor: barangay === b ? C.surfaceRaised : C.surface,
@@ -322,7 +306,8 @@ export default function EditProfile({
           )}
           <Pressable
             accessibilityRole="button"
-            disabled={busy}
+            disabled={busy || uploading}
+            accessibilityState={{ disabled: busy || uploading, busy }}
             onPress={save}
             style={{
               backgroundColor: accent,
@@ -345,12 +330,13 @@ export default function EditProfile({
               </Text>
             )}
           </Pressable>
-          <Pressable
+          {mandatory && <Pressable
+            accessibilityRole="button"
             onPress={() => void signOut()}
             style={{ alignItems: "center", padding: 10 }}
           >
             <Text style={{ color: C.textSub }}>Sign out</Text>
-          </Pressable>
+          </Pressable>}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
