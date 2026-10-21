@@ -239,7 +239,7 @@ function MapStylePreview({ mode }: { mode: "vector" | "satellite" }) {
   const [failed, setFailed] = useState(false);
   const satellite = mode === "satellite";
   return <View style={{ height: 116, backgroundColor: satellite ? "#263E32" : "#E8EDE3", overflow: "hidden" }}>
-    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: satellite ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" : streetMapTileUrl(C).replace("{z}", "14").replace("{x}", "13767").replace("{y}", "7702") }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color={satellite ? "#FFFFFF" : "#48635C"} size={24} /><Text style={{ color: satellite ? "#FFFFFF" : "#48635C", fontSize: 11 }}>Preview unavailable</Text></View>}
+    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: satellite ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" : streetMapTileUrl().replace("{z}", "14").replace("{x}", "13767").replace("{y}", "7702") }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color={satellite ? "#FFFFFF" : "#48635C"} size={24} /><Text style={{ color: satellite ? "#FFFFFF" : "#48635C", fontSize: 11 }}>Preview unavailable</Text></View>}
     <Text style={{ position: "absolute", bottom: 0, right: 0, backgroundColor: "#FFFFFFE8", color: "#263E32", fontSize: 9, paddingHorizontal: 4, paddingVertical: 2 }}>{satellite ? "Tiles: Esri" : "(c) OpenStreetMap contributors"}</Text>
   </View>;
 }

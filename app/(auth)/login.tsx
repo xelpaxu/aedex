@@ -1,3 +1,4 @@
+import PeekFormCard from "@/components/auth/PeekFormCard";
 import { useOAuth, useSignIn } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 import { Link } from "expo-router";
@@ -294,165 +295,167 @@ export default function LoginScreen() {
             </View>
             <Text style={styles.appTitle}>AEDEX</Text>
             <Text style={styles.appSubtitle}>VECTOR SURVEILLANCE & TRIAGE</Text>
-            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.title}>Sign in to your account</Text>
             <Text style={styles.subtitle}>
               Sign in to report sites and follow your community’s response.
             </Text>
           </View>
 
           {/* ── Error Notice ── */}
-          {errorMessage && (
-            <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorBox}>
-              <AlertCircle size={15} color={C.danger} />
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          )}
-
-          {/* ── Form Inputs ── */}
-          <View style={styles.form}>
-            {/* Email */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <View
-                style={[
-                  styles.inputWrap,
-                  focusedField === "email" && styles.inputWrapFocused,
-                ]}
-              >
-                <Mail size={17} color={C.textDim} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="name@example.com"
-                  placeholderTextColor={C.textDim}
-                  value={email}
-                  onChangeText={(t) => {
-                    setEmail(t);
-                    if (errorMessage) setErrorMessage(null);
-                  }}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  editable={!isProcessing}
-                />
-                {email.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setEmail("")}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <X size={15} color={C.textDim} />
-                  </TouchableOpacity>
-                )}
+          <PeekFormCard>
+            {errorMessage && (
+              <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorBox}>
+                <AlertCircle size={15} color={C.danger} />
+                <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
-            </View>
+            )}
 
-            {/* Password */}
-            <View style={styles.field}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Password</Text>
-                <TouchableOpacity
-                  onPress={handleOpenForgot}
-                  activeOpacity={0.7}
+            {/* ── Form Inputs ── */}
+            <View style={styles.form}>
+              {/* Email */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    focusedField === "email" && styles.inputWrapFocused,
+                  ]}
                 >
-                  <Text style={styles.forgotText}>Forgot password?</Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                style={[
-                  styles.inputWrap,
-                  focusedField === "password" && styles.inputWrapFocused,
-                ]}
-              >
-                <Lock size={17} color={C.textDim} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor={C.textDim}
-                  value={password}
-                  onChangeText={(t) => {
-                    setPassword(t);
-                    if (errorMessage) setErrorMessage(null);
-                  }}
-                  onFocus={() => setFocusedField("password")}
-                  onBlur={() => setFocusedField(null)}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="password"
-                  editable={!isProcessing}
-                />
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.7}
-                >
-                  {showPassword ? (
-                    <EyeOff size={17} color={C.textDim} />
-                  ) : (
-                    <Eye size={17} color={C.textDim} />
+                  <Mail size={17} color={C.textDim} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="name@example.com"
+                    placeholderTextColor={C.textDim}
+                    value={email}
+                    onChangeText={(t) => {
+                      setEmail(t);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    onFocus={() => setFocusedField("email")}
+                    onBlur={() => setFocusedField(null)}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                    editable={!isProcessing}
+                  />
+                  {email.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setEmail("")}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <X size={15} color={C.textDim} />
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+                </View>
               </View>
+
+              {/* Password */}
+              <View style={styles.field}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Password</Text>
+                  <TouchableOpacity
+                    onPress={handleOpenForgot}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                </View>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    focusedField === "password" && styles.inputWrapFocused,
+                  ]}
+                >
+                  <Lock size={17} color={C.textDim} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your password"
+                    placeholderTextColor={C.textDim}
+                    value={password}
+                    onChangeText={(t) => {
+                      setPassword(t);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    onFocus={() => setFocusedField("password")}
+                    onBlur={() => setFocusedField(null)}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    editable={!isProcessing}
+                  />
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    activeOpacity={0.7}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={17} color={C.textDim} />
+                    ) : (
+                      <Eye size={17} color={C.textDim} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[styles.primaryBtn, isProcessing && { opacity: 0.7 }]}
+                onPress={handleEmailLogin}
+                activeOpacity={0.85}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Sign In</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[styles.primaryBtn, isProcessing && { opacity: 0.7 }]}
-              onPress={handleEmailLogin}
-              activeOpacity={0.85}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Sign In</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+            {/* ── Divider ── */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-          {/* ── Divider ── */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* ── Social Buttons ── */}
-          <View style={styles.socialRow}>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={() => onSelectSocialAuth("google")}
-              activeOpacity={0.75}
-              disabled={isProcessing}
-            >
-              <GoogleLogo size={18} />
-              <Text style={styles.socialText}>Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={() => onSelectSocialAuth("facebook")}
-              activeOpacity={0.75}
-              disabled={isProcessing}
-            >
-              <FacebookLogo size={18} />
-              <Text style={styles.socialText}>Facebook</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Footer Link ── */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don&apos;t have an account? </Text>
-            <Link href="/(auth)/signup" asChild>
-              <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.footerLink}>Sign up</Text>
+            {/* ── Social Buttons ── */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => onSelectSocialAuth("google")}
+                activeOpacity={0.75}
+                disabled={isProcessing}
+              >
+                <GoogleLogo size={18} />
+                <Text style={styles.socialText}>Google</Text>
               </TouchableOpacity>
-            </Link>
-          </View>
+
+              <TouchableOpacity
+                style={styles.socialBtn}
+                onPress={() => onSelectSocialAuth("facebook")}
+                activeOpacity={0.75}
+                disabled={isProcessing}
+              >
+                <FacebookLogo size={18} />
+                <Text style={styles.socialText}>Facebook</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Footer Link ── */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Link href="/(auth)/signup" asChild>
+                <TouchableOpacity activeOpacity={0.7}>
+                  <Text style={styles.footerLink}>Sign up</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+          </PeekFormCard>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -578,9 +581,9 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 24,
+      paddingTop: 28,
       paddingBottom: 32,
-      justifyContent: "flex-start",
+      justifyContent: "center",
       maxWidth: 460,
       width: "100%",
       alignSelf: "center",
@@ -588,19 +591,19 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
 
     // ── Header
     header: {
-      alignItems: "flex-start",
-      marginBottom: 28,
+      alignItems: "center",
+      marginBottom: 0,
     },
     mascot: {
       marginBottom: 12,
-      alignSelf: "flex-start",
+      alignSelf: "center",
     },
     appTitle: {
-      fontSize: 18,
+      fontSize: 26,
       fontWeight: "800",
-      letterSpacing: 1.5,
+      letterSpacing: 2.5,
       color: C.text,
-      textAlign: "left",
+      textAlign: "center",
     },
     appSubtitle: {
       fontSize: 9,
@@ -609,23 +612,23 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       color: C.accent,
       textTransform: "uppercase",
       marginTop: 2,
-      marginBottom: 24,
-      textAlign: "left",
+      marginBottom: 16,
+      textAlign: "center",
     },
     title: {
-      fontSize: 30,
+      fontSize: 22,
       fontWeight: "700",
       color: C.text,
-      letterSpacing: -1,
+      letterSpacing: -0.4,
       marginBottom: 8,
-      textAlign: "left",
+      textAlign: "center",
       fontFamily: "Inter_700Bold",
     },
     subtitle: {
       fontSize: 14,
       color: C.textSub,
       lineHeight: 21,
-      textAlign: "left",
+      textAlign: "center",
       maxWidth: 360,
     },
 

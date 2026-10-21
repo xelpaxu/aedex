@@ -112,10 +112,10 @@ export default function EditProfile({
   const inputStyle = {
     borderWidth: 0,
     borderColor: C.border,
-    backgroundColor: C.surface,
+    backgroundColor: "transparent",
     borderRadius: 0,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     color: C.text,
     fontSize: 16,
     minHeight: 54,
@@ -137,7 +137,7 @@ export default function EditProfile({
           <View style={{ alignItems: "center", gap: 12, paddingTop: 12, paddingBottom: 8 }}>
             <UserAvatar size={88} />
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: uploading, busy: uploading }} disabled={uploading || busy} onPress={updatePhoto} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 8, opacity: pressed || uploading ? 0.6 : 1 })}>
-              {uploading && <ActivityIndicator color={C.accent} size="small" />}<Text style={{ color: C.accent, fontSize: 15, fontWeight: "600" }}>{uploading ? "Updating photo..." : "Change photo"}</Text>
+              {uploading && <ActivityIndicator color={C.actionText} size="small" />}<Text style={{ color: C.actionText, fontSize: 15, fontWeight: "600" }}>{uploading ? "Updating photo..." : "Change photo"}</Text>
             </Pressable>
           </View>
           {mandatory && (
@@ -160,10 +160,10 @@ export default function EditProfile({
           {officer && (
             <View
               style={{
-                backgroundColor: C.surfaceRaised,
-                padding: 18,
-                borderRadius: 12,
-                borderWidth: 1,
+                backgroundColor: "transparent",
+                paddingVertical: 18,
+                borderTopWidth: 0.5,
+                borderBottomWidth: 0.5,
                 borderColor: C.border,
                 gap: 6,
               }}
@@ -192,8 +192,8 @@ export default function EditProfile({
               </Text>
             </View>
           )}
-          <View style={{ gap: 0, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface }}>
-            <Text style={{ fontSize: 13, fontWeight: "400", color: C.textSub, padding: 16 }}>
+          <View style={{ gap: 0 }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: C.text, paddingBottom: 16 }}>
               Name & contact
             </Text>
             {[
@@ -202,7 +202,7 @@ export default function EditProfile({
               ["Phone (optional)", phone, setPhone],
             ].map(([label, value, setter]) => (
               <View key={String(label)} style={{ borderTopWidth: 0.5, borderColor: C.border, paddingTop: 12 }}>
-                <Text style={{ fontSize: 13, color: C.textSub, paddingHorizontal: 16 }}>
+                <Text style={{ fontSize: 13, color: C.textSub }}>
                   {String(label)}
                 </Text>
                 <TextInput
@@ -210,7 +210,7 @@ export default function EditProfile({
                   style={[inputStyle, { fontFamily: Platform.OS === "ios" ? "System" : "sans-serif" }]}
                   value={value as string}
                   onChangeText={setter as (s: string) => void}
-                  editable={!busy}
+                  editable={!busy && !uploading}
                   keyboardType={
                     String(label).startsWith("Phone") ? "phone-pad" : "default"
                   }
@@ -221,11 +221,11 @@ export default function EditProfile({
               </View>
             ))}
           </View>
-          <View style={{ gap: 0, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface }}>
-            <Text style={{ fontSize: 13, fontWeight: "400", color: C.textSub, padding: 16 }}>
+          <View style={{ gap: 0 }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: C.text, paddingBottom: 16 }}>
               Reporting barangay
             </Text>
-            <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20, padding: 16 }}>
+            <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20, paddingBottom: 16 }}>
               New reports will use this barangay. Changing it won’t move your
               previous reports.
               {officer ? " This does not change your official team." : ""}
@@ -236,19 +236,19 @@ export default function EditProfile({
                 accessibilityRole="radio"
                 accessibilityState={{ checked: barangay === b }}
                 onPress={() => setBarangay(b)}
-                disabled={busy}
+                disabled={busy || uploading}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 12,
-                  padding: 16,
+                  paddingVertical: 18,
                   borderRadius: 0,
                   borderTopWidth: 0.5,
                   borderColor: C.border,
-                  backgroundColor: C.surface,
+                  backgroundColor: "transparent",
                 }}
               >
-                <MapPin color={barangay === b ? accent : C.textSub} size={20} />
+                <MapPin color={barangay === b ? C.actionText : C.textSub} size={20} />
                 <Text
                   style={{
                     flex: 1,
@@ -259,7 +259,7 @@ export default function EditProfile({
                 >
                   Barangay {b}
                 </Text>
-                {barangay === b && <Check color={accent} size={20} />}
+                {barangay === b && <Check color={C.actionText} size={20} />}
               </Pressable>
             ))}
           </View>
