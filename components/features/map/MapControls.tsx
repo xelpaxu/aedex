@@ -1,4 +1,4 @@
-import { streetMapTileUrl } from "@/constants/map-theme";
+import StreetMapPreview from "./StreetMapPreview";
 import React, { useState } from "react";
 import { Image, Modal, Pressable, ScrollView, Switch, View } from "react-native";
 import { Text } from "@/components/Typography";
@@ -18,6 +18,8 @@ type Props = {
   filter: string;
   onFilter: (value: string) => void;
   counts: Record<string, number>;
+  status: "verified" | "pending" | "resolved" | "all";
+  onStatus: (value: "verified" | "pending" | "resolved" | "all") => void;
   mode: "vector" | "satellite";
   onMode: (mode: "vector" | "satellite") => void;
   pins: boolean;
@@ -34,15 +36,14 @@ export default function MapControls(p: Props) {
         ["ASSIGNED", "My team", "assigned"],
         ["CRITICAL", "Urgent", "critical"],
         ["ALL", "All sites", "all"],
-        ["PENDING", "Pending", "pending"],
-        ["RESOLVED", "Resolved", "resolved"],
       ]
     : [
         ["ALL", "All sites", "all"],
         ["NEARBY", "Nearby", "nearby"],
         ["CRITICAL", "Critical", "critical"],
-        ["RESOLVED", "Treated", "resolved"],
       ];
+  const statuses = [{ value: "verified", label: "Verified" }, { value: "pending", label: "Pending validation" }, { value: "resolved", label: "Resolved" }, { value: "all", label: "All statuses" }] as const;
+  const statusLabel = statuses.find(item => item.value === p.status)?.label;
   const selected = options.find((o) => o[0] === p.filter);
   return (
     <>
@@ -77,7 +78,7 @@ export default function MapControls(p: Props) {
               {p.barangay || "Community map"}
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12, marginTop: 4 }}>
-              {selected?.[1]} � {p.counts[selected?.[2] || "all"] ?? 0} sites
+              {statusLabel} / {selected?.[1]} � {p.counts[selected?.[2] || "all"] ?? 0} sites
             </Text>
           </View>
           <Pressable
@@ -193,6 +194,13 @@ export default function MapControls(p: Props) {
                 <Pressable accessibilityRole="button" accessibilityLabel="Close map options" onPress={() => setOpen(false)} style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, backgroundColor: pressed ? C.surfaceRaised : C.bg, alignItems: "center", justifyContent: "center" })}><X color={C.text} size={20} /></Pressable>
               </View>
               <View style={{ gap: 12 }}>
+                <Text accessibilityRole="header" style={{ color: C.text, fontSize: 16, fontWeight: "600" }}>Report status</Text>
+                <Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>Verified reports are shown by default. All statuses also includes reports awaiting validation and resolved reports.</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {statuses.map(item => <Pressable key={item.value} accessibilityRole="radio" accessibilityState={{ checked: p.status === item.value }} onPress={() => p.onStatus(item.value)} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: p.status === item.value ? accent : C.border, backgroundColor: pressed || p.status === item.value ? C.surfaceRaised : C.surface, flexDirection: "row", alignItems: "center", gap: 8 })}><Text style={{ color: C.text, fontSize: 13 }}>{item.label}</Text>{p.status === item.value && <Check size={16} color={accent} />}</Pressable>)}
+                </View>
+              </View>
+              <View style={{ gap: 12 }}>
                 <Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Show sites</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                   {options.map(([value, label, key]) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: p.filter === value }} onPress={() => p.onFilter(value)} style={({ pressed }) => ({ flexGrow: 1, flexBasis: "44%", minHeight: 56, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: p.filter === value ? accent : C.border, backgroundColor: pressed || p.filter === value ? C.surfaceRaised : C.surface, flexDirection: "row", alignItems: "center", gap: 8 })}>
@@ -238,8 +246,13 @@ function MapStylePreview({ mode }: { mode: "vector" | "satellite" }) {
   const { colors: C } = useTheme();
   const [failed, setFailed] = useState(false);
   const satellite = mode === "satellite";
+  if (!satellite) {
+    return <View pointerEvents="none" style={{ height: 116, backgroundColor: C.bg, overflow: "hidden" }}>
+      <StreetMapPreview />
+    </View>;
+  }
   return <View style={{ height: 116, backgroundColor: satellite ? "#263E32" : "#E8EDE3", overflow: "hidden" }}>
-    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: satellite ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" : streetMapTileUrl().replace("{z}", "14").replace("{x}", "13767").replace("{y}", "7702") }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color={satellite ? "#FFFFFF" : "#48635C"} size={24} /><Text style={{ color: satellite ? "#FFFFFF" : "#48635C", fontSize: 11 }}>Preview unavailable</Text></View>}
-    <Text style={{ position: "absolute", bottom: 0, right: 0, backgroundColor: "#FFFFFFE8", color: "#263E32", fontSize: 9, paddingHorizontal: 4, paddingVertical: 2 }}>{satellite ? "Tiles: Esri" : "(c) OpenStreetMap contributors"}</Text>
+    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color="#FFFFFF" size={24} /><Text style={{ color: "#FFFFFF", fontSize: 11 }}>Preview unavailable</Text></View>}
+    <Text style={{ position: "absolute", bottom: 0, right: 0, backgroundColor: "#FFFFFFE8", color: "#263E32", fontSize: 9, paddingHorizontal: 4, paddingVertical: 2 }}>Tiles: Esri</Text>
   </View>;
 }

@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/AccountUI";
 import { useProfile } from "@/context/AccessContext";
 import { formatReportLocation, hasPilotBarangay } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
@@ -10,7 +11,6 @@ import {
   ChevronRight,
   Clock,
   MapPin,
-  RotateCcw,
   ScanLine,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -148,17 +148,7 @@ export default function CapturePreview({
         >
           {/* ── TOP NAV ── */}
           <View style={styles.topNav}>
-            <TouchableOpacity
-              onPress={onReset}
-              style={styles.navBackBtn}
-              disabled={analyzing}
-            >
-              <RotateCcw
-                color={analyzing ? C.textDim : C.textSub}
-                size={15}
-                strokeWidth={2.5}
-              />
-            </TouchableOpacity>
+            <BackButton onPress={onReset} disabled={analyzing} />
 
             <View style={styles.navCenter}>
               <View style={styles.navStatusDot} />
@@ -370,16 +360,6 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "space-between",
       paddingTop: 60,
       paddingBottom: 20,
-    },
-    navBackBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 11,
-      backgroundColor: C.surface,
-      borderWidth: 1,
-      borderColor: C.border,
-      alignItems: "center",
-      justifyContent: "center",
     },
     navCenter: { flexDirection: "row", alignItems: "center", gap: 7 },
     navStatusDot: {

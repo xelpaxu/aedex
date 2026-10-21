@@ -1,3 +1,4 @@
+import { BackButton } from "@/components/AccountUI";
 import { hasTanodAccess } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -5,7 +6,6 @@ import { useMutation, useQuery } from "convex/react";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  ArrowLeft,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -595,13 +595,7 @@ export default function ResultsScreen() {
     <View style={styles.root}>
       {/* ── FLOATING TOP HEADER ── */}
       <Animated.View style={[styles.headerBar, { backgroundColor: headerBg }]}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft color={C.text} size={16} strokeWidth={2.5} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace("/(root)")} />
         <Text style={styles.headerTitle}>
           REPORT #{reportId.slice(-6).toUpperCase()}
         </Text>
@@ -1217,16 +1211,6 @@ const createStyles = (C: ThemeColors) =>
       gap: 12,
       borderBottomWidth: 1,
       borderBottomColor: C.border + "60",
-    },
-    backBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 10,
-      backgroundColor: C.surfaceRaised,
-      borderWidth: 1,
-      borderColor: C.border,
-      alignItems: "center",
-      justifyContent: "center",
     },
     headerTitle: {
       flex: 1,

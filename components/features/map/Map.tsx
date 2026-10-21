@@ -1,3 +1,4 @@
+import { matchesMapStatus } from "@/lib/mapReports";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./MapControls";
 import { PIN_DATA_URIS } from "./pinAssets";
@@ -620,7 +621,8 @@ export default function MapComponent({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Filters for Tanod and Community
-  const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ASSIGNED");
+  const [tanodFilter, setTanodFilter] = useState<TanodFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"verified" | "pending" | "resolved" | "all">("verified");
   const [communityFilter, setCommunityFilter] =
     useState<CommunityFilter>("ALL");
 
@@ -689,6 +691,9 @@ export default function MapComponent({
     );
   }, [tanodAssignments]);
 
+  // Keep verification status separate from risk/location/team filters.
+  const statusReports = useMemo(() => (allReports ?? []).filter((r: Report) => matchesMapStatus(r, statusFilter)), [allReports, statusFilter]);
+
   // Calculate filtered hotspots with radial offset for stacked/overlapping reports
   const verifiedHotspots: (Partial<Report> & {
     stackCount?: number;
@@ -696,11 +701,7 @@ export default function MapComponent({
   })[] = useMemo(() => {
     if (!allReports) return [];
 
-    const baseList = allReports.filter((r: Report) => {
-      if (!r.lat || !r.lng) return false;
-
-      // Only show verified hotspots on the community & tanod map
-      if (!r.verified) return false;
+    const baseList = statusReports.filter((r: Report) => {
 
       if (isTanod) {
         if (tanodFilter === "ASSIGNED") {
@@ -769,6 +770,7 @@ export default function MapComponent({
     });
   }, [
     allReports,
+    statusReports,
     isTanod,
     tanodFilter,
     communityFilter,
@@ -788,9 +790,7 @@ export default function MapComponent({
         nearby: 0,
       };
 
-    const verified = allReports.filter(
-      (r: Report) => r.verified && r.lat && r.lng,
-    );
+    const verified = statusReports;
 
     return {
       all: verified.length,
@@ -815,7 +815,7 @@ export default function MapComponent({
         return dist <= 1.5;
       }).length,
     };
-  }, [allReports, assignedReportIds, userPos]);
+  }, [allReports, statusReports, assignedReportIds, userPos]);
 
 
   // Sync user location marker in Leaflet
@@ -972,6 +972,8 @@ export default function MapComponent({
                 : setCommunityFilter(value as CommunityFilter)
             }
             counts={filterCounts}
+            status={statusFilter}
+            onStatus={setStatusFilter}
             mode={mode}
             onMode={setMode}
             pins={showReports}

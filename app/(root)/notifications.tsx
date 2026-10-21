@@ -1,8 +1,9 @@
+import { BackButton } from "@/components/AccountUI";
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Modal, Pressable, View } from "react-native";
 import { Text } from "@/components/Typography";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Bell, CheckCheck, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { Bell, CheckCheck, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { useRouter } from 'expo-router';
 import { api } from '@/convex/_generated/api';
@@ -54,7 +55,7 @@ export default function NotificationsScreen() {
   return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
     <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24, gap: 24 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace('/(root)')} style={{ padding: 14, borderRadius: 18, backgroundColor: C.surface }}><ArrowLeft size={20} color={C.text} /></Pressable>
+        <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace("/(root)")} />
         <Pressable accessibilityRole="button" accessibilityLabel="Mark all notifications as read" disabled={!unread || busy} onPress={readAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, padding: 12, opacity: unread ? 1 : 0.4 }}>
           {busy ? <ActivityIndicator color={C.accent} /> : <CheckCheck size={18} color={C.accent} />}
           <Text style={{ color: C.accent, fontWeight: '600', fontSize: 12 }}>Mark all read</Text>
