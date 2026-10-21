@@ -6,18 +6,8 @@ import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
 import { Camera, Images } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Dimensions,
-  Easing,
-  Image,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, Dimensions, Easing, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/Typography";
 import CapturePreviewComponent from "../../../components/features/capture/CapturePreview";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Maximize2, X } from 'lucide-react-native';
 import { useMutation, useQuery } from 'convex/react';
@@ -47,7 +48,7 @@ export default function NotificationDetail({ notificationId, onClose }: { notifi
     </View> : <ScrollView contentContainerStyle={{ padding: 20, gap: 22, paddingBottom: 40, maxWidth: 720, width: '100%', alignSelf: 'center' }}>
       <View style={{ gap: 10 }}>
         <Text style={{ color: C.accent, fontSize: 12, fontWeight: '700' }}>{notificationLabels[data.notification.type] || 'Community update'}</Text>
-        <Text style={{ color: C.text, fontSize: 26, lineHeight: 34, fontFamily: 'Manrope_700Bold' }}>{data.notification.title}</Text>
+        <Text style={{ color: C.text, fontSize: 26, lineHeight: 34, fontFamily: 'Inter_700Bold' }}>{data.notification.title}</Text>
         <Text style={{ color: C.textSub, fontSize: 13 }}>{dateLabel(data.notification.createdAt)}</Text>
         <Text style={{ color: C.text, fontSize: 15, lineHeight: 24 }}>{data.notification.message}</Text>
       </View>

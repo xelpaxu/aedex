@@ -1,13 +1,7 @@
 import { Calendar, ChevronRight } from "lucide-react-native";
 import React, { useMemo } from "react";
-import {
-  Image,
-  ImageSourcePropType,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ImageSourcePropType, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 interface HistoryItemProps {

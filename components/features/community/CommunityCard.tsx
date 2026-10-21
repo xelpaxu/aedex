@@ -7,16 +7,8 @@ import {
   ThumbsUp,
 } from "lucide-react-native";
 import React, { useMemo, useRef } from "react";
-import {
-  Animated,
-  Dimensions,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, Dimensions, Image, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
 const { width } = Dimensions.get("window");

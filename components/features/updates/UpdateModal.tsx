@@ -9,17 +9,8 @@ import {
   ShieldAlert,
 } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Linking,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Easing, Linking, Modal, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { useTheme } from "../../../context/ThemeContext";
 import {
   getCurrentBuildNumber,
@@ -171,7 +162,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
         <ActivityIndicator size="large" color={colors.accent} />
         <Text
           style={{
-            fontFamily: "Manrope_700Bold",
+            fontFamily: "Inter_700Bold",
             fontSize: 18,
             color: colors.text,
             marginTop: 18,
@@ -475,7 +466,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   title: {
-    fontFamily: "Manrope_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 20,
     marginBottom: 8,
     textAlign: "center",

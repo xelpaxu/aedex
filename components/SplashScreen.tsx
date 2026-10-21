@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, StatusBar, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { AccessibilityInfo, Animated, Easing, StatusBar, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Text } from "@/components/Typography";
 import { LinearGradient } from "expo-linear-gradient";
 import BrandMascot from "./BrandMascot";
 
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
   orbit: { position: "absolute", width: 320, height: 320, borderRadius: 160, borderWidth: 1, borderColor: "#16827A25", backgroundColor: "#2DD4BF08" },
   eyebrow: { color: "#A3C5BC", fontSize: 10, letterSpacing: 2, marginBottom: 22, textAlign: "center" },
-  brand: { color: "#F2FAF7", fontFamily: "Manrope_700Bold", fontSize: 46, letterSpacing: 5, marginTop: 20 },
+  brand: { color: "#F2FAF7", fontFamily: "Inter_700Bold", fontSize: 46, letterSpacing: 5, marginTop: 20 },
   subtitle: { color: "#B2CEC5", fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 8, textAlign: "center" },
   track: { width: 100, height: 3, backgroundColor: "#FFFFFF18", borderRadius: 3, marginTop: 30, overflow: "hidden" },
   progress: { height: 3, backgroundColor: "#5AD5C3", borderRadius: 3 },

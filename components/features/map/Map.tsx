@@ -1,7 +1,7 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./MapControls";
 import { PIN_DATA_URIS } from "./pinAssets";
-import { streetMapThemeCss } from "@/constants/map-theme";
+import { streetMapThemeCss, streetMapTileUrl, STREET_MAP_ATTRIBUTION } from "@/constants/map-theme";
 import { useProfile } from "@/context/AccessContext";
 import { hasTanodAccess } from "@/constants/access";
 import { api } from "@/convex/_generated/api";
@@ -23,16 +23,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Easing, Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { WebView } from "react-native-webview";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 
@@ -42,28 +34,18 @@ const INITIAL_LOCATION = {
   longitude: 122.513,
 };
 const INITIAL_ZOOM = 14;
-const RISK_ZONE_RADIUS = 150;
 type MapMode = "vector" | "satellite";
 
 const TILE_URLS = {
-  vector: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   satellite:
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
 };
 const TILE_ATTRIBUTION = {
-  vector: "&copy; OpenStreetMap contributors",
   satellite: "Tiles &copy; Esri",
 };
 
 type Report = Doc<"reports">;
 
-interface RiskZone {
-  id: string;
-  lat: number;
-  lng: number;
-  radius: number;
-  isCritical: boolean;
-}
 
 type TanodFilter = "ALL" | "ASSIGNED" | "CRITICAL" | "PENDING" | "RESOLVED";
 type CommunityFilter = "ALL" | "CRITICAL" | "NEARBY" | "RESOLVED";
@@ -241,14 +223,13 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       .setView([${INITIAL_LOCATION.latitude}, ${INITIAL_LOCATION.longitude}], ${INITIAL_ZOOM});
 
     var tileLayers = {
-      vector: L.tileLayer('${TILE_URLS.vector}', { className: 'aedex-street-tiles', maxZoom: 19, attribution: '${TILE_ATTRIBUTION.vector}' }),
+      vector: L.tileLayer('${streetMapTileUrl(C)}', { className: 'aedex-street-tiles', maxZoom: 19, attribution: '${STREET_MAP_ATTRIBUTION}' }),
       satellite: L.tileLayer('${TILE_URLS.satellite}', { maxZoom: 19, attribution: '${TILE_ATTRIBUTION.satellite}' })
     };
     var currentTileLayer = tileLayers.vector.addTo(map);
 
     var userMarker = null;
     var markersLayer = L.layerGroup().addTo(map);
-    var zonesLayer = L.layerGroup().addTo(map);
 
     var PIN_IMAGES = {
       critical: '${PIN_DATA_URIS.critical}',
@@ -328,28 +309,11 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       });
     };
 
-    window.setZones = function(zonesJson) {
-      zonesLayer.clearLayers();
-      var zones = JSON.parse(zonesJson);
-      zones.forEach(function(z) {
-        var circle = L.circle([z.lat, z.lng], {
-          radius: z.radius,
-          color: z.isCritical ? '${C.danger}' : '${C.warn}',
-          fillColor: z.isCritical ? '${C.danger}' : '${C.warn}',
-          fillOpacity: 0.18,
-          weight: 1.5
-        });
-        zonesLayer.addLayer(circle);
-      });
-    };
 
     window.setMarkersVisible = function(visible) {
       if (visible) { map.addLayer(markersLayer); } else { map.removeLayer(markersLayer); }
     };
 
-    window.setZonesVisible = function(visible) {
-      if (visible) { map.addLayer(zonesLayer); } else { map.removeLayer(zonesLayer); }
-    };
 
     post({ type: 'ready' });
   </script>
@@ -652,7 +616,6 @@ export default function MapComponent({
   const [mapReady, setMapReady] = useState(false);
 
   const [mode, setMode] = useState<MapMode>("vector");
-  const [showZones, setShowZones] = useState(true);
   const [showReports, setShowReports] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -854,15 +817,6 @@ export default function MapComponent({
     };
   }, [allReports, assignedReportIds, userPos]);
 
-  const riskZones: RiskZone[] = useMemo(() => {
-    return verifiedHotspots.map((r) => ({
-      id: `zone-${r._id}`,
-      lat: r.lat!,
-      lng: r.lng!,
-      radius: RISK_ZONE_RADIUS,
-      isCritical: r.status === "CRITICAL" || r.status === "HIGH RISK",
-    }));
-  }, [verifiedHotspots]);
 
   // Sync user location marker in Leaflet
   useEffect(() => {
@@ -891,13 +845,6 @@ export default function MapComponent({
     );
   }, [mapReady, verifiedHotspots, selectedId]);
 
-  // Sync zones
-  useEffect(() => {
-    if (!mapReady) return;
-    webviewRef.current?.injectJavaScript(
-      `window.setZones(${JSON.stringify(JSON.stringify(riskZones))}); true;`,
-    );
-  }, [mapReady, riskZones]);
 
   // Layer toggles
   useEffect(() => {
@@ -907,12 +854,6 @@ export default function MapComponent({
     );
   }, [mapReady, showReports]);
 
-  useEffect(() => {
-    if (!mapReady) return;
-    webviewRef.current?.injectJavaScript(
-      `window.setZonesVisible(${showZones}); true;`,
-    );
-  }, [mapReady, showZones]);
 
   // Mode tile switch
   useEffect(() => {
@@ -1033,8 +974,6 @@ export default function MapComponent({
             counts={filterCounts}
             mode={mode}
             onMode={setMode}
-            zones={showZones}
-            onZones={setShowZones}
             pins={showReports}
             onPins={setShowReports}
             expanded={isExpanded}

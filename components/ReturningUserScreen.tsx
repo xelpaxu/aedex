@@ -1,6 +1,7 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import React, { useState } from "react";
-import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { Text } from "@/components/Typography";
 import { ArrowRight, UsersRound } from "lucide-react-native";
 import { useTheme } from "../context/ThemeContext";
 import BrandMascot from "./BrandMascot";
@@ -54,8 +55,8 @@ export default function ReturningUserScreen({ onContinue }: { onContinue: () => 
 const styles = StyleSheet.create({
   screen: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24, paddingVertical: 48 },
   card: { width: "100%", maxWidth: 420 },
-  brand: { fontFamily: "Manrope_700Bold", fontSize: 23, letterSpacing: 3, textAlign: "center" },
-  title: { fontFamily: "Manrope_700Bold", fontSize: 27, textAlign: "center" },
+  brand: { fontFamily: "Inter_700Bold", fontSize: 23, letterSpacing: 3, textAlign: "center" },
+  title: { fontFamily: "Inter_700Bold", fontSize: 27, textAlign: "center" },
   subtitle: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 22, textAlign: "center", marginTop: 10 },
   account: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 18, borderWidth: 1, marginVertical: 24 },
   avatar: { width: 46, height: 46, borderRadius: 15, alignItems: "center", justifyContent: "center" },

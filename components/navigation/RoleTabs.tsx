@@ -7,7 +7,8 @@ import {
   ClipboardList,
   Bell,
 } from "lucide-react-native";
-import { Image, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Image, Pressable, View, useWindowDimensions } from "react-native";
+import { Text } from "@/components/Typography";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useQuery } from "convex/react";
@@ -69,8 +70,8 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
               gap: 10,
             }}
           >
-            <View style={{ width: 52, height: 52, borderRadius: 18, overflow: "hidden", backgroundColor: "#00191D", borderWidth: 1, borderColor: C.border }}>
-              <Image source={require("@/assets/logo/aedex.png")} resizeMode="cover" accessible accessibilityLabel="Aedex logo" style={{ width: 78, height: 52, alignSelf: "center" }} />
+            <View style={{ width: 52, height: 52, borderRadius: 18, overflow: "hidden", backgroundColor: "transparent" }}>
+              <Image source={require("@/assets/logo/aedex-transparent.png")} resizeMode="contain" accessible accessibilityLabel="Aedex logo" style={{ width: 52, height: 52, alignSelf: "center" }} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -87,7 +88,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                 style={{
                   color: C.text,
                   fontSize: 23,
-                  fontFamily: "Manrope_700Bold",
+                  fontFamily: "Inter_700Bold",
                   marginTop: 3,
                 }}
               >
@@ -103,14 +104,12 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                 height: 48,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: C.surfaceRaised,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: C.border,
+                backgroundColor: "transparent",
+                borderRadius: 24,
               }}
             >
               <Bell color={C.textSub} size={20} />
-              {unread > 0 && <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center' }}>
+              {unread > 0 && <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
               </View>}
             </Pressable>
@@ -123,10 +122,8 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                 height: 48,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: C.surfaceRaised,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: C.border,
+                backgroundColor: "transparent",
+                borderRadius: 24,
               }}
             >
               <UserAvatar size={42} />

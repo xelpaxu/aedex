@@ -4,15 +4,8 @@ import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { Search, Users, X, LayoutDashboard, ArrowUpRight, ClipboardList } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "@/components/Typography";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import AssignmentCard from "@/components/features/reports/AssignmentCard";
@@ -106,7 +99,7 @@ export default function TanodReportsScreen() {
               <Text
                 style={{
                   color: C.text,
-                  fontFamily: "Manrope_700Bold",
+                  fontFamily: "Inter_700Bold",
                   fontSize: 30,
                 }}
               >
@@ -174,7 +167,7 @@ export default function TanodReportsScreen() {
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               {([{ key: "active", label: "Active", color: C.text }, { key: "critical", label: "Critical", color: C.danger }, { key: "resolved", label: "Resolved", color: C.safe }] as const).map(stat => (
                 <Pressable key={stat.key} accessibilityRole="button" accessibilityLabel={`${stat.label}: ${assignments === undefined ? "loading" : counts[stat.key]}. Filter assignments`} accessibilityState={{ selected: filter === stat.key }} onPress={() => setFilter(stat.key)} style={({ pressed }) => ({ flex: 1, minWidth: 85, padding: 14, gap: 8, borderRadius: 22, borderWidth: 1, borderColor: filter === stat.key ? stat.color : C.border, backgroundColor: pressed ? C.surfaceRaised : C.surface })}>
-                  <Text style={{ color: stat.color, fontFamily: "Manrope_700Bold", fontSize: 26 }}>{assignments === undefined ? "--" : counts[stat.key]}</Text>
+                  <Text style={{ color: stat.color, fontFamily: "Inter_700Bold", fontSize: 26 }}>{assignments === undefined ? "--" : counts[stat.key]}</Text>
                   <Text style={{ color: C.textSub, fontSize: 12, fontWeight: "600" }}>{stat.label}</Text>
                 </Pressable>
               ))}

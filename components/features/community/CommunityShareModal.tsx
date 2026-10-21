@@ -8,18 +8,8 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef } from "react";
-import {
-  Animated,
-  Dimensions,
-  Easing,
-  Image,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, Dimensions, Easing, Image, Modal, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import {
   ShareReportOptions,
   shareReportImage,

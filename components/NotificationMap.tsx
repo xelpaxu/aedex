@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { WebView } from 'react-native-webview';
 import { useTheme } from '@/context/ThemeContext';
 import { validCoordinates } from '@/lib/notifications';
-import { streetMapThemeCss } from '@/constants/map-theme';
+import { streetMapThemeCss, streetMapTileUrl, STREET_MAP_ATTRIBUTION } from '@/constants/map-theme';
 
 export default function NotificationMap({ lat, lng }: { lat: number; lng: number }) {
   const { colors: C } = useTheme();
@@ -17,7 +18,7 @@ export default function NotificationMap({ lat, lng }: { lat: number; lng: number
     </head><body><div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>const map=L.map('map',{scrollWheelZoom:false}).setView([${lat},${lng}],16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{className:'aedex-street-tiles',maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    L.tileLayer('${streetMapTileUrl(C)}',{className:'aedex-street-tiles',maxZoom:19,attribution:'${STREET_MAP_ATTRIBUTION}'}).addTo(map);
     L.marker([${lat},${lng}]).addTo(map);</script></body></html>` : '', [valid, lat, lng, C]);
 
   if (!valid) return <Text style={{ color: C.textSub }}>Coordinates were not recorded for this report.</Text>;

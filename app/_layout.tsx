@@ -5,14 +5,17 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+  useFonts,
 } from "@expo-google-fonts/inter";
-import { Manrope_700Bold, useFonts } from "@expo-google-fonts/manrope";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useSyncExternalStore } from "react";
-import { ActivityIndicator, StatusBar, Text, View } from "react-native";
+import { ActivityIndicator, StatusBar, View } from "react-native";
+import { Text } from "@/components/Typography";
 import SplashScreenView from "../components/SplashScreen";
 import ReturningUserScreen from "../components/ReturningUserScreen";
 import BrandMascot from "../components/BrandMascot";
@@ -100,7 +103,8 @@ function AppShell() {
 
 function RootLayoutContent() {
   const [fontsLoaded, fontError] = useFonts({
-    Manrope_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,

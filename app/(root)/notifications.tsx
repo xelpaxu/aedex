@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Modal, Pressable, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Bell, CheckCheck, CheckCircle2, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -60,7 +61,7 @@ export default function NotificationsScreen() {
         </Pressable>
       </View>
       <View style={{ gap: 6 }}>
-        <Text style={{ color: C.text, fontSize: 32, fontFamily: 'Manrope_700Bold' }}>Notifications</Text>
+        <Text style={{ color: C.text, fontSize: 32, fontFamily: 'Inter_700Bold' }}>Notifications</Text>
         <Text style={{ color: C.textSub, fontSize: 14 }}>{unread ? `${unread} unread ${unread === 1 ? 'update' : 'updates'}` : 'Updates about your reports, in one place.'}</Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 8, backgroundColor: C.surfaceRaised, padding: 6, borderRadius: 30, alignSelf: 'flex-start' }}>

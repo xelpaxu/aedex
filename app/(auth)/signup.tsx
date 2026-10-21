@@ -11,20 +11,8 @@ import {
   User,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/Typography";
 import Svg, { Path } from "react-native-svg";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { useWarmUpBrowser } from "../../hooks/useWarmUpBrowser";
@@ -222,7 +210,7 @@ export default function SignupScreen() {
           { padding: 24, justifyContent: "center", gap: 20, width: "100%", maxWidth: 460, alignSelf: "center" },
         ]}
       >
-        <Text style={{ color: C.text, fontSize: 30, fontFamily: "Manrope_700Bold", letterSpacing: -0.8 }}>
+        <Text style={{ color: C.text, fontSize: 30, fontFamily: "Inter_700Bold", letterSpacing: -0.8 }}>
           Check your email
         </Text>
         <Text style={{ color: C.textSub, lineHeight: 22 }}>
@@ -575,7 +563,7 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       letterSpacing: -1,
       marginBottom: 8,
       textAlign: "left",
-      fontFamily: "Manrope_700Bold",
+      fontFamily: "Inter_700Bold",
     },
     subtitle: {
       fontSize: 14,

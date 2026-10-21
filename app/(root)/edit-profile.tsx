@@ -4,17 +4,8 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Text, TextInput } from "@/components/Typography";
 import {
   ArrowLeft,
   Check,
@@ -190,7 +181,7 @@ export default function EditProfile({
           </View>
           <Pressable accessibilityRole="button" disabled={uploading} onPress={updatePhoto} style={{ alignSelf: "flex-start", minHeight: 44, justifyContent: "center", paddingHorizontal: 16, borderRadius: 12, backgroundColor: officer ? C.warnGlow : C.accentGlow }}>
             <Text style={{ color: accent, fontWeight: "600" }}>
-              {uploading ? "Updating photo…" : "Change profile photo"}
+              {uploading ? "Updating photoï¿½" : "Change profile photo"}
             </Text>
           </Pressable>
           {mandatory && (

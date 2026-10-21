@@ -10,17 +10,8 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Globe, MapPin, Zap } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Easing,
-  FlatList,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, Easing, FlatList, Platform, StatusBar, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { api } from "@/convex/_generated/api";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 

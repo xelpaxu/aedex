@@ -3,14 +3,8 @@ import { useAction } from "convex/react";
 import { useAuth } from "@clerk/clerk-expo";
 import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/context/ThemeContext";
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { ScrollView, Pressable, KeyboardAvoidingView, Platform } from "react-native";
+import { Text, TextInput } from "@/components/Typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 export default function PasswordSetup() {
   const { colors: C } = useTheme();

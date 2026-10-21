@@ -13,13 +13,8 @@ import {
   UserRound,
 } from "lucide-react-native";
 import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useProfile } from "@/context/AccessContext";
@@ -93,7 +88,7 @@ export default function Settings() {
             <Text
               style={{
                 color: C.text,
-                fontFamily: "Manrope_700Bold",
+                fontFamily: "Inter_700Bold",
                 fontSize: 32,
               }}
             >
@@ -135,7 +130,7 @@ export default function Settings() {
             <Text
               style={{
                 color: accent,
-                fontFamily: "Manrope_700Bold",
+                fontFamily: "Inter_700Bold",
                 fontSize: 22,
               }}
             >

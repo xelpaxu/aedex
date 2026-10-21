@@ -1,6 +1,7 @@
 import { CheckCircle2, ChevronRight, MapPin, Users } from "lucide-react-native";
 import { useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { useTheme } from "@/context/ThemeContext";
 import { AssignedReport, isCritical, isResolved } from "@/lib/tanodReports";
 

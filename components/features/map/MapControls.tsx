@@ -1,5 +1,7 @@
+import { streetMapTileUrl } from "@/constants/map-theme";
 import React, { useState } from "react";
-import { Image, Modal, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Switch, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   SlidersHorizontal,
@@ -18,8 +20,6 @@ type Props = {
   counts: Record<string, number>;
   mode: "vector" | "satellite";
   onMode: (mode: "vector" | "satellite") => void;
-  zones: boolean;
-  onZones: (value: boolean) => void;
   pins: boolean;
   onPins: (value: boolean) => void;
   expanded: boolean;
@@ -77,7 +77,7 @@ export default function MapControls(p: Props) {
               {p.barangay || "Community map"}
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12, marginTop: 4 }}>
-              {selected?.[1]} · {p.counts[selected?.[2] || "all"] ?? 0} sites
+              {selected?.[1]} ï¿½ {p.counts[selected?.[2] || "all"] ?? 0} sites
             </Text>
           </View>
           <Pressable
@@ -189,7 +189,7 @@ export default function MapControls(p: Props) {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24, gap: 24 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={{ padding: 14, borderRadius: 20, backgroundColor: C.surfaceRaised }}><SlidersHorizontal color={accent} size={24} /></View>
-                <View style={{ flex: 1, gap: 4 }}><Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Manrope_700Bold", fontSize: 24 }}>Your map, your view</Text><Text style={{ color: C.textSub, fontSize: 13 }}>Filters & layers</Text></View>
+                <View style={{ flex: 1, gap: 4 }}><Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 24 }}>Your map, your view</Text><Text style={{ color: C.textSub, fontSize: 13 }}>Filters & layers</Text></View>
                 <Pressable accessibilityRole="button" accessibilityLabel="Close map options" onPress={() => setOpen(false)} style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, backgroundColor: pressed ? C.surfaceRaised : C.bg, alignItems: "center", justifyContent: "center" })}><X color={C.text} size={20} /></Pressable>
               </View>
               <View style={{ gap: 12 }}>
@@ -217,7 +217,7 @@ export default function MapControls(p: Props) {
               <View style={{ gap: 12 }}>
                 <Text accessibilityRole="header" style={{ color: C.text, fontFamily: "Inter_600SemiBold", fontSize: 16 }}>Map overlays</Text>
                 <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 22, paddingHorizontal: 16, backgroundColor: C.bg }}>
-                  {[{ label: "Risk zones", detail: "Highlight areas around reported risks", value: p.zones, onChange: p.onZones }, { label: "Report pins", detail: "Show individual reported locations", value: p.pins, onChange: p.onPins }].map((layer, i) => <View key={layer.label} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 18, borderTopWidth: i ? 1 : 0, borderColor: C.border }}><View style={{ flex: 1, gap: 5 }}><Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{layer.label}</Text><Text style={{ color: C.textSub, fontSize: 12, lineHeight: 18 }}>{layer.detail}</Text></View><Switch accessibilityLabel={`Show ${layer.label.toLowerCase()}`} trackColor={{ false: C.borderBright, true: accent }} value={layer.value} onValueChange={layer.onChange} /></View>)}
+                  {[{ label: "Report pins", detail: "Show individual reported locations", value: p.pins, onChange: p.onPins }].map((layer, i) => <View key={layer.label} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 18, borderTopWidth: i ? 1 : 0, borderColor: C.border }}><View style={{ flex: 1, gap: 5 }}><Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{layer.label}</Text><Text style={{ color: C.textSub, fontSize: 12, lineHeight: 18 }}>{layer.detail}</Text></View><Switch accessibilityLabel={`Show ${layer.label.toLowerCase()}`} trackColor={{ false: C.borderBright, true: accent }} value={layer.value} onValueChange={layer.onChange} /></View>)}
                 </View>
               </View>
               <Pressable accessibilityRole="button" onPress={() => { p.onExpand(); setOpen(false); }} style={({ pressed }) => ({ padding: 16, minHeight: 52, borderRadius: 18, backgroundColor: pressed ? C.surfaceRaised : C.bg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 })}><Maximize2 color={C.textSub} size={18} /><Text style={{ color: C.text, fontWeight: "600" }}>{p.expanded ? "Exit focused view" : "Use focused map view"}</Text></Pressable>
@@ -235,10 +235,11 @@ export default function MapControls(p: Props) {
 }
 
 function MapStylePreview({ mode }: { mode: "vector" | "satellite" }) {
+  const { colors: C } = useTheme();
   const [failed, setFailed] = useState(false);
   const satellite = mode === "satellite";
   return <View style={{ height: 116, backgroundColor: satellite ? "#263E32" : "#E8EDE3", overflow: "hidden" }}>
-    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: satellite ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" : "https://tile.openstreetmap.org/14/13767/7702.png" }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color={satellite ? "#FFFFFF" : "#48635C"} size={24} /><Text style={{ color: satellite ? "#FFFFFF" : "#48635C", fontSize: 11 }}>Preview unavailable</Text></View>}
-    <Text style={{ position: "absolute", bottom: 0, right: 0, backgroundColor: "#FFFFFFE8", color: "#263E32", fontSize: 9, paddingHorizontal: 4, paddingVertical: 2 }}>{satellite ? "Tiles: Esri" : "(c) OpenStreetMap contributors"}</Text>
+    {!failed ? <Image accessible={false} onError={() => setFailed(true)} source={{ uri: satellite ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7702/13767" : streetMapTileUrl(C).replace("{z}", "14").replace("{x}", "13767").replace("{y}", "7702") }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}><MapPin color={satellite ? "#FFFFFF" : "#48635C"} size={24} /><Text style={{ color: satellite ? "#FFFFFF" : "#48635C", fontSize: 11 }}>Preview unavailable</Text></View>}
+    <Text style={{ position: "absolute", bottom: 0, right: 0, backgroundColor: "#FFFFFFE8", color: "#263E32", fontSize: 9, paddingHorizontal: 4, paddingVertical: 2 }}>{satellite ? "Tiles: Esri" : "(c) OpenStreetMap / CARTO"}</Text>
   </View>;
 }

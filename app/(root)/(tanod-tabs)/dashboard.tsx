@@ -12,13 +12,8 @@ import {
   ScanLine,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/convex/_generated/api";
 import AssignmentCard from "@/components/features/reports/AssignmentCard";
@@ -56,7 +51,7 @@ export default function TanodDashboardScreen() {
           {profile?.assignedBarangay || "Your barangay"}
         </Text>
         <Text
-          style={{ color: C.text, fontFamily: "Manrope_700Bold", fontSize: 30 }}
+          style={{ color: C.text, fontFamily: "Inter_700Bold", fontSize: 30 }}
         >
           Good day, {profile?.firstName || "Officer"}.
         </Text>
@@ -112,7 +107,7 @@ export default function TanodDashboardScreen() {
               <Text
                 style={{
                   color: C.text,
-                  fontFamily: "Manrope_700Bold",
+                  fontFamily: "Inter_700Bold",
                   fontSize: 48,
                 }}
               >

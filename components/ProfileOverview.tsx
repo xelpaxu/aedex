@@ -2,7 +2,8 @@ import UserAvatar from "@/components/UserAvatar";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { ArrowLeft, ChevronRight, MapPin, Settings, UserRound, ClipboardList, Bell, ShieldCheck } from "lucide-react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "@/context/AccessContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -64,8 +65,8 @@ export default function ProfileOverview() {
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   eyebrow: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5 },
-  title: { fontSize: 32, fontFamily: "Manrope_700Bold", marginTop: 5, letterSpacing: -0.7 },
+  title: { fontSize: 32, fontFamily: "Inter_700Bold", marginTop: 5, letterSpacing: -0.7 },
   hero: { borderRadius: 28, padding: 24, borderWidth: 1, gap: 22 },
-  avatar: { width: 80, height: 80, borderRadius: 27, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   icon: { width: 48, height: 48, borderRadius: 15, alignItems: "center", justifyContent: "center" },
 });

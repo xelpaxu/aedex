@@ -4,21 +4,8 @@ import { Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { AlertCircle, Eye, EyeOff, Lock, Mail, X } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/Typography";
 import Svg, { Path } from "react-native-svg";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { useWarmUpBrowser } from "../../hooks/useWarmUpBrowser";
@@ -632,7 +619,7 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       letterSpacing: -1,
       marginBottom: 8,
       textAlign: "left",
-      fontFamily: "Manrope_700Bold",
+      fontFamily: "Inter_700Bold",
     },
     subtitle: {
       fontSize: 14,

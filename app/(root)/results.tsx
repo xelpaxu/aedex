@@ -16,22 +16,11 @@ import {
   X
 } from "lucide-react-native";
 import React, { useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Animated, Dimensions, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/Typography";
 import { WebView } from "react-native-webview";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
-import { streetMapThemeCss } from "@/constants/map-theme";
+import { streetMapThemeCss, streetMapTileUrl, STREET_MAP_ATTRIBUTION } from "@/constants/map-theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -206,12 +195,10 @@ function buildPreviewMapHtml(
   lat: number,
   lng: number,
   isCritical: boolean,
-  radiusMeters: number,
   C: ThemeColors,
   isDark: boolean,
   isTanod: boolean,
 ) {
-  const zoneColor = isCritical ? C.danger : C.warn;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -290,22 +277,14 @@ function buildPreviewMapHtml(
       attributionControl: true
     }).setView([${lat}, ${lng}], 15);
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('${streetMapTileUrl(C)}', {
       className: 'aedex-street-tiles',
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: '${STREET_MAP_ATTRIBUTION}'
     }).addTo(map);
 
     var routeLayer = L.layerGroup().addTo(map);
 
-    L.circle([${lat}, ${lng}], {
-      radius: ${radiusMeters},
-      color: '${zoneColor}',
-      fillColor: '${zoneColor}',
-      fillOpacity: 0.15,
-      weight: 1.5,
-      opacity: 0.65
-    }).addTo(map);
 
     var reportIcon = L.divIcon({
       className: '',
@@ -525,7 +504,6 @@ export default function ResultsScreen() {
       report.lat,
       report.lng,
       isCriticalForPreview,
-      isCriticalForPreview ? 200 : 150,
       C,
       isDark,
       isTanod,
