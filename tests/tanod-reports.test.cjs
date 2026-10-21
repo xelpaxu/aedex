@@ -8,7 +8,7 @@ const { load } = require("./backend-loader.cjs");
 const access = load("access");
 let reports = load("reports");
 if (process.env.AEDEX_REPORTS_SOURCE) {
-  const filename = path.resolve(__dirname, "../../aedify/convex/reports.ts");
+  const filename = path.resolve(__dirname, "../../convex/reports.ts");
   const staged = new Module(filename, module);
   staged.filename = filename;
   staged.paths = Module._nodeModulePaths(path.dirname(filename));

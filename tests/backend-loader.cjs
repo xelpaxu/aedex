@@ -1,7 +1,7 @@
 ﻿const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
-const backend = path.resolve(__dirname, "../../aedify/convex");
+const backend = path.resolve(__dirname, "../../convex");
 const originalJs = require.extensions[".js"];
 function compile(module, filename) {
   const source = fs.readFileSync(filename, "utf8");
