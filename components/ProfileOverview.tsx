@@ -1,9 +1,9 @@
 import UserAvatar from "@/components/UserAvatar";
+import { Text } from "@/components/Typography";
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { ArrowLeft, ChevronRight, MapPin, Settings, UserRound, ClipboardList, Bell, ShieldCheck } from "lucide-react-native";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Text } from "@/components/Typography";
+import { ArrowLeft, ChevronRight, Settings, ClipboardList, Bell } from "lucide-react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useProfile } from "@/context/AccessContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -16,57 +16,30 @@ export default function ProfileOverview() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tanod = hasTanodAccess(profile);
-  const accent = tanod ? C.warn : C.accent;
+  const community = (tanod ? profile?.assignedBarangay : profile?.barangay) || "Not set";
   const actions = [
-    { title: "Personal details", sub: "Your photo, contact details and barangay", icon: UserRound, onPress: () => router.push("/edit-profile") },
-    { title: tanod ? "My assignments" : "My reports", sub: tanod ? "Review your team's response work" : "Follow your reports and response updates", icon: ClipboardList, onPress: () => router.push(tanod ? "/(root)/(tanod-tabs)/reports" : "/(root)/(tabs)/reports") },
-    { title: "Notifications", sub: "Stay connected to community updates", icon: Bell, onPress: () => router.push("/notifications") },
-    { title: "Settings", sub: "Appearance, app updates and account", icon: Settings, onPress: () => router.push("/settings") },
+    { title: tanod ? "Team assignments" : "My reports", icon: ClipboardList, onPress: () => router.push(tanod ? "/(root)/(tanod-tabs)/reports" : "/(root)/(tabs)/reports") },
+    { title: "Notifications", icon: Bell, onPress: () => router.push("/notifications") },
+    { title: "Settings", icon: Settings, onPress: () => router.push("/settings") },
   ];
-  return (
-    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 26, maxWidth: 680, width: "100%", alignSelf: "center", paddingBottom: 110 + insets.bottom }}>
-        <View style={s.row}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back to map" onPress={() => router.canGoBack() ? router.back() : router.replace(tanod ? "/(root)/(tanod-tabs)/map" : "/(root)/(tabs)/map")} style={[s.icon, { backgroundColor: C.surface }]}><ArrowLeft color={C.text} size={21} /></Pressable>
-          <View style={{ flex: 1 }}><Text style={[s.eyebrow, { color: accent }]}>ACCOUNT</Text><Text style={[s.title, { color: C.text }]}>Profile</Text></View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Settings" onPress={() => router.push("/settings")} style={[s.icon, { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1 }]}><Settings color={C.text} size={21} /></Pressable>
-        </View>
-        <View style={[s.hero, { backgroundColor: C.surface, borderColor: C.border }]}>
-          <View style={s.row}>
-            <View style={[s.avatar, { borderColor: accent, backgroundColor: C.surfaceRaised }]}>
-              <UserAvatar size={72} />
-            </View>
-            <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[s.eyebrow, { color: accent }]}>{tanod ? "BARANGAY TANOD" : "COMMUNITY MEMBER"}</Text>
-              <Text style={{ color: C.text, fontSize: 23, fontWeight: "700" }}>{profile?.fullName || user?.fullName || "Your account"}</Text>
-              <Text style={{ color: C.textSub, fontSize: 12 }} numberOfLines={2}>{user?.primaryEmailAddress?.emailAddress || profile?.email}</Text>
-            </View>
-          </View>
-          <View style={[s.row, { borderTopWidth: 1, borderColor: C.border, paddingTop: 18 }]}>
-            <MapPin color={accent} size={18} /><View style={{ flex: 1 }}><Text style={{ color: C.textDim, fontSize: 11 }}>YOUR COMMUNITY</Text><Text style={{ color: C.text, fontWeight: "600", marginTop: 4 }}>{(tanod ? profile?.assignedBarangay : profile?.barangay) || "Choose your barangay"}</Text></View>
-            <Pressable accessibilityRole="button" onPress={() => router.push("/edit-profile")} style={{ backgroundColor: accent, paddingHorizontal: 16, paddingVertical: 16, borderRadius: 13 }}><Text style={{ color: tanod ? "#111827" : "#FFFFFF", fontWeight: "700", fontSize: 12 }}>Edit profile</Text></Pressable>
-          </View>
-        </View>
-        <View style={{ gap: 12 }}>
-          <Text style={{ color: C.text, fontSize: 17, fontWeight: "700" }}>Account & activity</Text>
-          <View style={{ borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, borderRadius: 24, overflow: "hidden" }}>
-            {actions.map(({ title, sub, icon: Icon, onPress }, index) => <Pressable key={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [s.row, { padding: 16, opacity: pressed ? 0.65 : 1, borderTopWidth: index ? 1 : 0, borderColor: C.border }]}>
-              <View style={[s.icon, { backgroundColor: tanod ? C.warnGlow : C.accentGlow }]}><Icon color={accent} size={20} /></View>
-              <View style={{ flex: 1, gap: 4 }}><Text style={{ color: C.text, fontWeight: "600", fontSize: 14 }}>{title}</Text><Text style={{ color: C.textSub, fontSize: 13, lineHeight: 20 }}>{sub}</Text></View><ChevronRight size={17} color={C.textDim} />
-            </Pressable>)}
-          </View>
-        </View>
-        <View style={[s.row, { justifyContent: "center" }]}><ShieldCheck size={16} color={C.textDim} /><Text style={{ color: C.textDim, fontSize: 12 }}>AEDEX · Community dengue surveillance</Text></View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  return <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: C.surface }}>
+    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, minHeight: 60, borderBottomWidth: 1, borderColor: C.border }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace(tanod ? "/(root)/(tanod-tabs)/map" : "/(root)/(tabs)/map")} style={({ pressed }) => ({ width: 48, height: 48, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.5 : 1 })}><ArrowLeft color={C.text} size={22} /></Pressable>
+      <Text accessibilityRole="header" style={{ flex: 1, color: C.text, fontSize: 17, fontWeight: "600" }}>Profile</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Edit profile" onPress={() => router.push("/edit-profile")} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 12, justifyContent: "center", opacity: pressed ? 0.5 : 1 })}><Text style={{ color: C.accent, fontSize: 15, fontWeight: "600" }}>Edit</Text></Pressable>
+    </View>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 116 + insets.bottom, maxWidth: 620, width: "100%", alignSelf: "center" }}>
+      <View style={{ alignItems: "center", gap: 10, paddingBottom: 32 }}>
+        <UserAvatar size={88} />
+        <Text style={{ color: C.text, fontSize: 25, fontWeight: "700", textAlign: "center", marginTop: 6 }}>{profile?.fullName || user?.fullName || "Your account"}</Text>
+        <Text style={{ color: C.textSub, fontSize: 14 }}>{tanod ? "Barangay tanod" : "Community member"}</Text>
+      </View>
+      <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 13, fontWeight: "500", paddingBottom: 6 }}>Personal information</Text>
+      {[{ label: "Email", value: user?.primaryEmailAddress?.emailAddress || profile?.email || "Not set" }, { label: tanod ? "Assigned barangay" : "Barangay", value: community }].map(detail => <View key={detail.label} style={{ paddingVertical: 18, gap: 7, borderBottomWidth: 1, borderColor: C.border }}><Text style={{ color: C.textSub, fontSize: 13 }}>{detail.label}</Text><Text selectable style={{ color: C.text, fontSize: 16, lineHeight: 24 }}>{detail.value}</Text></View>)}
+      <View style={{ marginTop: 32 }}>
+        <Text accessibilityRole="header" style={{ color: C.textSub, fontSize: 13, fontWeight: "500", paddingBottom: 8 }}>Activity & preferences</Text>
+        {actions.map(({ title, icon: Icon, onPress }) => <Pressable key={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 16, minHeight: 64, paddingVertical: 18, borderBottomWidth: 1, borderColor: C.border, backgroundColor: pressed ? C.surfaceRaised : "transparent" })}><Icon color={C.textSub} size={21} /><Text style={{ flex: 1, color: C.text, fontSize: 16 }}>{title}</Text><ChevronRight color={C.textDim} size={18} /></Pressable>)}
+      </View>
+    </ScrollView>
+  </SafeAreaView>;
 }
-
-const s = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  eyebrow: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5 },
-  title: { fontSize: 32, fontFamily: "Inter_700Bold", marginTop: 5, letterSpacing: -0.7 },
-  hero: { borderRadius: 28, padding: 24, borderWidth: 1, gap: 22 },
-  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  icon: { width: 48, height: 48, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-});
