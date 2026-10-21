@@ -65,9 +65,9 @@
           "image": "./assets/logo/aedex.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0B0E14",
+          "backgroundColor": "#0B1414",
           "dark": {
-            "backgroundColor": "#0B0E14"
+            "backgroundColor": "#0B1414"
           }
         }
       ],

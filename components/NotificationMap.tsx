@@ -12,7 +12,7 @@ export default function NotificationMap({ lat, lng }: { lat: number; lng: number
   const html = useMemo(() => valid ? `<!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>html,body,#map{height:100%;margin:0;background:#edf2f7}</style>
+    <style>html,body,#map{height:100%;margin:0;background:#EEF4F2}</style>
     </head><body><div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>const map=L.map('map',{scrollWheelZoom:false}).setView([${lat},${lng}],16);

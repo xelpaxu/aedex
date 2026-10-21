@@ -42,8 +42,8 @@ export default function TanodDashboardScreen() {
       style={{ flex: 1, backgroundColor: C.bg }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        padding: 18,
-        gap: 24,
+        padding: 20,
+        gap: 22,
         paddingBottom: 100 + Math.max(insets.bottom, 12),
         maxWidth: 680,
         width: "100%",
@@ -60,7 +60,7 @@ export default function TanodDashboardScreen() {
           Good day, {profile?.firstName || "Officer"}.
         </Text>
         <Text style={{ color: C.textSub, fontSize: 14 }}>
-          Here is your team&apos;s field overview.
+          Review priority sites and plan your next visit.
         </Text>
       </View>
       <Pressable
@@ -69,7 +69,7 @@ export default function TanodDashboardScreen() {
         onPress={openReports}
         style={{
           backgroundColor: C.surface,
-          borderRadius: 22,
+          borderRadius: 18,
           borderWidth: 1,
           borderColor: C.border,
           overflow: "hidden",
@@ -103,7 +103,7 @@ export default function TanodDashboardScreen() {
             <ArrowRight size={20} color={C.textDim} />
           </View>
           <View
-            style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}
+            style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 }}
           >
             {loading ? (
               <ActivityIndicator color={C.warn} />
@@ -112,7 +112,7 @@ export default function TanodDashboardScreen() {
                 style={{
                   color: C.text,
                   fontFamily: "Manrope_700Bold",
-                  fontSize: 44,
+                  fontSize: 48,
                 }}
               >
                 {summary.active}
@@ -172,8 +172,8 @@ export default function TanodDashboardScreen() {
           onPress={() => router.push("/(root)/(tanod-tabs)/map")}
           style={{
             flex: 1,
-            backgroundColor: C.warnGlow,
-            borderColor: C.warn + "40",
+            backgroundColor: C.surface,
+            borderColor: C.border,
             borderWidth: 1,
             borderRadius: 16,
             padding: 16,

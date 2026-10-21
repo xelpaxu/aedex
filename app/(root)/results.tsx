@@ -222,7 +222,7 @@ function buildPreviewMapHtml(
     .leaflet-control-attribution { font-size: 7px; opacity: 0.5; }
     .leaflet-control-zoom { display: none; }
     
-    @keyframes bluePulse {
+    @keyframes locationPulse {
       0% { transform: scale(0.8); opacity: 0.9; }
       50% { transform: scale(1.6); opacity: 0.25; }
       100% { transform: scale(0.8); opacity: 0.9; }
@@ -252,7 +252,7 @@ function buildPreviewMapHtml(
       filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
       z-index: 2;
     }
-    .user-blue-dot-box {
+    .user-location-dot-box {
       position: relative;
       width: 32px;
       height: 32px;
@@ -260,21 +260,21 @@ function buildPreviewMapHtml(
       align-items: center;
       justify-content: center;
     }
-    .user-blue-dot-pulse {
+    .user-location-dot-pulse {
       position: absolute;
       width: 32px;
       height: 32px;
       border-radius: 16px;
-      background: rgba(0, 122, 255, 0.45);
-      animation: bluePulse 2s infinite ease-in-out;
+      background: ${C.accent}73;
+      animation: locationPulse 2s infinite ease-in-out;
     }
-    .user-blue-dot-core {
+    .user-location-dot-core {
       width: 16px;
       height: 16px;
       border-radius: 8px;
-      background: #007AFF;
+      background: ${C.accent};
       border: 2.5px solid #FFFFFF;
-      box-shadow: 0 0 10px rgba(0, 122, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 10px ${C.accent}CC, 0 2px 4px rgba(0, 0, 0, 0.3);
       z-index: 2;
     }
   </style>
@@ -324,7 +324,7 @@ function buildPreviewMapHtml(
 
       var isTanodOfficer = (tanodActive !== undefined) ? tanodActive : ${isTanod ? "true" : "false"};
 
-      // Start Location Marker (Distinct Tanod standalone emblem vs Citizen Blue Dot)
+      // Start Location Marker (Distinct Tanod standalone emblem vs Citizen location marker)
       var startIconHtml = isTanodOfficer
         ? '<div class="tanod-route-marker">' +
             '<div class="tanod-pulse-glow"></div>' +
@@ -333,9 +333,9 @@ function buildPreviewMapHtml(
               '<path d="M12 6.5l1.3 2.64 2.91.42-2.11 2.05.5 2.9-2.6-1.37-2.6 1.37.5-2.9-2.11-2.05 2.91-.42L12 6.5z" fill="#FFFFFF"/>' +
             '</svg>' +
           '</div>'
-        : '<div class="user-blue-dot-box">' +
-            '<div class="user-blue-dot-pulse"></div>' +
-            '<div class="user-blue-dot-core"></div>' +
+        : '<div class="user-location-dot-box">' +
+            '<div class="user-location-dot-pulse"></div>' +
+            '<div class="user-location-dot-core"></div>' +
           '</div>';
 
       var startMarkerIcon = L.divIcon({
@@ -1475,7 +1475,7 @@ const createStyles = (C: ThemeColors) =>
       paddingVertical: 3,
       paddingHorizontal: 8,
       borderRadius: 8,
-      backgroundColor: C.accentGlow || "rgba(79, 142, 247, 0.12)",
+      backgroundColor: C.accentGlow || "rgba(15, 118, 110, 0.12)",
     },
     expandMapHeaderText: {
       fontSize: 11,

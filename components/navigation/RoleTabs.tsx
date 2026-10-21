@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Bell,
   Settings,
+  UserRound,
 } from "lucide-react-native";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -45,16 +46,16 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
           height: 70,
           paddingTop: 8,
           paddingBottom: 8,
-          borderRadius: 26,
+          borderRadius: 20,
           backgroundColor: C.surface,
           borderWidth: 1,
           borderColor: C.borderBright,
           borderTopWidth: 1,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.22,
-          shadowRadius: 18,
-          elevation: 12,
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 6,
         },
         header: ({ options }) => (
           <View
@@ -85,7 +86,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
                 style={{
                   color: C.text,
                   fontSize: 18,
-                  fontWeight: "700",
+                  fontFamily: "Manrope_700Bold",
                   marginTop: 3,
                 }}
               >
@@ -129,7 +130,7 @@ export default function RoleTabs({ tanod = false }: { tanod?: boolean }) {
     >
       <Tabs.Screen
         name="profile"
-        options={{ href: null, headerShown: false }}
+        options={{ title: "Profile", headerShown: false, tabBarIcon: ({ color }) => <UserRound color={color} size={21} /> }}
       />
       {tanod && <Tabs.Screen name="capture" options={{ href: null }} />}
       {screens.map(({ name, title, icon: Icon }) => (

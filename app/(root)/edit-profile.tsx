@@ -166,7 +166,7 @@ export default function EditProfile({
         </View>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 36 }}
+          contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
         >
           <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
             {user?.imageUrl ? (
@@ -188,9 +188,9 @@ export default function EditProfile({
               </Text>
             </View>
           </View>
-          <Pressable disabled={uploading} onPress={updatePhoto}>
+          <Pressable accessibilityRole="button" disabled={uploading} onPress={updatePhoto} style={{ alignSelf: "flex-start", minHeight: 44, justifyContent: "center", paddingHorizontal: 16, borderRadius: 12, backgroundColor: officer ? C.warnGlow : C.accentGlow }}>
             <Text style={{ color: accent, fontWeight: "600" }}>
-              {uploading ? "Updating photo?" : "Change profile photo"}
+              {uploading ? "Updating photo…" : "Change profile photo"}
             </Text>
           </Pressable>
           {mandatory && (

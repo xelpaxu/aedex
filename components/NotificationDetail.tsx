@@ -101,7 +101,7 @@ export default function NotificationDetail({ notificationId, onClose }: { notifi
     </ScrollView>}
 
     <Modal visible={expanded} animationType="fade" onRequestClose={() => setExpanded(false)}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#080e18' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0B1414' }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close full-screen image" onPress={() => setExpanded(false)} style={{ padding: 20, alignSelf: 'flex-end' }}><X color="#fff" size={26} /></Pressable>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} maximumZoomScale={4} minimumZoomScale={1} centerContent>
           {image && <Image source={{ uri: image }} resizeMode="contain" style={{ width: '100%', height: '100%', minHeight: 400 }} />}

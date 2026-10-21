@@ -31,11 +31,11 @@ export default function AssignmentCard({
       accessibilityLabel={`${label}, ${item.locationName}, assigned to ${item.teamName}. View report`}
       onPress={onPress}
       style={({ pressed }) => ({
-        borderRadius: 18,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: critical ? C.danger + "45" : C.border,
         backgroundColor: pressed ? C.surfaceRaised : C.surface,
-        padding: 15,
+        padding: 16,
         gap: 13,
       })}
     >
@@ -43,7 +43,7 @@ export default function AssignmentCard({
         {photo ? (
           <Image
             source={{ uri: photo }}
-            style={{ width: 58, height: 64, borderRadius: 12 }}
+            style={{ width: 64, height: 72, borderRadius: 12 }}
           />
         ) : (
           <View
@@ -69,7 +69,7 @@ export default function AssignmentCard({
         )}
         <View style={{ flex: 1, gap: 5 }}>
           <Text
-            style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color }}
+            style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color, textTransform: "capitalize" }}
           >
             {label}
           </Text>
@@ -78,7 +78,7 @@ export default function AssignmentCard({
             style={{
               color: C.text,
               fontFamily: "Inter_600SemiBold",
-              fontSize: 15,
+              fontSize: 16,
               lineHeight: 21,
             }}
           >

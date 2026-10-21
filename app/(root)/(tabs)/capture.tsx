@@ -1,8 +1,10 @@
+import { useProfile } from "@/context/AccessContext";
+import { hasTanodAccess } from "@/constants/access";
 import BrandMascot from "@/components/BrandMascot";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import * as MediaLibrary from "expo-media-library";
-import { Camera, Images, Upload } from "lucide-react-native";
+import { Camera, Images } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -181,7 +183,10 @@ const toastStyles = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CaptureScreen() {
-  const { colors: C } = useTheme();
+  const { colors } = useTheme();
+  const profile = useProfile();
+  const tanod = hasTanodAccess(profile);
+  const C = useMemo(() => tanod ? { ...colors, accent: colors.warn, accentGlow: colors.warnGlow } : colors, [colors, tanod]);
   const [showToast, setShowToast] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [recentPhotos, setRecentPhotos] = useState<string[]>([]);
@@ -330,17 +335,17 @@ export default function CaptureScreen() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Choose a site photo"
+            accessibilityLabel="Take a site photo"
             style={styles.dropZone}
-            onPress={openGallery}
+            onPress={openCamera}
           >
             <View style={styles.dropIconWrap}>
-              <Upload color={C.accent} size={28} strokeWidth={1.8} />
+              <Camera color={C.accent} size={30} strokeWidth={1.8} />
             </View>
 
-            <Text style={styles.dropTitle}>Add a site photo</Text>
+            <Text style={styles.dropTitle}>Capture a breeding site</Text>
             <Text style={styles.dropSub}>
-              Choose a photo to check for mosquito breeding sites.
+              Take a clear photo of standing water or a suspected breeding site. You can also choose one from your gallery.
             </Text>
           </Pressable>
         </Animated.View>
@@ -409,7 +414,7 @@ export default function CaptureScreen() {
 const createStyles = (C: ThemeColors) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: C.bg },
-    inner: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 110 },
+    inner: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120, maxWidth: 680, width: "100%", alignSelf: "center" },
 
     // Header
     header: {
@@ -430,7 +435,8 @@ const createStyles = (C: ThemeColors) =>
     // Drop zone
     dropZone: {
       width: "100%",
-      height: 200,
+      minHeight: 240,
+      paddingVertical: 28,
       borderRadius: 18,
       backgroundColor: C.surface,
       borderWidth: 1,
@@ -442,7 +448,7 @@ const createStyles = (C: ThemeColors) =>
       position: "relative",
       gap: 10,
     },
-    dropIconWrap: { marginBottom: 4 },
+    dropIconWrap: { marginBottom: 8, width: 64, height: 64, borderRadius: 20, backgroundColor: C.accentGlow, alignItems: "center", justifyContent: "center" },
     dropTitle: {
       fontSize: 18,
       fontWeight: "700",
@@ -454,7 +460,7 @@ const createStyles = (C: ThemeColors) =>
       color: C.textSub,
       textAlign: "center",
       paddingHorizontal: 24,
-      lineHeight: 17,
+      lineHeight: 21,
     },
 
     // Action row
@@ -487,7 +493,7 @@ const createStyles = (C: ThemeColors) =>
       justifyContent: "center",
     },
     actionBtnLabel: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: "700",
       letterSpacing: 0.3,
       color: C.text,

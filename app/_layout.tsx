@@ -152,16 +152,16 @@ class RootErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundar
             flex: 1,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "#0B0E14",
+            backgroundColor: "#0B1414",
             padding: 24,
           }}
         >
-          <StatusBar barStyle="light-content" backgroundColor="#0B0E14" />
+          <StatusBar barStyle="light-content" backgroundColor="#0B1414" />
           <BrandMascot pose="error" size={180}/>
           <Text style={{ color: "#EF4444", fontSize: 20, fontWeight: "bold", marginBottom: 12 }}>
             AEDEX Startup Warning
           </Text>
-          <Text style={{ color: "#94A3B8", fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
+          <Text style={{ color: "#98B3AA", fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 20 }}>
             {this.state.error?.message || "An issue occurred while initializing the app interface."}
           </Text>
         </View>

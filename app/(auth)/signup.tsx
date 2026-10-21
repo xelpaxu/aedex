@@ -219,13 +219,13 @@ export default function SignupScreen() {
       <SafeAreaView
         style={[
           styles.root,
-          { padding: 24, justifyContent: "center", gap: 18 },
+          { padding: 24, justifyContent: "center", gap: 20, width: "100%", maxWidth: 460, alignSelf: "center" },
         ]}
       >
-        <Text style={{ color: C.text, fontSize: 24, fontWeight: "700" }}>
+        <Text style={{ color: C.text, fontSize: 30, fontFamily: "Manrope_700Bold", letterSpacing: -0.8 }}>
           Check your email
         </Text>
-        <Text style={{ color: C.textSub }}>
+        <Text style={{ color: C.textSub, lineHeight: 22 }}>
           Enter the verification code sent to {email}.
         </Text>
         <TextInput
@@ -233,24 +233,32 @@ export default function SignupScreen() {
           value={verificationCode}
           onChangeText={setVerificationCode}
           keyboardType="number-pad"
+          autoComplete="one-time-code"
+          returnKeyType="done"
+          onSubmitEditing={() => { if (!isProcessing && verificationCode.trim()) void verifyEmail(); }}
           textContentType="oneTimeCode"
           style={{
             padding: 16,
             color: C.text,
             backgroundColor: C.surface,
-            borderRadius: 12,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: C.border,
+            fontSize: 24,
+            letterSpacing: 6,
+            textAlign: "center",
           }}
         />
         {!!errorMessage && (
           <Text style={{ color: C.danger }}>{errorMessage}</Text>
         )}
         <TouchableOpacity
-          disabled={isProcessing}
+          disabled={isProcessing || !verificationCode.trim()}
           onPress={verifyEmail}
-          style={{ padding: 16, backgroundColor: C.accent, borderRadius: 12 }}
+          style={{ padding: 18, backgroundColor: C.accent, borderRadius: 14, opacity: isProcessing || !verificationCode.trim() ? 0.6 : 1 }}
         >
-          <Text style={{ color: "white", textAlign: "center" }}>
-            {isProcessing ? "Verifying?" : "Verify & continue"}
+          <Text style={{ color: "white", textAlign: "center", fontWeight: "700" }}>
+            {isProcessing ? "Verifying…" : "Verify & continue"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -280,7 +288,7 @@ export default function SignupScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -298,13 +306,13 @@ export default function SignupScreen() {
             <Text style={styles.appSubtitle}>VECTOR SURVEILLANCE & TRIAGE</Text>
             <Text style={styles.title}>Create your account</Text>
             <Text style={styles.subtitle}>
-              Community signup. Tanod accounts are provided by your LGU.
+              Report breeding sites and help protect your barangay. Tanod accounts are issued by your LGU.
             </Text>
           </View>
 
           {/* ── Error Notice ── */}
           {errorMessage && (
-            <View style={styles.errorBox}>
+            <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorBox}>
               <AlertCircle size={15} color={C.danger} />
               <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
@@ -398,6 +406,8 @@ export default function SignupScreen() {
                   editable={!isProcessing}
                 />
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
                   onPress={() => setShowPassword(!showPassword)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   activeOpacity={0.7}
@@ -439,6 +449,8 @@ export default function SignupScreen() {
                   editable={!isProcessing}
                 />
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={showConfirmPassword ? "Hide confirmed password" : "Show confirmed password"}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   activeOpacity={0.7}
@@ -521,52 +533,56 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
     scrollContent: {
       flexGrow: 1,
       paddingHorizontal: 24,
-      paddingTop: 32,
-      paddingBottom: 40,
-      justifyContent: "center",
+      paddingTop: 24,
+      paddingBottom: 32,
+      justifyContent: "flex-start",
+      maxWidth: 460,
+      width: "100%",
+      alignSelf: "center",
     },
 
     // ── Header
     header: {
-      alignItems: "center",
-      marginBottom: 26,
+      alignItems: "flex-start",
+      marginBottom: 28,
     },
     logo: {
-      width: 80,
-      height: 80,
+      width: 52,
+      height: 52,
       marginBottom: 12,
     },
     appTitle: {
-      fontSize: 26,
+      fontSize: 18,
       fontWeight: "800",
-      letterSpacing: 2.5,
+      letterSpacing: 1.5,
       color: C.text,
-      textAlign: "center",
+      textAlign: "left",
     },
     appSubtitle: {
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: "700",
-      letterSpacing: 1.5,
+      letterSpacing: 1,
       color: C.accent,
       textTransform: "uppercase",
       marginTop: 2,
-      marginBottom: 14,
-      textAlign: "center",
+      marginBottom: 24,
+      textAlign: "left",
     },
     title: {
-      fontSize: 19,
+      fontSize: 30,
       fontWeight: "700",
       color: C.text,
-      letterSpacing: -0.3,
-      marginBottom: 4,
-      textAlign: "center",
+      letterSpacing: -1,
+      marginBottom: 8,
+      textAlign: "left",
+      fontFamily: "Manrope_700Bold",
     },
     subtitle: {
-      fontSize: 13,
+      fontSize: 14,
       color: C.textSub,
-      lineHeight: 18,
-      textAlign: "center",
-      maxWidth: 280,
+      lineHeight: 21,
+      textAlign: "left",
+      maxWidth: 360,
     },
 
     // ── Clean Segmented Role Switcher
@@ -632,25 +648,25 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
 
     // ── Form
     form: {
-      gap: 16,
+      gap: 18,
     },
     field: {
       gap: 6,
     },
     label: {
       fontSize: 13,
-      fontWeight: "500",
+      fontWeight: "600",
       color: C.text,
     },
     inputWrap: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: C.surfaceRaised,
-      borderRadius: 12,
+      backgroundColor: C.surface,
+      borderRadius: 14,
       paddingHorizontal: 14,
-      height: 50,
+      height: 54,
       borderWidth: 1,
-      borderColor: "transparent",
+      borderColor: C.border,
     },
     inputWrapFocused: {
       borderColor: C.accent,
@@ -669,16 +685,16 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
     // ── Primary Button
     primaryBtn: {
       backgroundColor: C.accent,
-      borderRadius: 12,
-      height: 50,
+      borderRadius: 14,
+      height: 54,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 6,
+      marginTop: 10,
     },
     primaryBtnText: {
       color: "#FFFFFF",
       fontSize: 15,
-      fontWeight: "600",
+      fontWeight: "700",
     },
 
     // ── Divider
@@ -709,9 +725,11 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: C.surfaceRaised,
+      backgroundColor: C.surface,
       borderRadius: 12,
-      height: 48,
+      height: 52,
+      borderWidth: 1,
+      borderColor: C.border,
     },
     socialText: {
       fontSize: 14,
@@ -725,6 +743,8 @@ const createStyles = (C: ThemeColors, isDark: boolean) =>
       justifyContent: "center",
       alignItems: "center",
       marginTop: 28,
+      flexWrap: "wrap",
+      rowGap: 8,
     },
     footerText: {
       fontSize: 14,

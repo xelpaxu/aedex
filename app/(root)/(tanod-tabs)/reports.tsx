@@ -77,7 +77,7 @@ export default function TanodReportsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          padding: 18,
+          padding: 20,
           paddingBottom: 100 + Math.max(insets.bottom, 12),
           maxWidth: 680,
           width: "100%",
@@ -214,6 +214,8 @@ export default function TanodReportsScreen() {
                   fontSize: 13,
                   paddingVertical: 13,
                 }}
+                autoCorrect={false}
+                autoCapitalize="none"
                 returnKeyType="search"
               />
               {!!query && (
@@ -292,10 +294,13 @@ export default function TanodReportsScreen() {
                     minHeight: 44,
                     justifyContent: "center",
                     paddingHorizontal: 14,
-                    borderRadius: 22,
+                    borderRadius: 12,
                     borderWidth: 1,
                     borderColor: filter === value ? C.warn : C.border,
                     backgroundColor: filter === value ? C.warnGlow : C.surface,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
                   }}
                 >
                   <Text
@@ -306,8 +311,8 @@ export default function TanodReportsScreen() {
                     }}
                   >
                     {label}
-                    {assignments === undefined ? "" : ` ${counts[value]}`}
                   </Text>
+                  {assignments !== undefined && <Text style={{ color: filter === value ? C.warn : C.textSub, fontSize: 11, fontWeight: "700", backgroundColor: C.surfaceRaised, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 }}>{counts[value]}</Text>}
                 </Pressable>
               ))}
             </ScrollView>

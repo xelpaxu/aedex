@@ -31,6 +31,8 @@ export default function Settings() {
   const { colors: C, theme, setTheme } = useTheme();
   const profile = useProfile();
   const tanod = hasTanodAccess(profile);
+  const accent = tanod ? C.warn : C.accent;
+  const accentGlow = tanod ? C.warnGlow : C.accentGlow;
   const { signOut } = useAuth();
   const router = useRouter();
   const { state, checkNow } = useUpdate();
@@ -49,11 +51,11 @@ export default function Settings() {
     alignItems: "center" as const,
     gap: 14,
     padding: 17,
-    minHeight: 76,
+    minHeight: 80,
   };
   const panel = {
     backgroundColor: C.surface,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: C.border,
     overflow: "hidden" as const,
@@ -65,7 +67,7 @@ export default function Settings() {
         contentContainerStyle={{
           padding: 20,
           paddingBottom: 36,
-          gap: 28,
+          gap: 24,
           maxWidth: 640,
           width: "100%",
           alignSelf: "center",
@@ -98,7 +100,7 @@ export default function Settings() {
               Settings
             </Text>
             <Text style={{ color: C.textSub, fontSize: 14 }}>
-              Your account, your preferences.
+              Manage your account and how Aedex looks.
             </Text>
           </View>
         </View>
@@ -124,15 +126,15 @@ export default function Settings() {
             style={{
               width: 54,
               height: 54,
-              borderRadius: 20,
-              backgroundColor: C.accentGlow,
+              borderRadius: 16,
+              backgroundColor: accentGlow,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <Text
               style={{
-                color: C.accent,
+                color: accent,
                 fontFamily: "Manrope_700Bold",
                 fontSize: 22,
               }}
@@ -151,9 +153,9 @@ export default function Settings() {
               {profile?.fullName || "Your profile"}
             </Text>
             <Text style={{ color: C.textSub, fontSize: 12 }}>
-              {profile?.barangay || "Community member"}
+              {(tanod ? profile?.assignedBarangay : profile?.barangay) || "Community member"}
             </Text>
-            <Text style={{ color: C.accent, fontSize: 12 }}>
+            <Text style={{ color: accent, fontSize: 12 }}>
               {tanod ? "Tanod profile" : "View your profile"}
             </Text>
           </View>
@@ -177,7 +179,7 @@ export default function Settings() {
                     gap: 14,
                     borderRadius: 18,
                     borderWidth: 2,
-                    borderColor: active ? C.accent : C.border,
+                    borderColor: active ? accent : C.border,
                     backgroundColor: C.surface,
                   }}
                 >
@@ -186,7 +188,7 @@ export default function Settings() {
                       height: 88,
                       padding: 10,
                       borderRadius: 10,
-                      backgroundColor: mode === "light" ? "#F1F3F6" : "#0B0E14",
+                      backgroundColor: mode === "light" ? "#EEF4F2" : "#0B1414",
                       gap: 8,
                     }}
                   >
@@ -196,7 +198,7 @@ export default function Settings() {
                         height: 5,
                         borderRadius: 3,
                         backgroundColor:
-                          mode === "light" ? "#64748B" : "#9AA8BD",
+                          mode === "light" ? "#607A72" : "#A0B7B3",
                       }}
                     />
                     <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
@@ -205,7 +207,7 @@ export default function Settings() {
                           width: "28%",
                           borderRadius: 5,
                           backgroundColor:
-                            mode === "light" ? "#DBEAFE" : "#1D3457",
+                            mode === "light" ? "#CCEBE3" : "#184B44",
                         }}
                       />
                       <View
@@ -213,7 +215,7 @@ export default function Settings() {
                           flex: 1,
                           borderRadius: 5,
                           backgroundColor:
-                            mode === "light" ? "#fff" : "#202735",
+                            mode === "light" ? "#fff" : "#203333",
                         }}
                       />
                     </View>
@@ -223,7 +225,7 @@ export default function Settings() {
                         width: "64%",
                         height: 9,
                         borderRadius: 5,
-                        backgroundColor: "#2563EB",
+                        backgroundColor: accent,
                       }}
                     />
                   </View>
@@ -255,13 +257,13 @@ export default function Settings() {
                         height: 20,
                         borderRadius: 10,
                         borderWidth: 1,
-                        borderColor: active ? C.accent : C.borderBright,
-                        backgroundColor: active ? C.accent : "transparent",
+                        borderColor: active ? accent : C.borderBright,
+                        backgroundColor: active ? accent : "transparent",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      {active && <Check color="#fff" size={13} />}
+                      {active && <Check color={tanod ? "#111827" : "#fff"} size={13} />}
                     </View>
                   </View>
                 </Pressable>
@@ -277,7 +279,7 @@ export default function Settings() {
               onPress={() => router.push("/edit-profile")}
               style={row}
             >
-              <UserRound color={C.accent} size={21} />
+              <UserRound color={accent} size={21} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Text
                   style={{ color: C.text, fontWeight: "600", fontSize: 14 }}
@@ -298,7 +300,7 @@ export default function Settings() {
               onPress={() => router.push("/notifications")}
               style={row}
             >
-              <Bell color={C.accent} size={21} />
+              <Bell color={accent} size={21} />
               <View style={{ flex: 1, gap: 4 }}>
                 <Text
                   style={{ color: C.text, fontWeight: "600", fontSize: 14 }}
@@ -369,9 +371,9 @@ export default function Settings() {
               style={row}
             >
               {checking ? (
-                <ActivityIndicator color={C.accent} />
+                <ActivityIndicator color={accent} />
               ) : (
-                <RefreshCw size={20} color={C.accent} />
+                <RefreshCw size={20} color={accent} />
               )}
               <View style={{ flex: 1, gap: 4 }}>
                 <Text

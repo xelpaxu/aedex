@@ -118,7 +118,7 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
     .leaflet-bottom { bottom: 110px; }
     .leaflet-control-attribution { font-size: 8px; opacity: 0.5; }
     
-    @keyframes bluePulse {
+    @keyframes locationPulse {
       0% { transform: scale(0.8); opacity: 0.9; }
       50% { transform: scale(1.6); opacity: 0.25; }
       100% { transform: scale(0.8); opacity: 0.9; }
@@ -134,8 +134,8 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       100% { transform: scale(0.92); opacity: 0.7; }
     }
 
-    /* Citizen User Blue Dot (NO square container) */
-    .user-blue-dot-box {
+    /* Citizen location marker (NO square container) */
+    .user-location-dot-box {
       position: relative;
       width: 32px;
       height: 32px;
@@ -143,21 +143,21 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       align-items: center;
       justify-content: center;
     }
-    .user-blue-dot-pulse {
+    .user-location-dot-pulse {
       position: absolute;
       width: 32px;
       height: 32px;
       border-radius: 16px;
-      background: rgba(0, 122, 255, 0.45);
-      animation: bluePulse 2s infinite ease-in-out;
+      background: ${C.accent}73;
+      animation: locationPulse 2s infinite ease-in-out;
     }
-    .user-blue-dot-core {
+    .user-location-dot-core {
       width: 16px;
       height: 16px;
       border-radius: 8px;
-      background: #007AFF;
+      background: ${C.accent};
       border: 2.5px solid #FFFFFF;
-      box-shadow: 0 0 10px rgba(0, 122, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 10px ${C.accent}CC, 0 2px 4px rgba(0, 0, 0, 0.3);
       z-index: 2;
     }
 
@@ -217,7 +217,7 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
       top: -2px;
       right: -2px;
       background: #FFFFFF;
-      color: #0B0E14;
+      color: #0B1414;
       font-size: 9px;
       font-weight: 800;
       border-radius: 8px;
@@ -268,9 +268,9 @@ function buildMapHtml(isTanodUser: boolean, C: ThemeColors) {
               '<path d="M12 6.5l1.3 2.64 2.91.42-2.11 2.05.5 2.9-2.6-1.37-2.6 1.37.5-2.9-2.11-2.05 2.91-.42L12 6.5z" fill="#FFFFFF"/>' +
             '</svg>' +
           '</div>'
-        : '<div class="user-blue-dot-box">' +
-            '<div class="user-blue-dot-pulse"></div>' +
-            '<div class="user-blue-dot-core"></div>' +
+        : '<div class="user-location-dot-box">' +
+            '<div class="user-location-dot-pulse"></div>' +
+            '<div class="user-location-dot-core"></div>' +
           '</div>';
 
       var icon = L.divIcon({
