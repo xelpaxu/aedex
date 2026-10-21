@@ -1,0 +1,18 @@
+import { Text as NativeText, Platform, View, Pressable, type TextProps } from "react-native";
+import { ChevronLeft } from "lucide-react-native";
+import { useTheme } from "@/context/ThemeContext";
+export function useAccountTheme() {
+  const theme = useTheme();
+  return { ...theme, colors: { ...theme.colors, bg: theme.isDark ? "#000000" : "#F2F2F7", surface: theme.isDark ? "#1C1C1E" : "#FFFFFF", surfaceRaised: theme.isDark ? "#2C2C2E" : "#E5E5EA", border: theme.isDark ? "#38383A" : "#D1D1D6", accent: theme.isDark ? "#64A7FF" : "#0066D6" } };
+}
+export function Text({ style, ...props }: TextProps) {
+  return <NativeText {...props} style={[{ fontFamily: Platform.OS === "ios" ? "System" : "sans-serif" }, style]} />;
+}
+export function AccountHeader({ title, onBack, action, onAction, disabled = false }: { title: string; onBack?: () => void; action?: string; onAction?: () => void; disabled?: boolean }) {
+  const { colors: C } = useAccountTheme();
+  return <View style={{ minHeight: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 8 }}>
+    <View style={{ flex: 1 }}>{onBack && <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={({ pressed }) => ({ minHeight: 48, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", opacity: pressed ? 0.5 : 1 })}><ChevronLeft color={C.accent} size={28} /><Text style={{ color: C.accent, fontSize: 17 }}>Back</Text></Pressable>}</View>
+    <Text accessibilityRole="header" style={{ flex: 2, color: C.text, fontSize: 17, fontWeight: "600", textAlign: "center", paddingVertical: 12 }}>{title}</Text>
+    <View style={{ flex: 1, alignItems: "flex-end" }}>{action && <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{ disabled }} onPress={onAction} style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 8, justifyContent: "center", opacity: disabled ? 0.35 : pressed ? 0.5 : 1 })}><Text style={{ color: C.accent, fontSize: 17, fontWeight: "600" }}>{action}</Text></Pressable>}</View>
+  </View>;
+}

@@ -6,16 +6,15 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
-import { Text, TextInput } from "@/components/Typography";
+import { TextInput } from "@/components/Typography";
 import {
-  ArrowLeft,
   Check,
   MapPin,
   ShieldCheck,
 } from "lucide-react-native";
 import { api } from "@/convex/_generated/api";
 import { useProfile } from "@/context/AccessContext";
-import { useTheme } from "@/context/ThemeContext";
+import { Text, useAccountTheme as useTheme, AccountHeader } from "@/components/AccountUI";
 import {
   PILOT_BARANGAYS,
   hasPilotBarangay,
@@ -53,7 +52,7 @@ export default function EditProfile({
       ? { barangay: profile.assignedBarangay }
       : "skip",
   );
-  const accent = officer ? C.warn : C.accent;
+  const accent = C.accent;
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   async function updatePhoto() {
@@ -111,11 +110,12 @@ export default function EditProfile({
     }
   }
   const inputStyle = {
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: C.border,
     backgroundColor: C.surface,
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: 0,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     color: C.text,
     fontSize: 16,
     minHeight: 54,
@@ -129,35 +129,7 @@ export default function EditProfile({
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 16,
-            paddingVertical: 6,
-            gap: 12,
-            borderBottomWidth: 1,
-            borderColor: C.border,
-          }}
-        >
-          {!mandatory && !embedded && (
-            <Pressable
-              accessibilityLabel="Back"
-              accessibilityRole="button"
-              style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace("/(root)")
-              }
-            >
-              <ArrowLeft color={C.text} size={22} />
-            </Pressable>
-          )}
-          <Text
-            style={{ fontWeight: "700", fontSize: 18, color: C.text, flex: 1 }}
-          >
-            {mandatory ? "Complete profile" : "Edit profile"}
-          </Text>
-        </View>
+        <AccountHeader title={mandatory ? "Complete profile" : "Edit profile"} onBack={!mandatory && !embedded ? () => router.canGoBack() ? router.back() : router.replace("/(root)") : undefined} action={busy ? "Saving..." : "Done"} onAction={save} disabled={busy || uploading} />
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 24, gap: 28, paddingBottom: 40, maxWidth: 640, width: "100%", alignSelf: "center" }}
@@ -220,8 +192,8 @@ export default function EditProfile({
               </Text>
             </View>
           )}
-          <View style={{ gap: 18 }}>
-            <Text style={{ fontSize: 18, fontWeight: "600", color: C.text }}>
+          <View style={{ gap: 0, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface }}>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: C.textSub, padding: 16 }}>
               Name & contact
             </Text>
             {[
@@ -229,13 +201,13 @@ export default function EditProfile({
               ["Last name", lastName, setLastName],
               ["Phone (optional)", phone, setPhone],
             ].map(([label, value, setter]) => (
-              <View key={String(label)} style={{ gap: 6 }}>
-                <Text style={{ fontSize: 13, color: C.textSub }}>
+              <View key={String(label)} style={{ borderTopWidth: 0.5, borderColor: C.border, paddingTop: 12 }}>
+                <Text style={{ fontSize: 13, color: C.textSub, paddingHorizontal: 16 }}>
                   {String(label)}
                 </Text>
                 <TextInput
                   accessibilityLabel={String(label)}
-                  style={inputStyle}
+                  style={[inputStyle, { fontFamily: Platform.OS === "ios" ? "System" : "sans-serif" }]}
                   value={value as string}
                   onChangeText={setter as (s: string) => void}
                   editable={!busy}
@@ -249,11 +221,11 @@ export default function EditProfile({
               </View>
             ))}
           </View>
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 18, fontWeight: "600", color: C.text }}>
+          <View style={{ gap: 0, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface }}>
+            <Text style={{ fontSize: 13, fontWeight: "400", color: C.textSub, padding: 16 }}>
               Reporting barangay
             </Text>
-            <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20 }}>
+            <Text style={{ fontSize: 13, color: C.textSub, lineHeight: 20, padding: 16 }}>
               New reports will use this barangay. Changing it won’t move your
               previous reports.
               {officer ? " This does not change your official team." : ""}
@@ -270,10 +242,10 @@ export default function EditProfile({
                   alignItems: "center",
                   gap: 12,
                   padding: 16,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: barangay === b ? accent : C.border,
-                  backgroundColor: barangay === b ? C.surfaceRaised : C.surface,
+                  borderRadius: 0,
+                  borderTopWidth: 0.5,
+                  borderColor: C.border,
+                  backgroundColor: C.surface,
                 }}
               >
                 <MapPin color={barangay === b ? accent : C.textSub} size={20} />
@@ -321,7 +293,7 @@ export default function EditProfile({
             ) : (
               <Text
                 style={{
-                  color: officer ? "#111827" : "#fff",
+                  color: "#fff",
                   fontWeight: "700",
                   fontSize: 15,
                 }}
