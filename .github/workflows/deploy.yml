@@ -46,6 +46,10 @@ jobs:
           filters: |
             native:
               - 'app.json'
+              # Launcher icons are native resources and cannot ship through OTA.
+              - 'assets/logo/app-icon.png'
+              - 'assets/logo/app-icon-opaque.png'
+              - 'assets/logo/app-icon-android.png'
               - 'eas.json'
               - 'package.json'
               - 'package-lock.json'
