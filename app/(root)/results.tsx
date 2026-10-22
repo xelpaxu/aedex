@@ -16,7 +16,7 @@ import {
   X
 } from "lucide-react-native";
 import React, { useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Dimensions, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Animated, Dimensions, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { Text } from "@/components/Typography";
 import { WebView } from "react-native-webview";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
@@ -397,6 +397,7 @@ function buildPreviewMapHtml(
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function ResultsScreen() {
+  const { height: windowHeight } = useWindowDimensions();
   const router = useRouter();
   const { colors: C, isDark } = useTheme();
   const params = useLocalSearchParams();
@@ -853,7 +854,7 @@ export default function ResultsScreen() {
               </Row>
 
               <View style={styles.locationCard}>
-                <View style={styles.locationMap}>
+                <View style={[styles.locationMap, isTanod && { height: Math.min(480, Math.max(340, windowHeight * 0.45)) }]}>
                   <WebView
                     ref={previewWebViewRef}
                     originWhitelist={["*"]}
@@ -880,7 +881,7 @@ export default function ResultsScreen() {
 
                 {/* Road Directions Snackbar */}
                 {isTrackingDirections && routeMetrics && (
-                  <View style={styles.inlineNavSnackbar}>
+                  <View style={[styles.inlineNavSnackbar, isTanod && styles.tanodRoutePanel]}>
                     <View style={styles.inlineNavHeader}>
                       <View style={styles.inlineNavBadge}>
                         <Navigation
@@ -1520,6 +1521,19 @@ const createStyles = (C: ThemeColors) =>
       shadowOpacity: 0.2,
       shadowRadius: 8,
       elevation: 6,
+    },
+    tanodRoutePanel: {
+      position: "relative",
+      top: 0,
+      left: 0,
+      right: 0,
+      borderRadius: 0,
+      borderWidth: 0,
+      borderTopWidth: 1,
+      padding: 16,
+      shadowOpacity: 0,
+      elevation: 0,
+      backgroundColor: C.surface,
     },
     inlineNavHeader: {
       flexDirection: "row",
